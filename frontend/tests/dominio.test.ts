@@ -7,6 +7,7 @@ import { formatearUltimaConexion, formatearCompleto } from '../src/domain/presen
 import { parsearCodigo, formatearCodigo, normalizarCodigo, generarCuerpo, ALFABETO_CODIGO, LARGO_CUERPO } from '@shared/schemas/codigo';
 import { derivarPresencia } from '@shared/schemas/presencia.schema';
 import { normalizarNombre } from '@shared/panoramas';
+import { POLITICA_CSP } from '../src/config/csp';
 import type { Giro } from '@shared/schemas/giro.schema';
 
 /**
@@ -298,5 +299,37 @@ describe('Normalización de panoramas · misma regla en la app y en el seed', ()
   it('es idempotente: normalizar lo ya normalizado no lo cambia', () => {
     const una = normalizarNombre('Café en la Plaza Ñuñoa');
     expect(normalizarNombre(una)).toBe(una);
+  });
+});
+
+describe('Content Security Policy', () => {
+  const directiva = (nombre: string) =>
+    POLITICA_CSP.split('; ').find((d) => d.startsWith(nombre + ' ')) ?? '';
+
+  it('permite el long polling de Realtime Database en script-src', () => {
+    // El SDK cae a JSONP cuando el WebSocket no conecta, e inyecta un <script>
+    // apuntando a la base de datos. Sin esto la app se queda cargando, y solo
+    // en algunas redes: es un fallo que no aparece en desarrollo.
+    expect(directiva('script-src')).toContain('https://*.firebaseio.com');
+    expect(directiva('script-src')).toContain('https://*.firebasedatabase.app');
+  });
+
+  it('permite websocket y REST hacia Firebase en connect-src', () => {
+    const conexion = directiva('connect-src');
+    expect(conexion).toContain('wss://*.firebaseio.com');
+    expect(conexion).toContain('https://*.googleapis.com');
+  });
+
+  it('no deja rendijas abiertas', () => {
+    expect(POLITICA_CSP).not.toContain("'unsafe-eval'");
+    expect(directiva('script-src')).not.toContain("'unsafe-inline'");
+    expect(POLITICA_CSP).toContain("object-src 'none'");
+    expect(POLITICA_CSP).toContain("base-uri 'self'");
+    // La app no envía formularios a ningún sitio: todo pasa por el SDK.
+    expect(POLITICA_CSP).toContain("form-action 'none'");
+  });
+
+  it('parte de default-src propio', () => {
+    expect(POLITICA_CSP.startsWith("default-src 'self'")).toBe(true);
   });
 });
