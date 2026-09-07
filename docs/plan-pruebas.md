@@ -112,6 +112,19 @@ documentados para poder repetirlos igual.
 2. Ir a `/inicio` → banner con actividad y responsable.
 3. Poner fecha → cuenta atrás y fecha exacta en horario de Santiago.
 
+### C9 · Transporte degradado de Realtime Database
+La app se probó en un navegador incrustado donde el **WebSocket no llega a
+establecerse**. Es el caso que descubrió la CSP incompleta: el SDK no falla,
+cae a *long polling* por JSONP, y la política bloqueaba ese `<script>`.
+
+Cómo reproducirlo sin ese navegador: en DevTools → Network, bloquear el
+patrón `wss://*`, recargar y comprobar que la app **carga igual**. Si se
+queda en «Cargando», mirar la consola: si hay violaciones de CSP contra
+`.../.lp?start=t`, falta un origen en `script-src`.
+
+Merece un caso propio porque es un fallo **intermitente por red**: en una
+conexión doméstica normal el WebSocket funciona y todo parece correcto.
+
 ---
 
 ## 4 · Lo que todavía NO está cubierto
@@ -125,6 +138,7 @@ Se dice explícitamente en lugar de dar una falsa sensación de cobertura:
 | **Rendimiento con catálogos grandes** | Bajo | Con 20 planes y 20 preguntas no aplica |
 | **Accesibilidad automatizada** (axe) | Medio | Hoy solo hay revisión manual: foco visible, `aria-live`, `prefers-reduced-motion` |
 | **Perfiles y Panel de Admin** | Medio | Construidos y probados a mano; sin cobertura automática todavía |
+| **La CSP contra el navegador real** | Bajo | Los tests comprueban la cadena de la política, no que el navegador la acepte. Un origen que falte solo se ve desplegado (ver C9) |
 
 ---
 

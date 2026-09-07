@@ -349,4 +349,10 @@ Solo cuando la app YA funcione en su URL:
 | "Código incorrecto" con el código bueno | Provisionaste otro entorno; los códigos son por proyecto |
 | Página en blanco tras desplegar | `PUBLIC_BASE_PATH` mal: revisa la subruta en el workflow |
 | Todo falla justo tras activar App Check | `RECAPTCHA_SITE_KEY` ausente o de otro proyecto. Vuelve a `Sin aplicar` y revisa |
+| `auth/requests-from-referer-...-are-blocked` | Restricción de API key **por ruta**. Debe ser por origen (ver paso 27) |
+| `Configuración de entorno inválida` en el sitio desplegado | El workflow corrió antes de crear las Variables del environment. Relanza el despliegue |
+| Cambias algo y el sitio sigue igual | Caché de GitHub Pages. Prueba con `?v=2` al final de la URL |
 | El workflow no puede hacer push | Falta el paso 3.6 (permisos de escritura) |
+| **Se queda en "Cargando" para siempre, a veces sí y a veces no** | La CSP no permite el *long polling* de RTDB. En la consola verás violaciones contra `.../.lp?start=t`. Los dominios de la base tienen que estar también en `script-src`, no solo en `connect-src` |
+| CI falla con `leaks found` señalando `_astro/` | Es el bundle publicado, no una fuga. Ver runbook §7 |
+| La ruleta aparece vacía en un entorno nuevo | Falta `npm run seed` (paso 2.6): los panoramas se siembran ahí |

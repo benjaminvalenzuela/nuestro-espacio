@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { POLITICA_CSP } from '../config/csp';
 
 interface Props {
   titulo: string;
@@ -8,40 +9,10 @@ interface Props {
 
 const { titulo, descripcion = 'Nuestro espacio' } = Astro.props;
 
-/**
- * ─────────────────────────────────────────────────────────────────────────────
- *  CONTENT SECURITY POLICY
- *
- *  GitHub Pages no permite cabeceras HTTP personalizadas, así que la CSP viaja
- *  en un <meta>. Cubre script-src y connect-src (lo importante para XSS y para
- *  exfiltración de datos); queda fuera frame-ancestors, que solo funciona como
- *  cabecera — riesgo residual documentado en el Paso 2.
- *
- *  Solo se emite en producción: en desarrollo rompería el HMR de Vite, que
- *  necesita un WebSocket a localhost y evaluación dinámica.
- * ─────────────────────────────────────────────────────────────────────────────
- */
-const csp = [
-  "default-src 'self'",
-  "script-src 'self' https://www.google.com https://www.gstatic.com",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https://lh3.googleusercontent.com",
-  "font-src 'self' data:",
-  [
-    'connect-src',
-    "'self'",
-    'https://*.googleapis.com',
-    'https://*.firebaseio.com',
-    'wss://*.firebaseio.com',
-    'https://*.firebasedatabase.app',
-    'wss://*.firebasedatabase.app',
-  ].join(' '),
-  // signInWithPopup y App Check (reCAPTCHA) abren estos orígenes
-  "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com",
-  "base-uri 'self'",
-  "form-action 'none'",
-  "object-src 'none'",
-].join('; ');
+// La política vive en config/csp.ts, donde está documentada y cubierta por
+// tests. Solo se emite en producción: en desarrollo rompería el HMR de Vite,
+// que necesita un WebSocket a localhost y evaluación dinámica.
+const csp = POLITICA_CSP;
 ---
 
 <!doctype html>

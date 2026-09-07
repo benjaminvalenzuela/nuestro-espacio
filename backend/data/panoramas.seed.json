@@ -1,0 +1,22 @@
+[
+  { "id": "picnic-parque",        "nombre": "Picnic en el parque" },
+  { "id": "cine-en-casa",         "nombre": "Cine en casa con manta y palomitas" },
+  { "id": "cocinar-juntos",       "nombre": "Cocinar juntos una receta nueva" },
+  { "id": "cerro-san-cristobal",  "nombre": "Subir al cerro San Cristóbal" },
+  { "id": "feria-libre",          "nombre": "Ir a la feria y cocinar lo que encontremos" },
+  { "id": "museo",                "nombre": "Visitar un museo" },
+  { "id": "cafe-nuevo",           "nombre": "Probar una cafetería que no conozcamos" },
+  { "id": "noche-de-juegos",      "nombre": "Noche de juegos de mesa" },
+  { "id": "paseo-bicicleta",      "nombre": "Paseo en bicicleta" },
+  { "id": "playa",                "nombre": "Escapada a la playa" },
+  { "id": "atardecer-mirador",    "nombre": "Ver el atardecer en un mirador" },
+  { "id": "sesion-fotos",         "nombre": "Sesión de fotos improvisada" },
+  { "id": "maraton-serie",        "nombre": "Maratón de una serie nueva" },
+  { "id": "restaurante-nuevo",    "nombre": "Cenar en un restaurante que no hayamos probado" },
+  { "id": "caminata-cerro",       "nombre": "Caminata por un sendero" },
+  { "id": "tarde-libreria",       "nombre": "Tarde de librería" },
+  { "id": "karaoke-casero",       "nombre": "Karaoke casero" },
+  { "id": "postre-juntos",        "nombre": "Hacer un postre juntos" },
+  { "id": "ferias-artesanales",   "nombre": "Recorrer una feria artesanal" },
+  { "id": "dia-spa-casa",         "nombre": "Día de spa en casa" }
+]

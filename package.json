@@ -13,7 +13,7 @@
   "scripts": {
     "emu": "firebase emulators:start --project demo-nuestro-espacio",
     "emu:export": "firebase emulators:start --project demo-nuestro-espacio --import ./emulator-data --export-on-exit ./emulator-data",
-    "secrets:scan": "gitleaks detect --source . --config .gitleaks.toml --redact --verbose",
+    "secrets:scan": "gitleaks detect --source . --config .gitleaks.toml --log-opts HEAD --redact --verbose",
     "desa": "npm --workspace backend run provisionar -- --entorno=desa",
     "dev": "npm --workspace frontend run dev",
     "build": "npm --workspace frontend run build",

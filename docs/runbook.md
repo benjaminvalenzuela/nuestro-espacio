@@ -96,7 +96,65 @@ npm --workspace backend run presencia -- --entorno=<desa|qa|prod>
 
 ---
 
-## 6 · Reglas que no se rompen nunca
+## 6 · Cargar contenido en un entorno nuevo
+
+```
+npm --workspace backend run seed -- --entorno=<qa|prod>
+```
+
+Carga tres cosas y cada una con una regla distinta de reejecución:
+
+| | Dónde vive | Al reejecutar |
+|---|---|---|
+| Preguntas | banco global | `merge:true` — refresca el texto, respeta `activa` |
+| Dilemas | banco global | igual que las preguntas |
+| Panoramas | bajo la pareja | **solo crea los que faltan** |
+
+Los panoramas son la excepción y es deliberado: llevan `vecesRealizado`, el
+histórico de cuántas veces se ha hecho ese plan. Un `merge` ciego lo pondría
+a cero. La comparación es por `nombreNormalizado`, así que un panorama que
+ustedes agregaron desde la app con el mismo nombre no se duplica.
+
+Si el seed dice `20 creados, 0 ya estaban` en un entorno que ya usaban,
+algo va mal: revisar `PAREJA_ID` en el `.env` antes de seguir.
+
+### Cuentas anónimas huérfanas
+
+Abrir la app crea una cuenta anónima **antes** de saber si quien entra
+escribirá un código válido. Los intentos fallidos y las pruebas dejan cuentas
+que no están vinculadas a ningún dispositivo: son inofensivas —sin vínculo no
+pasan ninguna regla— pero se acumulan.
+
+```
+npm run dispositivos -- --entorno=<qa|prod> --huerfanos           # solo informa
+npm run dispositivos -- --entorno=<qa|prod> --huerfanos --purgar  # borra
+```
+
+Nunca toca una cuenta vinculada, y respeta 24 horas de gracia: una cuenta
+recién creada puede ser la de alguien que está tecleando su código ahora.
+
+⛔ **Esto sustituye a la "limpieza automática" de Firebase, que debe seguir
+desactivada.** Aquella borra por antigüedad sin mirar el vínculo: se llevaría
+los dispositivos legítimos, que están pensados para durar años.
+
+---
+
+## 7 · Falsos positivos de gitleaks
+
+Si CI falla con `leaks found` y el hallazgo apunta a un archivo de
+`assets/` o `_astro/`: es el bundle publicado, no una fuga. La API key de
+Firebase Web **tiene** que estar ahí — es un identificador público que el
+navegador necesita, y lo que protege el proyecto es la restricción por
+referrer más las Security Rules, no el secreto de esa cadena.
+
+El escaneo está acotado con `--log-opts HEAD` justamente para no recorrer
+`gh-pages`. Si vuelve a aparecer, comprobar que ese flag sigue puesto antes
+de tocar la allowlist: ampliar la allowlist es la forma habitual de dejar
+de ver fugas de verdad.
+
+---
+
+## 8 · Reglas que no se rompen nunca
 
 | Regla | Motivo |
 |---|---|

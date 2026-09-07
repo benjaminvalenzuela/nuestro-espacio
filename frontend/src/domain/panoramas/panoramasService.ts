@@ -14,6 +14,7 @@ import {
 import { obtenerFirestore } from '../../infra/firebase/firestore';
 import { FS } from '@shared/rutas-datos';
 import { textoSeguro } from '@shared/schemas/perfil.schema';
+import { normalizarNombre } from '@shared/panoramas';
 import type { Persona } from '@shared/enums';
 
 /**
@@ -38,21 +39,9 @@ export interface Panorama {
 
 const NombrePanorama = textoSeguro(2, 80);
 
-/**
- * Clave de deduplicación: sin tildes, en minúsculas y con espacios colapsados.
- * "Ir al Cerro" y "ir  al cerro" son el mismo plan; sin esto la ruleta acabaría
- * con duplicados que además desvirtúan las probabilidades.
- */
-export function normalizarNombre(v: string): string {
-  return v
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    // Rango de marcas diacríticas combinantes (U+0300–U+036F): tras NFD, la
-    // tilde de "Cristóbal" queda como carácter aparte y aquí se descarta.
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/\s+/g, ' ');
-}
+// La normalización vive en `shared` para que el seed del backend aplique la
+// misma regla; se reexporta porque es parte de la API pública de este servicio.
+export { normalizarNombre };
 
 export class ErrorPanorama extends Error {}
 

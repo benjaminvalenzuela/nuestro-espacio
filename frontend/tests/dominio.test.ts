@@ -6,6 +6,8 @@ import { elegirPregunta, type Pregunta } from '../src/domain/preguntas/preguntas
 import { formatearUltimaConexion, formatearCompleto } from '../src/domain/presencia/formatoFecha';
 import { parsearCodigo, formatearCodigo, normalizarCodigo, generarCuerpo, ALFABETO_CODIGO, LARGO_CUERPO } from '@shared/schemas/codigo';
 import { derivarPresencia } from '@shared/schemas/presencia.schema';
+import { normalizarNombre } from '@shared/panoramas';
+import { POLITICA_CSP } from '../src/config/csp';
 import type { Giro } from '@shared/schemas/giro.schema';
 
 /**
@@ -273,5 +275,61 @@ describe('Presencia derivada · la verdad son las conexiones vivas', () => {
   it('con datos corruptos o ausentes no revienta', () => {
     expect(derivarPresencia(null).enLinea).toBe(false);
     expect(derivarPresencia({ basura: true }).ultimaConexion).toBeNull();
+  });
+});
+
+describe('Normalización de panoramas · misma regla en la app y en el seed', () => {
+  it('ignora mayúsculas, tildes y espacios de más', () => {
+    const esperado = 'ir al cerro san cristobal';
+    expect(normalizarNombre('Ir al Cerro San Cristóbal')).toBe(esperado);
+    expect(normalizarNombre('  ir  al   cerro  san cristobal ')).toBe(esperado);
+    expect(normalizarNombre('IR AL CERRO SAN CRISTÓBAL')).toBe(esperado);
+  });
+
+  it('distingue planes que de verdad son distintos', () => {
+    expect(normalizarNombre('Ir al cine')).not.toBe(normalizarNombre('Ir al circo'));
+  });
+
+  it('la ñ NO es una n con tilde: son planes diferentes', () => {
+    // NFD descompone la tilde de "ó", pero la ñ es una letra por derecho propio.
+    // Si la normalización la aplastara, "año nuevo" y "ano nuevo" colisionarían.
+    expect(normalizarNombre('Año nuevo juntos')).toBe('año nuevo juntos');
+  });
+
+  it('es idempotente: normalizar lo ya normalizado no lo cambia', () => {
+    const una = normalizarNombre('Café en la Plaza Ñuñoa');
+    expect(normalizarNombre(una)).toBe(una);
+  });
+});
+
+describe('Content Security Policy', () => {
+  const directiva = (nombre: string) =>
+    POLITICA_CSP.split('; ').find((d) => d.startsWith(nombre + ' ')) ?? '';
+
+  it('permite el long polling de Realtime Database en script-src', () => {
+    // El SDK cae a JSONP cuando el WebSocket no conecta, e inyecta un <script>
+    // apuntando a la base de datos. Sin esto la app se queda cargando, y solo
+    // en algunas redes: es un fallo que no aparece en desarrollo.
+    expect(directiva('script-src')).toContain('https://*.firebaseio.com');
+    expect(directiva('script-src')).toContain('https://*.firebasedatabase.app');
+  });
+
+  it('permite websocket y REST hacia Firebase en connect-src', () => {
+    const conexion = directiva('connect-src');
+    expect(conexion).toContain('wss://*.firebaseio.com');
+    expect(conexion).toContain('https://*.googleapis.com');
+  });
+
+  it('no deja rendijas abiertas', () => {
+    expect(POLITICA_CSP).not.toContain("'unsafe-eval'");
+    expect(directiva('script-src')).not.toContain("'unsafe-inline'");
+    expect(POLITICA_CSP).toContain("object-src 'none'");
+    expect(POLITICA_CSP).toContain("base-uri 'self'");
+    // La app no envía formularios a ningún sitio: todo pasa por el SDK.
+    expect(POLITICA_CSP).toContain("form-action 'none'");
+  });
+
+  it('parte de default-src propio', () => {
+    expect(POLITICA_CSP.startsWith("default-src 'self'")).toBe(true);
   });
 });

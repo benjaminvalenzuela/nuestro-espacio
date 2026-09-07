@@ -11,3 +11,4 @@ export * from './rutas-datos.js';
 export * from './schemas/presencia.schema.js';
 export * from './schemas/perfil.schema.js';
 export * from './schemas/codigo.js';
+export * from './panoramas.js';
