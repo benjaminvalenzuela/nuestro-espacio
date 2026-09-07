@@ -36,7 +36,7 @@ jobs:
 
       # Los emuladores de Firestore y Realtime Database están escritos en Java.
       # El de Auth no, pero los tests de reglas necesitan los tres.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
