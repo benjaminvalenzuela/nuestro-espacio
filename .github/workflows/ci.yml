@@ -49,7 +49,13 @@ jobs:
           VERSION=8.28.0
           curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
             | tar -xz gitleaks
-          ./gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1
+          # --log-opts HEAD limita el escaneo a los commits alcanzables desde la
+          # rama que se está integrando. Sin esto, gitleaks recorre TODOS los
+          # refs — incluida gh-pages, que contiene los bundles ya publicados.
+          # Ahí la API key de Firebase Web aparece por diseño (es un
+          # identificador público que el navegador necesita), y el job fallaba
+          # denunciando el artefacto de su propio despliegue anterior.
+          ./gitleaks detect --source . --config .gitleaks.toml --log-opts HEAD --redact --no-banner --exit-code 1
 
       - name: Vulnerabilidades conocidas
         # Solo bloquea por severidad alta o crítica: las moderadas de las
