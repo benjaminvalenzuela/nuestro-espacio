@@ -154,7 +154,32 @@ de ver fugas de verdad.
 
 ---
 
-## 8 · Reglas que no se rompen nunca
+## 8 · Emergencia: App Check tumbó la aplicación
+
+**Síntoma:** justo después de poner una API en `Aplicado`, todo devuelve
+permiso denegado — también para ustedes, también con el dispositivo vinculado.
+
+**Reversión inmediata**, antes de investigar nada:
+
+> Firebase → App Check → **APIs** → la API afectada → **`Sin aplicar`**.
+> El efecto es inmediato y no se pierde ningún dato.
+
+Después, en la app desplegada, abrir la consola del navegador:
+
+| Lo que se ve | Lo que significa |
+|---|---|
+| Violaciones de CSP contra `google.com/recaptcha/...` | Falta un origen. reCAPTCHA toca **cuatro** directivas: `script-src`, `img-src`, `frame-src` y `connect-src` |
+| `AppCheck credentials ... are invalid` **y ninguna violación de CSP** | La clave de sitio no corresponde a este proyecto, o el provider del SDK no coincide con el proveedor registrado en la consola |
+| Nada anómalo, pero sigue fallando | Comprobar que `RECAPTCHA_SITE_KEY` está en el environment **correcto** y que el despliegue posterior sí la incluyó |
+
+**La trampa de este apartado:** con el enforcement en `Sin aplicar`, una
+configuración rota de App Check **no se nota**. La aplicación funciona igual.
+Por eso el orden es siempre: configurar → desplegar → comprobar en la consola
+que no hay avisos → y solo entonces `Aplicado`, primero en QA.
+
+---
+
+## 9 · Reglas que no se rompen nunca
 
 | Regla | Motivo |
 |---|---|
