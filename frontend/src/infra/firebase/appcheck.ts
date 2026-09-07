@@ -1,4 +1,8 @@
-import { initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from 'firebase/app-check';
+import {
+  initializeAppCheck,
+  ReCaptchaEnterpriseProvider,
+  type AppCheck,
+} from 'firebase/app-check';
 import type { FirebaseApp } from 'firebase/app';
 import { ENV, ES_DESA } from '../../config/env';
 
@@ -16,6 +20,16 @@ import { ENV, ES_DESA } from '../../config/env';
  *  gratis y automático — no se puede desactivar el registro, porque eso mismo
  *  impediría entrar a la app. App Check es lo que hace caro intentar fuerza
  *  bruta contra los códigos de vinculación desde fuera del navegador.
+ *
+ *  PROVEEDOR: reCAPTCHA **Enterprise**, no el v3 clásico. No fue una elección
+ *  de diseño sino de disponibilidad: Google movió reCAPTCHA a Cloud y la
+ *  consola registra las apps nuevas con Enterprise. Los dos providers del SDK
+ *  no son intercambiables —cada uno habla con un endpoint distinto—, así que
+ *  usar el equivocado no da un error claro: App Check simplemente no obtiene
+ *  token y, con el enforcement activado, la app deja de funcionar entera.
+ *
+ *  Sigue siendo gratis: 10.000 evaluaciones al mes sin tarjeta, y aquí somos
+ *  dos personas. El proyecto permanece en Spark.
  *
  *  Sin clave configurada (DESA, o QA antes de terminar el alta) simplemente no
  *  se activa. Es opcional a propósito: así el arranque local no depende de nada.
@@ -39,7 +53,7 @@ export function iniciarAppCheck(app: FirebaseApp): void {
 
   try {
     appCheck = initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(clave),
+      provider: new ReCaptchaEnterpriseProvider(clave),
       // Renueva el token solo, sin que el usuario note nada.
       isTokenAutoRefreshEnabled: true,
     });
