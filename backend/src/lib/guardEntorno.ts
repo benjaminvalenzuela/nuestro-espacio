@@ -71,7 +71,9 @@ export async function resolverEntorno(): Promise<ContextoEjecucion> {
   // Carga la configuración de ESE entorno y de ningún otro.
   const rutaEnv = resolve(RAIZ_BACKEND, `.env.${entorno}`);
   if (existsSync(rutaEnv)) {
-    dotenv.config({ path: rutaEnv });
+    // quiet: dotenv imprime anuncios promocionales por stdout. En un script
+    // que puede tocar PRODUCCIÓN, el banner de entorno no compite con ruido.
+    dotenv.config({ path: rutaEnv, quiet: true });
   } else if (!usaEmuladores) {
     console.error(
       `\n✖ No existe ${rutaEnv}\n` +

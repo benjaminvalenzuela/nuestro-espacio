@@ -6,6 +6,7 @@ import { elegirPregunta, type Pregunta } from '../src/domain/preguntas/preguntas
 import { formatearUltimaConexion, formatearCompleto } from '../src/domain/presencia/formatoFecha';
 import { parsearCodigo, formatearCodigo, normalizarCodigo, generarCuerpo, ALFABETO_CODIGO, LARGO_CUERPO } from '@shared/schemas/codigo';
 import { derivarPresencia } from '@shared/schemas/presencia.schema';
+import { normalizarNombre } from '@shared/panoramas';
 import type { Giro } from '@shared/schemas/giro.schema';
 
 /**
@@ -273,5 +274,29 @@ describe('Presencia derivada · la verdad son las conexiones vivas', () => {
   it('con datos corruptos o ausentes no revienta', () => {
     expect(derivarPresencia(null).enLinea).toBe(false);
     expect(derivarPresencia({ basura: true }).ultimaConexion).toBeNull();
+  });
+});
+
+describe('Normalización de panoramas · misma regla en la app y en el seed', () => {
+  it('ignora mayúsculas, tildes y espacios de más', () => {
+    const esperado = 'ir al cerro san cristobal';
+    expect(normalizarNombre('Ir al Cerro San Cristóbal')).toBe(esperado);
+    expect(normalizarNombre('  ir  al   cerro  san cristobal ')).toBe(esperado);
+    expect(normalizarNombre('IR AL CERRO SAN CRISTÓBAL')).toBe(esperado);
+  });
+
+  it('distingue planes que de verdad son distintos', () => {
+    expect(normalizarNombre('Ir al cine')).not.toBe(normalizarNombre('Ir al circo'));
+  });
+
+  it('la ñ NO es una n con tilde: son planes diferentes', () => {
+    // NFD descompone la tilde de "ó", pero la ñ es una letra por derecho propio.
+    // Si la normalización la aplastara, "año nuevo" y "ano nuevo" colisionarían.
+    expect(normalizarNombre('Año nuevo juntos')).toBe('año nuevo juntos');
+  });
+
+  it('es idempotente: normalizar lo ya normalizado no lo cambia', () => {
+    const una = normalizarNombre('Café en la Plaza Ñuñoa');
+    expect(normalizarNombre(una)).toBe(una);
   });
 });
