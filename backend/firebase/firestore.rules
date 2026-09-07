@@ -1,0 +1,453 @@
+rules_version = '2';
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  NUESTRO-ESPACIO · Reglas de Seguridad de Cloud Firestore
+//
+//  CONTEXTO CRÍTICO: en plan Spark no hay Cloud Functions (R2). Este archivo
+//  ES el backend de autorización. Todo lo que no se prohíba aquí queda abierto
+//  a cualquiera que tenga la URL pública de la app. Denegar por defecto.
+//
+//  MODELO DE IDENTIDAD (ADR-012 · sustituye a los custom claims):
+//    Anonymous Auth da un uid real y persistente por DISPOSITIVO. Ese uid se
+//    vincula a una PERSONA ('a' o 'b') presentando un código secreto. Todo el
+//    sistema razona en personas: tu PC y tu celular son dos dispositivos tuyos.
+//
+//      esMiembro(pid) ≡ existe /parejas/{pid}/dispositivos/{authUid}
+//      miPersona(pid) ≡ ese documento .persona
+//
+//    Revocar un aparato = borrar su documento con el Admin SDK. Es instantáneo
+//    y granular: pierdes el celular, lo revocas, y tu PC sigue funcionando.
+//
+//  ⚠ A diferencia de RTDB, en Firestore los permisos NO cascadean a las
+//    subcolecciones: cada match es independiente. Por eso cada uno declara
+//    explícitamente lo suyo.
+// ═══════════════════════════════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ═════════════════════════════════════════════════════════════════════
+    //  1 · IDENTIDAD Y PERTENENCIA
+    // ═════════════════════════════════════════════════════════════════════
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function refDispositivo(pid) {
+      return /databases/$(database)/documents/parejas/$(pid)/dispositivos/$(uid());
+    }
+
+    // ── ANTI-IDOR: la frontera de aislamiento del sistema ──────────────
+    // Adivinar un id de documento no sirve de nada: si no existe TU vínculo
+    // bajo esa pareja, la regla deniega. Cuesta una lectura extra por
+    // operación — irrelevante frente a las 50.000 diarias del plan gratuito.
+    function esMiembro(pid) {
+      return autenticado() && exists(refDispositivo(pid));
+    }
+
+    function miPersona(pid) {
+      return get(refDispositivo(pid)).data.persona;
+    }
+
+    function esPersona(pid, persona) {
+      return esMiembro(pid) && miPersona(pid) == persona;
+    }
+
+    // Ambos miembros son administradores (decisión del Paso 1). Se mantiene el
+    // concepto separado para que las acciones destructivas queden marcadas como
+    // tales y sea trivial restringirlas en el futuro.
+    function esAdmin(pid) {
+      return esMiembro(pid);
+    }
+
+    // El espacio es único por proyecto Firebase. /config/app lo declara y solo
+    // el Admin SDK lo escribe: es el ancla para autorizar los bancos globales.
+    function parejaUnica() {
+      return get(/databases/$(database)/documents/config/app).data.parejaId;
+    }
+
+    function esMiembroDelEspacio() {
+      return esMiembro(parejaUnica());
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    //  2 · INTEGRIDAD Y VALIDACIÓN DE ENTRADA  (OWASP A03 · XSS defensa 1/3)
+    // ═════════════════════════════════════════════════════════════════════
+
+    // (?s) = flag DOTALL de RE2: el punto también cubre saltos de línea, para
+    // que no se cuele un "\n<script>". matches() exige coincidencia total.
+    function sinHtml(v) {
+      return !v.matches('(?s).*[<>].*');
+    }
+
+    function texto(v, min, max) {
+      return v is string && v.size() >= min && v.size() <= max
+          && v.trim() == v && sinHtml(v);
+    }
+
+    // Rules no puede iterar listas: se acota el tamaño aquí y el contenido se
+    // valida con el mismo schema Zod en cliente y en scripts de backend.
+    function lista(v, maxItems) {
+      return v is list && v.size() <= maxItems;
+    }
+
+    function fechaISO(v) {
+      return v is string && v.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}');
+    }
+
+    // El timestamp lo pone el SERVIDOR: un reloj de cliente manipulado no puede
+    // falsear la "última vez" ni alterar el orden del historial.
+    function tsServidor(campo) {
+      return request.resource.data[campo] == request.time;
+    }
+
+    function soloCampos(permitidos) { return request.resource.data.keys().hasOnly(permitidos); }
+    function exigeCampos(obligatorios) { return request.resource.data.keys().hasAll(obligatorios); }
+    function cambios() { return request.resource.data.diff(resource.data).affectedKeys(); }
+    function tiene(campo) { return campo in request.resource.data.keys(); }
+
+    function incrementoDeUno(campo) {
+      return request.resource.data[campo] == resource.data[campo] + 1;
+    }
+
+    function esPersonaValida(v) { return v in ['a', 'b']; }
+
+    // ═════════════════════════════════════════════════════════════════════
+    //  3 · CONFIGURACIÓN GLOBAL DEL ESPACIO
+    // ═════════════════════════════════════════════════════════════════════
+
+    match /config/app {
+      allow read: if autenticado();   // hace falta para resolver parejaUnica()
+      allow write: if false;          // solo el Admin SDK
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    //  4 · BANCOS GLOBALES DE CONTENIDO   (ADR-009)
+    // ═════════════════════════════════════════════════════════════════════
+
+    match /preguntas/{preguntaId} {
+      allow read: if esMiembroDelEspacio();
+
+      allow create: if esMiembroDelEspacio()
+        && soloCampos(['texto', 'categoria', 'activa', 'creadaEn', 'creadaPor'])
+        && exigeCampos(['texto', 'categoria', 'activa', 'creadaEn', 'creadaPor'])
+        && texto(request.resource.data.texto, 8, 300)
+        && request.resource.data.categoria in ['profundas', 'subidas_de_tono', 'supuestos']
+        && request.resource.data.activa is bool
+        && tsServidor('creadaEn')
+        && esPersonaValida(request.resource.data.creadaPor);
+
+      allow update: if esMiembroDelEspacio()
+        && cambios().hasOnly(['texto', 'categoria', 'activa'])
+        && (!cambios().hasAny(['texto']) || texto(request.resource.data.texto, 8, 300))
+        && (!cambios().hasAny(['categoria']) || request.resource.data.categoria in ['profundas', 'subidas_de_tono', 'supuestos'])
+        && (!cambios().hasAny(['activa']) || request.resource.data.activa is bool);
+
+      // ADR-010: nunca se destruye. "Borrar" en la UI = activa:false.
+      allow delete: if false;
+    }
+
+    match /dilemas/{dilemaId} {
+      allow read: if esMiembroDelEspacio();
+
+      allow create: if esMiembroDelEspacio()
+        && soloCampos(['opcionA', 'opcionB', 'categoria', 'activo', 'creadoEn', 'creadoPor'])
+        && exigeCampos(['opcionA', 'opcionB', 'categoria', 'activo', 'creadoEn', 'creadoPor'])
+        && texto(request.resource.data.opcionA, 2, 120)
+        && texto(request.resource.data.opcionB, 2, 120)
+        && request.resource.data.opcionA != request.resource.data.opcionB
+        && request.resource.data.categoria in ['general', 'profundas', 'subidas_de_tono', 'absurdas']
+        && request.resource.data.activo is bool
+        && tsServidor('creadoEn')
+        && esPersonaValida(request.resource.data.creadoPor);
+
+      allow update: if esMiembroDelEspacio()
+        && cambios().hasOnly(['opcionA', 'opcionB', 'categoria', 'activo'])
+        && (!cambios().hasAny(['opcionA']) || texto(request.resource.data.opcionA, 2, 120))
+        && (!cambios().hasAny(['opcionB']) || texto(request.resource.data.opcionB, 2, 120));
+
+      allow delete: if false;
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    //  5 · ESPACIO PRIVADO DE LA PAREJA
+    // ═════════════════════════════════════════════════════════════════════
+
+    match /parejas/{parejaId} {
+
+      allow read: if esMiembro(parejaId);
+      allow write: if false;          // solo el Admin SDK (bootstrap)
+
+      // ── 5.1 SECRETOS · los códigos de vinculación ───────────────────
+      // Invisible para todo el mundo. Solo el motor de reglas lo consulta con
+      // get() para comparar, y solo el Admin SDK lo escribe. Un código que
+      // nunca sale del servidor no se puede filtrar desde el cliente.
+      match /secretos/{docId} {
+        allow read, write: if false;
+      }
+
+      // ── 5.2 DISPOSITIVOS · vinculación uid -> persona ────────────────
+      match /dispositivos/{dispositivoUid} {
+        // Cada aparato solo lee su propio vínculo.
+        allow read: if autenticado() && dispositivoUid == uid();
+
+        // ═══ EL PORTERO DE LA VINCULACIÓN ═══
+        // Escritura única, y solo si el código presentado coincide con el del
+        // asiento reclamado. La comparación la hace el servidor contra un dato
+        // que el cliente jamás puede leer.
+        allow create: if autenticado()
+          && dispositivoUid == uid()
+          && soloCampos(['persona', 'nombre', 'codigo', 'vinculadoEn'])
+          && exigeCampos(['persona', 'nombre', 'codigo', 'vinculadoEn'])
+          && esPersonaValida(request.resource.data.persona)
+          && texto(request.resource.data.nombre, 1, 40)
+          && tsServidor('vinculadoEn')
+          && request.resource.data.codigo ==
+             get(/databases/$(database)/documents/parejas/$(parejaId)/secretos/asientos)
+               .data.get(request.resource.data.persona, '__sin_asiento__');
+
+        // Inmutable: no se cambia de persona reescribiendo el vínculo.
+        // Revocar un aparato es tarea del Admin SDK.
+        allow update, delete: if false;
+      }
+
+      // ── 5.3 Perfiles individuales, indexados por PERSONA ─────────────
+      match /perfiles/{persona} {
+        allow read: if esMiembro(parejaId);
+
+        allow create, update: if esPersona(parejaId, persona)
+          && soloCampos(['nombre', 'fechaNacimiento', 'gustos', 'hobbies', 'disgustos',
+                         'alimentosPreferidos', 'alergias', 'colorTema', 'actualizadoEn'])
+          && exigeCampos(['nombre', 'actualizadoEn'])
+          && texto(request.resource.data.nombre, 1, 40)
+          && (!tiene('fechaNacimiento') || fechaISO(request.resource.data.fechaNacimiento))
+          && (!tiene('gustos') || lista(request.resource.data.gustos, 30))
+          && (!tiene('hobbies') || lista(request.resource.data.hobbies, 30))
+          && (!tiene('disgustos') || lista(request.resource.data.disgustos, 30))
+          && (!tiene('alimentosPreferidos') || lista(request.resource.data.alimentosPreferidos, 30))
+          && (!tiene('alergias') || lista(request.resource.data.alergias, 20))
+          && tsServidor('actualizadoEn');
+
+        allow delete: if false;
+      }
+
+      // ── 5.4 Perfil conjunto (ambos editan) ───────────────────────────
+      match /perfilConjunto/{docId} {
+        allow read: if esMiembro(parejaId);
+
+        allow create, update: if esMiembro(parejaId)
+          && docId == 'singleton'
+          && soloCampos(['fechaInicioSalidas', 'fechaNoviazgo', 'hitos',
+                         'interesesComunes', 'actualizadoEn', 'actualizadoPor'])
+          && (!tiene('fechaInicioSalidas') || fechaISO(request.resource.data.fechaInicioSalidas))
+          && (!tiene('fechaNoviazgo') || fechaISO(request.resource.data.fechaNoviazgo))
+          && (!tiene('hitos') || lista(request.resource.data.hitos, 100))
+          && tsServidor('actualizadoEn')
+          && request.resource.data.actualizadoPor == miPersona(parejaId);
+
+        allow delete: if false;
+      }
+
+      // ── 5.5 Panoramas de la ruleta ───────────────────────────────────
+      match /panoramas/{panoramaId} {
+        allow read: if esMiembro(parejaId);
+
+        allow create: if esMiembro(parejaId)
+          && soloCampos(['nombre', 'nombreNormalizado', 'creadoPor', 'creadoEn',
+                         'activo', 'peso', 'vecesRealizado', 'ultimaVezEn'])
+          && exigeCampos(['nombre', 'nombreNormalizado', 'creadoPor', 'creadoEn',
+                          'activo', 'vecesRealizado'])
+          && texto(request.resource.data.nombre, 2, 80)
+          && texto(request.resource.data.nombreNormalizado, 2, 80)
+          && request.resource.data.creadoPor == miPersona(parejaId)
+          && tsServidor('creadoEn')
+          && request.resource.data.activo == true
+          && request.resource.data.vecesRealizado == 0
+          && (!tiene('peso') || (request.resource.data.peso is int
+                                 && request.resource.data.peso >= 1
+                                 && request.resource.data.peso <= 5));
+
+        // Dos operaciones legítimas y mutuamente excluyentes:
+        //  (a) editar/archivar   (b) registrar que se realizó (+1 atómico)
+        allow update: if esMiembro(parejaId) && (
+             (cambios().hasOnly(['nombre', 'nombreNormalizado', 'activo', 'peso'])
+              && (!cambios().hasAny(['nombre']) || texto(request.resource.data.nombre, 2, 80))
+              && (!cambios().hasAny(['activo']) || request.resource.data.activo is bool))
+          ||
+             (cambios().hasOnly(['vecesRealizado', 'ultimaVezEn'])
+              && incrementoDeUno('vecesRealizado')
+              && tsServidor('ultimaVezEn'))
+        );
+
+        allow delete: if false;         // ADR-010: soft-delete (activo:false)
+      }
+
+      // ── 5.6 Historial de panoramas (append-only) ─────────────────────
+      match /historialPanoramas/{eventoId} {
+        allow read: if esMiembro(parejaId);
+
+        allow create: if esMiembro(parejaId)
+          && soloCampos(['panoramaId', 'nombreSnapshot', 'giroId', 'ocurridoEn',
+                         'organizador', 'confirmado'])
+          && exigeCampos(['panoramaId', 'nombreSnapshot', 'giroId', 'ocurridoEn'])
+          && texto(request.resource.data.nombreSnapshot, 1, 80)
+          && (!tiene('organizador') || esPersonaValida(request.resource.data.organizador))
+          && tsServidor('ocurridoEn');
+
+        allow update: if false;                      // el historial no se reescribe
+        allow delete: if esAdmin(parejaId);          // "limpiar historial"
+      }
+
+      // ── 5.7 Marcador de organización, por PERSONA ────────────────────
+      match /organizadores/{persona} {
+        allow read: if esMiembro(parejaId);
+
+        allow create: if esMiembro(parejaId)
+          && esPersonaValida(persona)
+          && soloCampos(['vecesOrganizado', 'ultimaVezEn'])
+          && request.resource.data.vecesOrganizado == 0;
+
+        allow update: if esMiembro(parejaId) && (
+             (cambios().hasOnly(['vecesOrganizado', 'ultimaVezEn'])
+              && incrementoDeUno('vecesOrganizado')
+              && tsServidor('ultimaVezEn'))
+          ||  // reseteo del marcador: acción destructiva
+             (esAdmin(parejaId)
+              && cambios().hasOnly(['vecesOrganizado'])
+              && request.resource.data.vecesOrganizado == 0)
+        );
+
+        allow delete: if false;
+      }
+
+      match /historialOrganizacion/{eventoId} {
+        allow read: if esMiembro(parejaId);
+        allow create: if esMiembro(parejaId)
+          && soloCampos(['personaElegida', 'giroId', 'ocurridoEn'])
+          && esPersonaValida(request.resource.data.personaElegida)
+          && tsServidor('ocurridoEn');
+        allow update: if false;
+        allow delete: if esAdmin(parejaId);
+      }
+
+      // ── 5.8 Partidas de "Qué Prefieres" (archivo histórico) ──────────
+      // La votación EN VIVO ocurre en RTDB, donde las reglas garantizan la
+      // revelación simultánea. Aquí solo se archiva el resultado ya revelado.
+      match /partidasDilemas/{partidaId} {
+        allow read: if esMiembro(parejaId);
+        allow create: if esMiembro(parejaId)
+          && soloCampos(['dilemaId', 'iniciadaEn', 'cerradaEn', 'votos', 'coincidieron'])
+          && request.resource.data.votos is map
+          && request.resource.data.votos.keys().hasOnly(['a', 'b'])
+          && request.resource.data.votos.keys().hasAll(['a', 'b'])
+          && tsServidor('cerradaEn');
+        allow update, delete: if false;
+      }
+
+      // ── 5.9 EVENTO EN CURSO ──────────────────────────────────────────
+      // Lo crea el flujo de la ruleta (panorama + organizador encadenados) y
+      // lo edita el banner del inicio para ponerle fecha. Documento único: solo
+      // hay un panorama pendiente a la vez.
+      match /eventos/{eventoId} {
+        allow read: if esMiembro(parejaId);
+
+        allow create: if esMiembro(parejaId)
+          && eventoId == 'actual'
+          && soloCampos(['panoramaId', 'nombre', 'organizador', 'fecha',
+                         'giroId', 'creadoEn', 'actualizadoEn'])
+          && exigeCampos(['panoramaId', 'nombre', 'organizador', 'creadoEn', 'actualizadoEn'])
+          && texto(request.resource.data.nombre, 1, 80)
+          && esPersonaValida(request.resource.data.organizador)
+          && (request.resource.data.fecha == null
+              || fechaISO(request.resource.data.fecha))
+          && tsServidor('creadoEn')
+          && tsServidor('actualizadoEn');
+
+        // Dos actualizaciones legítimas, y ninguna más:
+        allow update: if esMiembro(parejaId) && eventoId == 'actual' && (
+             // (a) DESDE EL BANNER: solo la fecha. Ni el panorama ni el
+             //     organizador se pueden reescribir a mano — para cambiarlos
+             //     hay que volver a girar, que es lo que hace justo el sorteo.
+             (cambios().hasOnly(['fecha', 'actualizadoEn'])
+              && (request.resource.data.fecha == null
+                  || fechaISO(request.resource.data.fecha))
+              && tsServidor('actualizadoEn'))
+          ||
+             // (b) UN GIRO NUEVO reemplaza el evento entero. Se exige que sea
+             //     de verdad nuevo: creadoEn con hora del servidor y sin fecha
+             //     puesta. Así esta rama no sirve para colar un cambio
+             //     conservando la fecha del evento anterior.
+             //
+             //     Hacía falta: sin ella, el segundo giro fallaba en silencio y
+             //     el banner se quedaba mostrando el panorama antiguo.
+             (soloCampos(['panoramaId', 'nombre', 'organizador', 'fecha',
+                          'giroId', 'creadoEn', 'actualizadoEn'])
+              && exigeCampos(['panoramaId', 'nombre', 'organizador', 'creadoEn', 'actualizadoEn'])
+              && texto(request.resource.data.nombre, 1, 80)
+              && esPersonaValida(request.resource.data.organizador)
+              && request.resource.data.fecha == null
+              && tsServidor('creadoEn')
+              && tsServidor('actualizadoEn'))
+        );
+
+        // Marcar el panorama como hecho o descartarlo cierra el evento.
+        allow delete: if esMiembro(parejaId);
+      }
+
+      // ── 5.10 Ventana anti-repetición de preguntas ────────────────────
+      match /preguntasServidas/{preguntaId} {
+        allow read: if esMiembro(parejaId);
+        allow create: if esMiembro(parejaId)
+          && soloCampos(['ultimaVezEn', 'veces'])
+          && request.resource.data.veces == 1
+          && tsServidor('ultimaVezEn');
+        allow update: if esMiembro(parejaId)
+          && cambios().hasOnly(['ultimaVezEn', 'veces'])
+          && incrementoDeUno('veces')
+          && tsServidor('ultimaVezEn');
+        allow delete: if esAdmin(parejaId);
+      }
+
+      // ── 5.11 Configuración del espacio ───────────────────────────────
+      match /config/{docId} {
+        allow read: if esMiembro(parejaId);
+        allow write: if esAdmin(parejaId)
+          && soloCampos(['versionSchema', 'flags', 'ventanaAntiRepeticion', 'actualizadoEn'])
+          && (!tiene('ventanaAntiRepeticion')
+              || (request.resource.data.ventanaAntiRepeticion is int
+                  && request.resource.data.ventanaAntiRepeticion >= 0
+                  && request.resource.data.ventanaAntiRepeticion <= 500));
+      }
+
+      // ── 5.12 Auditoría: append-only, inmutable ───────────────────────
+      match /auditoria/{eventoId} {
+        allow read: if esAdmin(parejaId);
+
+        allow create: if esMiembro(parejaId)
+          && soloCampos(['actor', 'accion', 'recurso', 'antes', 'despues',
+                         'ocurridoEn', 'origen'])
+          && exigeCampos(['actor', 'accion', 'recurso', 'ocurridoEn', 'origen'])
+          && request.resource.data.actor == miPersona(parejaId)   // nadie firma por otro
+          && texto(request.resource.data.accion, 3, 60)
+          && texto(request.resource.data.recurso, 3, 200)
+          && request.resource.data.origen in ['app', 'admin', 'script']
+          && tsServidor('ocurridoEn');
+
+        // Inmutable: ni el admin puede alterar o borrar el rastro.
+        allow update, delete: if false;
+      }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    //  6 · DENEGACIÓN EXPLÍCITA POR DEFECTO
+    // ═════════════════════════════════════════════════════════════════════
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

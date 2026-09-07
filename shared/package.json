@@ -1,0 +1,12 @@
+{
+  "name": "@nuestro-espacio/shared",
+  "private": true,
+  "type": "module",
+  "description": "Contrato único: schemas Zod y rutas compartidos por frontend y backend.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "zod": "^4.5.4"
+  }
+}

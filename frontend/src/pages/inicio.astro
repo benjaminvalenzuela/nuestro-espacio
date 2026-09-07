@@ -1,0 +1,300 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import TarjetaPresencia from '../components/presencia/TarjetaPresencia.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<BaseLayout titulo="Inicio · Nuestro Espacio">
+  <div id="guardia" class="flex min-h-dvh items-center justify-center">
+    <span class="h-6 w-6 animate-spin rounded-full border-2 border-borde border-t-acento"></span>
+  </div>
+
+  <main id="app" class="mx-auto hidden max-w-md px-5 pt-8 pb-16">
+    <header class="mb-8 flex items-center justify-between gap-4">
+      <div class="min-w-0">
+        <p class="text-xs font-medium tracking-wide text-tinta-tenue uppercase">Hola</p>
+        <h1 id="saludo" class="truncate text-2xl font-semibold text-tinta">…</h1>
+      </div>
+      <span
+        id="etiqueta-dispositivo"
+        class="shrink-0 rounded-lg border border-borde px-2.5 py-1.5 text-[11px] font-medium text-tinta-tenue"
+      >este dispositivo</span>
+    </header>
+
+    {/* BANNER DEL EVENTO · fijo mientras haya un panorama pendiente */}
+    <section
+      id="banner-evento"
+      aria-labelledby="banner-titulo"
+      class="tarjeta mb-6 hidden overflow-hidden border-acento/40"
+    >
+      <div class="bg-acento-suave px-4 py-2.5">
+        <p id="banner-titulo" class="text-[11px] font-semibold tracking-wide text-acento uppercase">
+          Próximo panorama
+        </p>
+      </div>
+
+      <div class="px-4 py-4">
+        <p id="evento-nombre" class="text-lg leading-snug font-semibold text-balance text-tinta"></p>
+        <p class="mt-1 text-sm text-tinta-suave">
+          Organiza <span id="evento-organiza" class="font-medium text-tinta"></span>
+        </p>
+
+        <p id="evento-cuando" class="mt-3 text-sm font-medium text-salvia"></p>
+
+        <div class="mt-3 flex items-center gap-2">
+          <label for="evento-fecha" class="sr-only">Fecha del panorama</label>
+          <input
+            id="evento-fecha"
+            type="date"
+            class="min-w-0 flex-1 rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta focus:border-acento focus:outline-none"
+          />
+          <button
+            id="btn-quitar-fecha"
+            type="button"
+            class="hidden shrink-0 rounded-lg border border-borde px-3 py-2.5 text-xs font-medium text-tinta-suave transition hover:border-peligro hover:text-peligro"
+          >Quitar</button>
+        </div>
+
+        <button
+          id="btn-cerrar-evento"
+          type="button"
+          class="mt-3 w-full rounded-lg border border-borde px-3 py-2.5 text-xs font-medium text-tinta-suave transition hover:border-salvia hover:text-salvia"
+        >Ya lo hicimos · cerrar</button>
+
+        <p id="evento-error" role="alert" class="mt-2 hidden text-xs text-peligro"></p>
+      </div>
+    </section>
+
+    <section aria-labelledby="titulo-presencia" class="aparecer">
+      <h2 id="titulo-presencia" class="mb-3 text-sm font-semibold text-tinta-suave">
+        Quién está aquí
+      </h2>
+      <div class="flex flex-col gap-3">
+        <TarjetaPresencia id="yo" etiqueta="Tú" />
+        <TarjetaPresencia id="pareja" etiqueta="Tu pareja" />
+      </div>
+    </section>
+
+    <section class="mt-10">
+      <h2 class="mb-3 text-sm font-semibold text-tinta-suave">Qué hacemos hoy</h2>
+      <div class="grid grid-cols-2 gap-3">
+        {
+          [
+            { n: 'Ruleta', d: 'Panorama + quién organiza', h: '/ruleta', listo: true },
+            { n: 'Marcador', d: 'Quién ha organizado más', h: '/marcador', listo: true },
+            { n: 'Preguntas', d: 'Para conocernos', h: '/preguntas', listo: true },
+            { n: 'Qué prefieres', d: 'Voto a ciegas', h: '/que-prefieres', listo: true },
+            { n: 'Perfiles', d: 'Quiénes somos', h: '/perfiles', listo: true },
+            { n: 'Administración', d: 'Contenido y datos', h: '/admin', listo: true },
+          ].map((t) =>
+            t.listo ? (
+              <a
+                href={`${base}${t.h}`}
+                class="tarjeta flex min-h-24 flex-col justify-end p-4 transition hover:border-acento active:scale-[0.98]"
+              >
+                <span class="text-sm font-medium text-tinta">{t.n}</span>
+                <span class="text-xs text-tinta-tenue">{t.d}</span>
+              </a>
+            ) : (
+              <div class="tarjeta flex min-h-24 flex-col justify-end p-4 opacity-45">
+                <span class="text-sm font-medium text-tinta-suave">{t.n}</span>
+                <span class="text-xs text-tinta-tenue">Próximamente</span>
+              </div>
+            ),
+          )
+        }
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<script>
+  import { $identidad, iniciarIdentidad } from '../domain/identidad/identidad';
+  import {
+    iniciarPresencia,
+    observarPresencia,
+    observarNombre,
+  } from '../domain/presencia/presenciaService';
+  import { formatearUltimaConexion, formatearCompleto, aISO } from '../domain/presencia/formatoFecha';
+  import type { VistaPresencia } from '@shared/schemas/presencia.schema';
+  import { observarEvento, fijarFecha, cerrarEvento, type Evento } from '../domain/eventos/eventosService';
+  import { otraPersona, ZONA_HORARIA, LOCALE, type Persona } from '@shared/enums';
+  import { ruta, ENV } from '../config/env';
+
+  const $ = (id: string) => document.getElementById(id)!;
+
+  /** Estado local de cada tarjeta, para poder repintar al cambiar nombre o presencia. */
+  const tarjetas: Record<string, { nombre: string; vista: VistaPresencia }> = {
+    yo: { nombre: '…', vista: { enLinea: false, ultimaConexion: null, dispositivos: 0 } },
+    pareja: { nombre: '…', vista: { enLinea: false, ultimaConexion: null, dispositivos: 0 } },
+  };
+
+  /** Pinta una tarjeta. Solo textContent y clases: nada de HTML dinámico. */
+  function pintar(prefijo: 'yo' | 'pareja') {
+    const { nombre, vista } = tarjetas[prefijo]!;
+    const punto = $(`${prefijo}-punto`);
+    const anillo = $(`${prefijo}-anillo`);
+    const estado = $(`${prefijo}-estado`);
+    const detalle = $(`${prefijo}-detalle`) as HTMLTimeElement;
+
+    $(`${prefijo}-nombre`).textContent = nombre;
+
+    punto.classList.toggle('bg-salvia', vista.enLinea);
+    punto.classList.toggle('bg-tinta-tenue', !vista.enLinea);
+    anillo.classList.toggle('bg-salvia', vista.enLinea);
+    anillo.classList.toggle('punto-latido-anillo', vista.enLinea);
+    anillo.classList.toggle('opacity-0', !vista.enLinea);
+
+    estado.textContent = vista.enLinea ? 'En línea' : 'Desconectado';
+    estado.classList.toggle('text-salvia', vista.enLinea);
+    estado.classList.toggle('text-tinta-tenue', !vista.enLinea);
+
+    if (vista.enLinea) {
+      detalle.textContent =
+        vista.dispositivos > 1 ? `en ${vista.dispositivos} dispositivos` : 'ahora mismo';
+      detalle.removeAttribute('datetime');
+      detalle.removeAttribute('title');
+    } else {
+      detalle.textContent = `Última vez ${formatearUltimaConexion(vista.ultimaConexion)}`;
+      const iso = aISO(vista.ultimaConexion);
+      if (iso) detalle.setAttribute('datetime', iso);
+      detalle.title = formatearCompleto(vista.ultimaConexion);
+    }
+  }
+
+  let arrancado = false;
+
+  const nombres: Record<Persona, string> = { a: 'Persona A', b: 'Persona B' };
+  let evento: Evento | null = null;
+
+  const fmtFecha = new Intl.DateTimeFormat(LOCALE, {
+    timeZone: ZONA_HORARIA, weekday: 'long', day: 'numeric', month: 'long',
+  });
+
+  /** Días que faltan, contando por día civil en Santiago (no por horas). */
+  function diasHasta(iso: string): number {
+    const hoy = new Intl.DateTimeFormat('en-CA', {
+      timeZone: ZONA_HORARIA, year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(Date.now());
+    const ms = (d: string) => Date.parse(`${d}T12:00:00Z`);
+    return Math.round((ms(iso) - ms(hoy)) / 86_400_000);
+  }
+
+  function pintarEvento() {
+    const banner = $('banner-evento');
+    banner.classList.toggle('hidden', !evento);
+    if (!evento) return;
+
+    $('evento-nombre').textContent = evento.nombre;
+    $('evento-organiza').textContent = nombres[evento.organizador];
+
+    const input = $('evento-fecha') as HTMLInputElement;
+    if (document.activeElement !== input) input.value = evento.fecha ?? '';
+    $('btn-quitar-fecha').classList.toggle('hidden', !evento.fecha);
+
+    if (!evento.fecha) {
+      $('evento-cuando').textContent = 'Todavía sin fecha. Elige una abajo.';
+      $('evento-cuando').className = 'mt-3 text-sm font-medium text-tinta-tenue';
+      return;
+    }
+
+    const dias = diasHasta(evento.fecha);
+    const cuando =
+      dias === 0 ? '¡Es hoy!'
+      : dias === 1 ? 'Mañana'
+      : dias > 1 ? `En ${dias} días`
+      : dias === -1 ? 'Fue ayer'
+      : `Hace ${Math.abs(dias)} días`;
+
+    // Fecha exacta SIEMPRE visible; la cuenta atrás la acompaña.
+    $('evento-cuando').textContent = `${cuando} · ${fmtFecha.format(Date.parse(`${evento.fecha}T12:00:00Z`))}`;
+    $('evento-cuando').className =
+      dias >= 0 ? 'mt-3 text-sm font-medium text-salvia' : 'mt-3 text-sm font-medium text-tinta-tenue';
+  }
+
+  function errorEvento(texto: string | null) {
+    const el = $('evento-error');
+    el.textContent = texto ?? '';
+    el.classList.toggle('hidden', !texto);
+  }
+
+  iniciarIdentidad();
+
+  $identidad.subscribe((s) => {
+    if (s.fase === 'cargando') return;
+
+    // Guardia de ruta. Es UX, no seguridad: quien la salte no verá ni un dato,
+    // porque las Security Rules deniegan a los dispositivos sin vínculo.
+    if (s.fase !== 'vinculado') {
+      window.location.replace(ruta('/identificarse'));
+      return;
+    }
+
+    if (arrancado) return;
+    arrancado = true;
+
+    const parejaId = ENV.PUBLIC_PAREJA_ID;
+    const yo = s.persona;
+    const ella = otraPersona(yo);
+
+    $('guardia').classList.add('hidden');
+    $('app').classList.remove('hidden');
+    $('saludo').textContent = s.nombre;
+
+    tarjetas.yo!.nombre = s.nombre;
+
+    // 1 · Anunciarse presente y programar la despedida EN EL SERVIDOR.
+    //     No hace falta guardar el control: el propio servicio se da de baja
+    //     en 'pagehide', y onDisconnect cubre el resto.
+    iniciarPresencia(parejaId, yo);
+
+    // 2 · Observar ambas presencias. Con asientos fijos ('a'/'b') no hace falta
+    //     resolver "quién es el otro": es otraPersona(yo).
+    observarPresencia(parejaId, yo, (v) => { tarjetas.yo!.vista = v; pintar('yo'); });
+    observarPresencia(parejaId, ella, (v) => { tarjetas.pareja!.vista = v; pintar('pareja'); });
+
+    // 3 · Y sus nombres, que cada quien publica al vincularse.
+    observarNombre(parejaId, yo, (n) => {
+      if (n) { tarjetas.yo!.nombre = n; nombres[yo] = n; pintar('yo'); pintarEvento(); }
+    });
+    observarNombre(parejaId, ella, (n) => {
+      tarjetas.pareja!.nombre = n ?? 'Todavía no se ha unido';
+      if (n) nombres[ella] = n;
+      pintar('pareja');
+      pintarEvento();
+    });
+
+    // 4 · El evento en curso: banner fijo mientras haya un panorama pendiente.
+    observarEvento(parejaId, (e) => { evento = e; pintarEvento(); });
+
+    ($('evento-fecha') as HTMLInputElement).addEventListener('change', async (ev) => {
+      errorEvento(null);
+      const valor = (ev.target as HTMLInputElement).value;
+      try {
+        await fijarFecha(parejaId, valor || null);
+      } catch {
+        errorEvento('No se pudo guardar la fecha. Revisa tu conexión.');
+      }
+    });
+
+    $('btn-quitar-fecha').addEventListener('click', async () => {
+      errorEvento(null);
+      await fijarFecha(parejaId, null).catch(() => errorEvento('No se pudo quitar la fecha.'));
+    });
+
+    $('btn-cerrar-evento').addEventListener('click', async () => {
+      errorEvento(null);
+      await cerrarEvento(parejaId).catch(() => errorEvento('No se pudo cerrar el evento.'));
+    });
+  });
+
+  // Refresca los textos relativos ("hace un momento" → "hoy a las 22:15")
+  // sin tocar la base de datos.
+  setInterval(() => {
+    document.querySelectorAll<HTMLTimeElement>('time[datetime]').forEach((t) => {
+      const ms = Date.parse(t.dateTime);
+      if (!Number.isNaN(ms)) t.textContent = `Última vez ${formatearUltimaConexion(ms)}`;
+    });
+  }, 30_000);
+</script>

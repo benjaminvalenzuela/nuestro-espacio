@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SISTEMA DE DISEÑO · Nuestro Espacio
+
+   Los colores se definen como variables CSS semánticas (--fondo, --tinta...)
+   y se exponen a Tailwind con @theme inline. Ventaja: el modo oscuro cambia
+   SOLO estas variables — ninguna clase de utilidad necesita variante dark:.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@layer base {
+  :root {
+    color-scheme: light;
+
+    --fondo:          #fdf8f4;   /* crema cálido */
+    --superficie:     #ffffff;
+    --superficie-alt: #f6ede6;
+    --borde:          #e8d9cd;
+
+    --tinta:          #2e2426;   /* casi negro, con temperatura cálida */
+    --tinta-suave:    #7a6a66;
+    --tinta-tenue:    #a89791;
+
+    --acento:         #c4586b;   /* rosa terracota — acción principal */
+    --acento-fuerte:  #a63f52;
+    --acento-suave:   #fbe9ec;
+
+    --salvia:         #6f8f74;   /* verde salvia — estado positivo/conectado */
+    --salvia-suave:   #e6f0e7;
+
+    --ambar:          #c98a2e;   /* avisos */
+    --peligro:        #b3462f;   /* destructivo */
+
+    /* Porciones de la ruleta: cuatro tintes que rotan. Se definen como
+       variables para que el modo oscuro las cambie sin tocar el dibujo. */
+    --rueda-1: #f3ddd6;
+    --rueda-2: #e7d3e0;
+    --rueda-3: #dee7dc;
+    --rueda-4: #f2e6cf;
+    --rueda-texto: #4a3a3c;
+
+    --sombra: 0 1px 2px rgb(46 36 38 / 0.04), 0 8px 24px -8px rgb(46 36 38 / 0.10);
+    --radio: 1rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+
+      --fondo:          #191416;
+      --superficie:     #221b1e;
+      --superficie-alt: #2c2327;
+      --borde:          #3b2f34;
+
+      --tinta:          #f4e9e4;
+      --tinta-suave:    #b9a7a3;
+      --tinta-tenue:    #8a7873;
+
+      --acento:         #e08195;
+      --acento-fuerte:  #f0a0b1;
+      --acento-suave:   #3a2429;
+
+      --salvia:         #8fb695;
+      --salvia-suave:   #253026;
+
+      --ambar:          #e0aa5a;
+      --peligro:        #e07a62;
+
+      --rueda-1: #4a3239;
+      --rueda-2: #443045;
+      --rueda-3: #2f4238;
+      --rueda-4: #4a3d2a;
+      --rueda-texto: #f0e4e0;
+
+      --sombra: 0 1px 2px rgb(0 0 0 / 0.30), 0 8px 24px -8px rgb(0 0 0 / 0.50);
+    }
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--fondo);
+    color: var(--tinta);
+    font-family: ui-rounded, "SF Pro Rounded", "Segoe UI Variable",
+                 "Segoe UI", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    /* Respeta la barra de gestos y el notch en móvil */
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Foco visible y consistente: requisito de accesibilidad, no decorativo */
+  :focus-visible {
+    outline: 2px solid var(--acento);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* Quien pide menos movimiento, recibe menos movimiento.
+     Ojo: en el Paso siguiente la ruleta también consulta esta preferencia. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@theme inline {
+  --color-fondo:          var(--fondo);
+  --color-superficie:     var(--superficie);
+  --color-superficie-alt: var(--superficie-alt);
+  --color-borde:          var(--borde);
+
+  --color-tinta:          var(--tinta);
+  --color-tinta-suave:    var(--tinta-suave);
+  --color-tinta-tenue:    var(--tinta-tenue);
+
+  --color-acento:         var(--acento);
+  --color-acento-fuerte:  var(--acento-fuerte);
+  --color-acento-suave:   var(--acento-suave);
+
+  --color-salvia:         var(--salvia);
+  --color-salvia-suave:   var(--salvia-suave);
+
+  --color-ambar:          var(--ambar);
+  --color-peligro:        var(--peligro);
+
+  --radius-tarjeta: var(--radio);
+  --shadow-suave:   var(--sombra);
+}
+
+/* ── Utilidades propias ──────────────────────────────────────────────────── */
+
+@utility tarjeta {
+  background-color: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+
+/* Punto de presencia: el latido solo existe cuando hay alguien conectado */
+@utility punto-latido {
+  position: relative;
+}
+@utility punto-latido-anillo {
+  animation: latido 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes latido {
+  0%, 100% { transform: scale(1);   opacity: 0.55; }
+  50%      { transform: scale(2.1); opacity: 0; }
+}
+
+@keyframes aparecer {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+@utility aparecer {
+  animation: aparecer 0.35s ease-out both;
+}
+
+/* ── Ruleta ──────────────────────────────────────────────────────────────── */
+
+/* La rueda gira; el puntero no. Va fuera del SVG para que ninguna rotación
+   lo arrastre. */
+@utility puntero-ruleta {
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.25));
+}
+
+@keyframes destello {
+  0%   { transform: scale(0.94); opacity: 0; }
+  55%  { transform: scale(1.03); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+@utility destello {
+  animation: destello 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}

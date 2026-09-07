@@ -1,0 +1,73 @@
+name: Desplegar Security Rules
+
+# Las reglas se despliegan APARTE del frontend y a mano, porque son el backend
+# de autorización: un error aquí no rompe una pantalla, abre la base de datos.
+#
+# Antes de subir nada, se vuelven a ejecutar los tests de reglas contra los
+# emuladores. Si alguno falla, no se despliega.
+on:
+  workflow_dispatch:
+    inputs:
+      entorno:
+        description: Entorno destino
+        required: true
+        type: choice
+        options: [qa, prod]
+
+concurrency:
+  group: reglas-${{ inputs.entorno }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  desplegar:
+    name: Validar y desplegar reglas
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Con entorno `prod` esto exige la aprobación del revisor configurado.
+    environment: ${{ inputs.entorno == 'prod' && 'production' || 'qa' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+
+      - name: Los tests de reglas deben pasar
+        run: >
+          npx firebase emulators:exec
+          --project demo-nuestro-espacio
+          --only auth,firestore,database
+          "npm run test:reglas"
+
+      - name: Desplegar
+        env:
+          # Service Account con permisos de administración. Es el único secreto
+          # de verdad del proyecto: puede leer y borrar todo, ignorando las reglas.
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/sa.json
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$SA_JSON" > "$GOOGLE_APPLICATION_CREDENTIALS"
+          npx firebase deploy \
+            --only firestore:rules,firestore:indexes,database \
+            --project ${{ inputs.entorno }} \
+            --non-interactive
+          # El fichero vive en el runner efímero, pero se borra igualmente:
+          # nada garantiza que un paso posterior no vuelque el workspace.
+          rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
+
+      - name: Resumen
+        run: |
+          echo "### Reglas desplegadas a ${{ inputs.entorno }} ✅" >> $GITHUB_STEP_SUMMARY
+          echo "Para revertir: Consola Firebase → Firestore → Rules → Historial → Restaurar." >> $GITHUB_STEP_SUMMARY

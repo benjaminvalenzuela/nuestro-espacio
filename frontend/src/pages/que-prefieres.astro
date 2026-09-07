@@ -1,0 +1,234 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+
+<AppLayout
+  titulo="Qué prefieres · Nuestro Espacio"
+  encabezado="¿Qué prefieres?"
+  bajada="Votan a ciegas. Se revela solo cuando los dos han elegido."
+>
+  <section class="flex flex-col gap-3">
+    <button
+      id="opcion-A"
+      type="button"
+      data-opcion="A"
+      class="tarjeta group relative flex min-h-28 items-center justify-center px-6 py-6 text-center transition hover:border-acento active:scale-[0.99] disabled:active:scale-100"
+    >
+      <span id="texto-A" class="text-lg font-medium text-balance text-tinta">…</span>
+      <span id="marca-A" class="absolute top-3 right-3 hidden text-xs font-semibold"></span>
+    </button>
+
+    <div class="flex items-center gap-3" aria-hidden="true">
+      <span class="h-px flex-1 bg-borde"></span>
+      <span class="text-xs font-semibold tracking-wide text-tinta-tenue uppercase">o</span>
+      <span class="h-px flex-1 bg-borde"></span>
+    </div>
+
+    <button
+      id="opcion-B"
+      type="button"
+      data-opcion="B"
+      class="tarjeta group relative flex min-h-28 items-center justify-center px-6 py-6 text-center transition hover:border-acento active:scale-[0.99] disabled:active:scale-100"
+    >
+      <span id="texto-B" class="text-lg font-medium text-balance text-tinta">…</span>
+      <span id="marca-B" class="absolute top-3 right-3 hidden text-xs font-semibold"></span>
+    </button>
+  </section>
+
+  <div
+    id="estado"
+    role="status"
+    aria-live="polite"
+    class="mt-5 rounded-xl bg-superficie-alt px-4 py-3.5 text-center text-sm text-tinta-suave"
+  >Cargando dilemas…</div>
+
+  <div id="veredicto" class="mt-3 hidden rounded-xl px-4 py-4 text-center"></div>
+
+  <button
+    id="btn-nuevo"
+    type="button"
+    class="mt-5 w-full rounded-xl bg-acento px-4 py-3.5 font-medium text-white transition hover:bg-acento-fuerte active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    <span id="btn-nuevo-texto">Nuevo dilema</span>
+  </button>
+</AppLayout>
+
+<script>
+  import { protegerPagina } from '../domain/identidad/guardia';
+  import { iniciarRelojServidor } from '../domain/tiempo/relojServidor';
+  import {
+    cargarDilemas, abrirRonda, observarRondaActual, observarMeta, votar,
+    observarVotos, archivarPartida, ErrorVoto,
+    type Dilema, type Opcion, type Votos,
+  } from '../domain/dilemas/dilemasService';
+  import { otraPersona, type Persona } from '@shared/enums';
+  import { ENV } from '../config/env';
+
+  const $ = (id: string) => document.getElementById(id)!;
+  const parejaId = ENV.PUBLIC_PAREJA_ID;
+
+  let dilemas: Dilema[] = [];
+  let dilemaActual: Dilema | null = null;
+  let rondaId: string | null = null;
+  let miVoto: Opcion | null = null;
+  let cancelarMeta: (() => void) | undefined;
+  let cancelarVotos: (() => void) | undefined;
+  let revelado = false;
+
+  const botones = () => ['A', 'B'].map((o) => $(`opcion-${o}`) as HTMLButtonElement);
+
+  function bloquear(bloqueado: boolean) {
+    for (const b of botones()) b.disabled = bloqueado;
+  }
+
+  function limpiarMarcas() {
+    for (const o of ['A', 'B']) {
+      const m = $(`marca-${o}`);
+      m.classList.add('hidden');
+      m.textContent = '';
+      $(`opcion-${o}`).classList.remove('border-acento', 'bg-acento-suave', 'border-salvia', 'bg-salvia-suave');
+    }
+    $('veredicto').classList.add('hidden');
+    revelado = false;
+  }
+
+  function pintarDilema(d: Dilema | null) {
+    dilemaActual = d;
+    $('texto-A').textContent = d?.opcionA ?? '…';
+    $('texto-B').textContent = d?.opcionB ?? '…';
+  }
+
+  function marcarMiVoto(opcion: Opcion) {
+    const b = $(`opcion-${opcion}`);
+    b.classList.add('border-acento', 'bg-acento-suave');
+    const m = $(`marca-${opcion}`);
+    m.textContent = 'Tú';
+    m.className = 'absolute top-3 right-3 text-xs font-semibold text-acento';
+  }
+
+  /** Revelación: solo se llega aquí cuando el SERVIDOR entregó los dos votos. */
+  function revelar(votos: Votos, yo: Persona) {
+    revelado = true;
+    const mio = votos[yo];
+    const suyo = votos[otraPersona(yo)];
+    if (!mio || !suyo) return;
+
+    limpiarMarcas();
+    revelado = true;
+
+    for (const [persona, voto] of [[yo, mio], [otraPersona(yo), suyo]] as const) {
+      const esMio = persona === yo;
+      const b = $(`opcion-${voto.opcion}`);
+      b.classList.add(esMio ? 'border-acento' : 'border-salvia');
+      const m = $(`marca-${voto.opcion}`);
+      // Si coincidieron, la misma esquina muestra las dos marcas.
+      m.textContent = m.textContent ? `${m.textContent} · ${esMio ? 'Tú' : 'Tu pareja'}` : esMio ? 'Tú' : 'Tu pareja';
+      m.className = 'absolute top-3 right-3 text-xs font-semibold text-tinta';
+      m.classList.remove('hidden');
+    }
+
+    const coinciden = mio.opcion === suyo.opcion;
+    const v = $('veredicto');
+    v.textContent = coinciden
+      ? '¡Coincidieron! Eligieron lo mismo.'
+      : 'Cada uno eligió distinto.';
+    v.className = coinciden
+      ? 'mt-3 rounded-xl border border-salvia/40 bg-salvia-suave px-4 py-4 text-center font-medium text-salvia destello'
+      : 'mt-3 rounded-xl border border-borde bg-superficie-alt px-4 py-4 text-center font-medium text-tinta-suave destello';
+
+    $('estado').textContent = 'Ronda revelada.';
+    bloquear(true);
+
+    if (dilemaActual) {
+      void archivarPartida(parejaId, rondaId!, dilemaActual.id, {
+        [yo]: mio, [otraPersona(yo)]: suyo,
+      } as Required<Votos>);
+    }
+  }
+
+  function seguirRonda(id: string, yo: Persona) {
+    cancelarMeta?.();
+    cancelarVotos?.();
+    rondaId = id;
+    miVoto = null;
+    limpiarMarcas();
+    bloquear(false);
+    $('estado').textContent = 'Elige una opción. Tu pareja no la verá hasta que vote.';
+
+    cancelarMeta = observarMeta(parejaId, id, (meta) => {
+      if (!meta) return;
+      const d = dilemas.find((x) => x.id === meta.dilemaId) ?? null;
+      if (d && d.id !== dilemaActual?.id) pintarDilema(d);
+
+      if (revelado) return;
+
+      if (meta.votosEmitidos < 2) {
+        $('estado').textContent = miVoto
+          ? 'Ya votaste. Esperando a tu pareja…'
+          : 'Elige una opción. Tu pareja no la verá hasta que vote.';
+        return;
+      }
+
+      // Los dos votaron: recién ahora el servidor permite leer /votos. Antes de
+      // este punto la suscripción devolvería permission_denied.
+      cancelarVotos?.();
+      cancelarVotos = observarVotos(
+        parejaId, id,
+        (votos) => { if (votos.a && votos.b) revelar(votos, yo); },
+        () => { $('estado').textContent = 'Esperando a que se registren los dos votos…'; },
+      );
+    });
+  }
+
+  protegerPagina((sesion) => {
+    iniciarRelojServidor();
+    $('guardia').classList.add('hidden');
+    $('app').classList.remove('hidden');
+    bloquear(true);
+
+    void (async () => {
+      dilemas = await cargarDilemas();
+      $('estado').textContent = dilemas.length
+        ? 'Pulsa "Nuevo dilema" para empezar.'
+        : 'No hay dilemas activos en el banco.';
+      ($('btn-nuevo') as HTMLButtonElement).disabled = dilemas.length === 0;
+    })();
+
+    observarRondaActual(parejaId, (id) => {
+      if (!id || id === rondaId) return;
+      seguirRonda(id, sesion.persona);
+    });
+
+    for (const b of botones()) {
+      b.addEventListener('click', async () => {
+        if (!rondaId || miVoto) return;
+        const opcion = (b.dataset.opcion ?? 'A') as Opcion;
+        bloquear(true);
+        try {
+          await votar(parejaId, rondaId, sesion.persona, opcion);
+          miVoto = opcion;
+          marcarMiVoto(opcion);
+          $('estado').textContent = 'Ya votaste. Esperando a tu pareja…';
+        } catch (e) {
+          $('estado').textContent =
+            e instanceof ErrorVoto ? e.message : 'No se pudo registrar tu voto.';
+          bloquear(false);
+        }
+      });
+    }
+
+    $('btn-nuevo').addEventListener('click', async () => {
+      if (dilemas.length === 0) return;
+      ($('btn-nuevo') as HTMLButtonElement).disabled = true;
+      $('btn-nuevo-texto').textContent = 'Abriendo…';
+      try {
+        const d = dilemas[Math.floor(Math.random() * dilemas.length)]!;
+        pintarDilema(d);
+        await abrirRonda(parejaId, d.id);
+      } finally {
+        ($('btn-nuevo') as HTMLButtonElement).disabled = false;
+        $('btn-nuevo-texto').textContent = 'Otro dilema';
+      }
+    });
+  });
+</script>

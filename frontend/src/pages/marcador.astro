@@ -1,0 +1,75 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+
+<AppLayout
+  titulo="Marcador · Nuestro Espacio"
+  encabezado="Marcador"
+  bajada="Quién ha organizado más. Lo decide la ruleta, no la memoria de nadie."
+>
+  <div class="grid grid-cols-2 gap-3">
+    <article class="tarjeta px-4 py-6 text-center">
+      <p id="m-a-nombre" class="truncate text-sm font-medium text-tinta-suave">…</p>
+      <p id="m-a-veces" class="mt-1 text-4xl font-semibold text-tinta">0</p>
+      <p id="m-a-ultima" class="mt-1 text-xs text-tinta-tenue">—</p>
+    </article>
+    <article class="tarjeta px-4 py-6 text-center">
+      <p id="m-b-nombre" class="truncate text-sm font-medium text-tinta-suave">…</p>
+      <p id="m-b-veces" class="mt-1 text-4xl font-semibold text-tinta">0</p>
+      <p id="m-b-ultima" class="mt-1 text-xs text-tinta-tenue">—</p>
+    </article>
+  </div>
+
+  <p id="balance" class="mt-3 rounded-xl bg-superficie-alt px-4 py-3.5 text-center text-sm text-tinta-suave"></p>
+
+  <p class="mt-6 text-center text-xs leading-relaxed text-tinta-tenue">
+    El contador solo puede subir de uno en uno, y únicamente cuando la ruleta
+    elige. Ninguno de los dos puede modificarlo.
+  </p>
+</AppLayout>
+
+<script>
+  import { protegerPagina } from '../domain/identidad/guardia';
+  import { observarNombre } from '../domain/presencia/presenciaService';
+  import { observarMarcador, asegurarMarcador, type Marcador } from '../domain/organizacion/organizacionService';
+  import { formatearUltimaConexion } from '../domain/presencia/formatoFecha';
+  import { PERSONAS, type Persona } from '@shared/enums';
+  import { ENV } from '../config/env';
+
+  const $ = (id: string) => document.getElementById(id)!;
+  const parejaId = ENV.PUBLIC_PAREJA_ID;
+
+  const nombres: Record<Persona, string> = { a: 'Persona A', b: 'Persona B' };
+  let marcador: Marcador = { a: { veces: 0, ultimaVezEn: null }, b: { veces: 0, ultimaVezEn: null } };
+
+  function pintar() {
+    for (const p of PERSONAS) {
+      $(`m-${p}-nombre`).textContent = nombres[p];
+      $(`m-${p}-veces`).textContent = String(marcador[p].veces);
+      $(`m-${p}-ultima`).textContent = marcador[p].ultimaVezEn
+        ? formatearUltimaConexion(marcador[p].ultimaVezEn)
+        : 'nunca';
+    }
+
+    const dif = marcador.a.veces - marcador.b.veces;
+    const total = marcador.a.veces + marcador.b.veces;
+    $('balance').textContent =
+      total === 0
+        ? 'Todavía no ha organizado nadie.'
+        : dif === 0
+          ? `Empatados a ${marcador.a.veces}. Perfectamente justo.`
+          : `${dif > 0 ? nombres.a : nombres.b} lleva ${Math.abs(dif)} ${Math.abs(dif) === 1 ? 'vez' : 'veces'} más.`;
+  }
+
+  protegerPagina(() => {
+    $('guardia').classList.add('hidden');
+    $('app').classList.remove('hidden');
+    void asegurarMarcador(parejaId).catch(() => {});
+    pintar();
+
+    for (const p of PERSONAS) {
+      observarNombre(parejaId, p, (n) => { if (n) nombres[p] = n; pintar(); });
+    }
+    observarMarcador(parejaId, (m) => { marcador = m; pintar(); });
+  });
+</script>

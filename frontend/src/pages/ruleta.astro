@@ -1,0 +1,367 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+import Rueda from '../components/ruleta/Rueda.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<AppLayout
+  titulo="Ruleta · Nuestro Espacio"
+  encabezado="Ruleta"
+  bajada="Un solo giro decide el panorama y quién lo organiza."
+>
+  {/* Indicador de las dos fases del sorteo encadenado */}
+  <ol id="pasos" class="mb-4 flex items-center gap-2 text-xs font-medium" aria-label="Progreso del sorteo">
+    <li id="paso-1" class="flex-1 rounded-lg border border-borde px-3 py-2 text-center text-tinta-tenue">
+      1 · Qué hacemos
+    </li>
+    <li id="paso-2" class="flex-1 rounded-lg border border-borde px-3 py-2 text-center text-tinta-tenue">
+      2 · Quién organiza
+    </li>
+  </ol>
+
+  <p
+    id="chip-panorama"
+    class="mb-3 hidden rounded-xl border border-acento/30 bg-acento-suave px-4 py-2.5 text-center text-sm"
+  >
+    <span class="font-medium text-acento">Panorama:</span>
+    <span id="chip-panorama-texto" class="font-semibold text-tinta"></span>
+  </p>
+
+  <Rueda accion="Girar la ruleta" />
+
+  <div id="evento-listo" class="mt-5 hidden">
+    <a
+      href={`${base}/inicio`}
+      class="block rounded-xl border border-salvia/40 bg-salvia-suave px-4 py-4 text-center transition hover:border-salvia"
+    >
+      <p class="text-[11px] font-medium tracking-wide text-salvia uppercase">Panorama definido</p>
+      <p id="evento-resumen" class="mt-1 font-semibold text-tinta"></p>
+      <p class="mt-1 text-xs text-tinta-suave">Ponle fecha desde el inicio →</p>
+    </a>
+  </div>
+
+  <section class="mt-8" aria-labelledby="titulo-lista">
+    <h2 id="titulo-lista" class="mb-3 text-sm font-semibold text-tinta-suave">
+      Planes en la ruleta
+      <span id="contador-planes" class="ml-1 font-normal text-tinta-tenue"></span>
+    </h2>
+
+    <form id="form-agregar" class="mb-4 flex gap-2" novalidate>
+      <input
+        id="nuevo-panorama"
+        type="text"
+        maxlength="80"
+        enterkeyhint="done"
+        placeholder="Ir al Cerro San Cristóbal"
+        class="min-w-0 flex-1 rounded-xl border border-borde bg-superficie px-4 py-3 text-tinta placeholder:text-tinta-tenue focus:border-acento focus:outline-none"
+      />
+      <button
+        type="submit"
+        class="shrink-0 rounded-xl border border-acento px-4 py-3 font-medium text-acento transition hover:bg-acento-suave active:scale-[0.98]"
+      >Agregar</button>
+    </form>
+
+    <p id="error-agregar" role="alert" class="mb-3 hidden rounded-xl border border-peligro/30 bg-peligro/5 px-4 py-2.5 text-sm text-peligro"></p>
+
+    <ul id="lista" class="flex flex-col gap-2"></ul>
+
+    <p id="lista-vacia" class="hidden rounded-xl border border-dashed border-borde px-4 py-8 text-center text-sm text-tinta-tenue">
+      Todavía no hay planes.<br />Agrega el primero arriba.
+    </p>
+  </section>
+</AppLayout>
+
+<script>
+  import { protegerPagina, type SesionActiva } from '../domain/identidad/guardia';
+  import { iniciarRelojServidor, ahoraServidor } from '../domain/tiempo/relojServidor';
+  import { crearRueda, animarGiro } from '../domain/ruleta/rueda';
+  import { anguloFinal } from '../domain/ruleta/animacionGiro';
+  import { reclamarGiro, observarGiro, cerrarGiro, ganadorDe } from '../domain/ruleta/ruletaService';
+  import {
+    observarPanoramas, agregarPanorama, archivarPanorama, registrarRealizado,
+    ErrorPanorama, type Panorama,
+  } from '../domain/panoramas/panoramasService';
+  import { observarNombre } from '../domain/presencia/presenciaService';
+  import { registrarOrganizador, asegurarMarcador } from '../domain/organizacion/organizacionService';
+  import { crearEvento } from '../domain/eventos/eventosService';
+  import type { Giro } from '@shared/schemas/giro.schema';
+  import { PERSONAS, type Persona } from '@shared/enums';
+  import { ENV } from '../config/env';
+
+  const $ = (id: string) => document.getElementById(id)!;
+  const parejaId = ENV.PUBLIC_PAREJA_ID;
+
+  type Fase = 'idle' | 'panoramas' | 'organizacion' | 'listo';
+  let fase: Fase = 'idle';
+
+  let panoramas: Panorama[] = [];
+  const nombres: Record<Persona, string> = { a: 'Persona A', b: 'Persona B' };
+  let ganadorPanorama: { id: string; nombre: string } | null = null;
+  let cancelarAnimacion: (() => void) | undefined;
+  /** Persona de esta sesión. La necesitan los encadenados, fuera del guardia. */
+  let yo: Persona = 'a';
+
+  /** Un giro por ruleta ya procesado, para no reproducirlo dos veces. */
+  const vistos: Record<'panoramas' | 'organizacion', string | null> = {
+    panoramas: null, organizacion: null,
+  };
+  /** En la primera lectura no se anima lo que ya estaba resuelto de antes. */
+  const primeraLectura: Record<'panoramas' | 'organizacion', boolean> = {
+    panoramas: true, organizacion: true,
+  };
+
+  const rueda = crearRueda($('rueda') as unknown as SVGSVGElement);
+  const btn = () => $('btn-girar') as HTMLButtonElement;
+
+  function pintarPasos() {
+    const activo = (el: HTMLElement, on: boolean, hecho: boolean) => {
+      el.classList.toggle('border-acento', on);
+      el.classList.toggle('bg-acento-suave', on);
+      el.classList.toggle('text-acento', on);
+      el.classList.toggle('text-salvia', hecho && !on);
+      el.classList.toggle('border-salvia', hecho && !on);
+      el.classList.toggle('text-tinta-tenue', !on && !hecho);
+    };
+    activo($('paso-1'), fase === 'panoramas', fase === 'organizacion' || fase === 'listo');
+    activo($('paso-2'), fase === 'organizacion', fase === 'listo');
+  }
+
+  function mostrarError(texto: string | null) {
+    const el = $('error-agregar');
+    el.textContent = texto ?? '';       // textContent: nunca innerHTML
+    el.classList.toggle('hidden', !texto);
+  }
+
+  function mostrarResultado(texto: string | null) {
+    const caja = $('resultado');
+    if (!texto) { caja.classList.add('hidden'); return; }
+    $('resultado-texto').textContent = texto;
+    caja.classList.remove('hidden');
+    caja.classList.add('destello');
+  }
+
+  function mostrarChipPanorama(nombre: string | null) {
+    $('chip-panorama').classList.toggle('hidden', !nombre);
+    if (nombre) $('chip-panorama-texto').textContent = nombre;
+  }
+
+  function pintarRuedaInactiva() {
+    if (fase !== 'idle') return;
+    const hay = panoramas.length > 0;
+    $('rueda-vacia').classList.toggle('hidden', hay);
+    $('rueda-vacia').classList.toggle('flex', !hay);
+    btn().disabled = !hay;
+    rueda.pintar(hay ? panoramas.map((p) => p.nombre) : []);
+  }
+
+  function pintarLista() {
+    const ul = $('lista');
+    ul.replaceChildren();
+    $('contador-planes').textContent = panoramas.length ? `· ${panoramas.length}` : '';
+    $('lista-vacia').classList.toggle('hidden', panoramas.length > 0);
+
+    for (const p of panoramas) {
+      const li = document.createElement('li');
+      li.className = 'tarjeta flex items-center gap-3 px-4 py-3';
+
+      const texto = document.createElement('div');
+      texto.className = 'min-w-0 flex-1';
+      const nombre = document.createElement('p');
+      nombre.className = 'truncate font-medium text-tinta';
+      nombre.textContent = p.nombre;
+      const meta = document.createElement('p');
+      meta.className = 'text-xs text-tinta-tenue';
+      meta.textContent =
+        p.vecesRealizado === 0 ? 'Nunca ha salido'
+        : p.vecesRealizado === 1 ? 'Realizado 1 vez'
+        : `Realizado ${p.vecesRealizado} veces`;
+      texto.append(nombre, meta);
+
+      const insignia = document.createElement('span');
+      insignia.className =
+        'shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ' +
+        (p.vecesRealizado > 0 ? 'bg-acento-suave text-acento' : 'bg-superficie-alt text-tinta-tenue');
+      insignia.textContent = String(p.vecesRealizado);
+
+      const quitar = document.createElement('button');
+      quitar.type = 'button';
+      quitar.className = 'shrink-0 rounded-lg p-2 text-tinta-tenue transition hover:text-peligro';
+      quitar.setAttribute('aria-label', `Quitar ${p.nombre} de la ruleta`);
+      quitar.textContent = '✕';
+      quitar.addEventListener('click', () => {
+        void archivarPanorama(parejaId, p.id).catch(() =>
+          mostrarError('No se pudo quitar. Inténtalo otra vez.'),
+        );
+      });
+
+      li.append(texto, insignia, quitar);
+      ul.appendChild(li);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  FASE 1 · qué hacemos  →  encadena automáticamente con la fase 2
+  // ═══════════════════════════════════════════════════════════════════════
+  async function terminoPanoramas(giro: Giro) {
+    const ganador = ganadorDe(giro);
+    mostrarResultado(null);
+    mostrarChipPanorama(ganador);
+    rueda.destacar(giro.indiceGanador);
+
+    const elegido = panoramas.find((p) => p.nombre === ganador);
+    ganadorPanorama = elegido ? { id: elegido.id, nombre: elegido.nombre } : null;
+
+    fase = 'organizacion';
+    pintarPasos();
+    $('btn-girar-texto').textContent = 'Sorteando organizador…';
+
+    // Un solo dispositivo gana el cierre: ese anota y ese encadena la segunda
+    // ruleta. Si encadenaran los dos, se pisarían los giros.
+    const meToca = await cerrarGiro(parejaId, 'panoramas', giro.id).catch(() => false);
+    if (!meToca) return;
+
+    if (ganadorPanorama) {
+      void registrarRealizado(parejaId, ganadorPanorama, giro.id, null)
+        .catch((e) => console.warn('[ruleta] no se pudo registrar el panorama:', e?.message));
+    }
+
+    // Pausa breve para que se lea el resultado antes de que arranque la segunda.
+    await new Promise((r) => setTimeout(r, 900));
+    await reclamarGiro(parejaId, 'organizacion', yo, PERSONAS.map((p) => ({ id: p, etiqueta: nombres[p] })));
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  FASE 2 · quién organiza  →  crea el evento
+  // ═══════════════════════════════════════════════════════════════════════
+  async function terminoOrganizacion(giro: Giro) {
+    rueda.destacar(giro.indiceGanador);
+    // El índice 0 es siempre 'a' y el 1 siempre 'b': renombrarse no descuadra nada.
+    const elegida: Persona = giro.indiceGanador === 1 ? 'b' : 'a';
+
+    fase = 'listo';
+    pintarPasos();
+    mostrarResultado(`${ganadorPanorama?.nombre ?? '—'} · organiza ${nombres[elegida]}`);
+    $('evento-resumen').textContent = `${ganadorPanorama?.nombre ?? '—'} · organiza ${nombres[elegida]}`;
+    $('evento-listo').classList.remove('hidden');
+    $('btn-girar-texto').textContent = 'Girar de nuevo';
+    btn().disabled = panoramas.length === 0;
+
+    const meToca = await cerrarGiro(parejaId, 'organizacion', giro.id).catch(() => false);
+    if (!meToca) return;
+
+    void registrarOrganizador(parejaId, elegida, giro.id)
+      .catch((e) => console.warn('[ruleta] no se pudo registrar al organizador:', e?.message));
+
+    if (ganadorPanorama) {
+      void crearEvento(parejaId, {
+        panoramaId: ganadorPanorama.id,
+        nombre: ganadorPanorama.nombre,
+        organizador: elegida,
+        giroId: giro.id,
+      }).catch((e) => console.warn('[ruleta] no se pudo crear el evento:', e?.message));
+    }
+  }
+
+  function seguirGiro(cual: 'panoramas' | 'organizacion', giro: Giro | null) {
+    if (!giro) { primeraLectura[cual] = false; return; }
+
+    const caducado = ahoraServidor() > giro.iniciadoEn + giro.duracionMs;
+    const enCurso = giro.estado === 'girando' && !caducado;
+
+    // Al abrir la página no se reproduce lo que ya estaba resuelto de antes.
+    if (primeraLectura[cual]) {
+      primeraLectura[cual] = false;
+      vistos[cual] = giro.id;
+      if (!enCurso) return;
+    }
+
+    // Ya procesado: no repetir. Si sigue en curso y ya lo estamos animando,
+    // tampoco hay que rearrancar la animación en cada reemisión del nodo.
+    if (giro.id === vistos[cual] && (!enCurso || cancelarAnimacion)) return;
+
+    vistos[cual] = giro.id;
+    fase = cual;
+    pintarPasos();
+    if (cual === 'panoramas') { mostrarChipPanorama(null); $('evento-listo').classList.add('hidden'); }
+    mostrarResultado(null);
+    $('aviso-giro').classList.add('hidden');
+    btn().disabled = true;
+    $('btn-girar-texto').textContent = cual === 'panoramas' ? 'Girando…' : 'Sorteando organizador…';
+
+    $('rueda-vacia').classList.add('hidden');
+    // Se pinta el SNAPSHOT del giro, no la lista viva: si el otro agrega un
+    // plan a mitad de la animación, la rueda no cambia bajo los pies.
+    rueda.pintar(giro.opcionesSnapshot);
+    rueda.destacar(null);
+
+    if (!enCurso) {
+      rueda.rotar(anguloFinal(giro));
+      rueda.destacar(giro.indiceGanador);
+      if (cual === 'panoramas') mostrarChipPanorama(ganadorDe(giro));
+      else mostrarResultado(ganadorDe(giro));
+      fase = 'idle';
+      pintarPasos();
+      btn().disabled = panoramas.length === 0;
+      $('btn-girar-texto').textContent = 'Girar la ruleta';
+      return;
+    }
+
+    cancelarAnimacion?.();
+    cancelarAnimacion = animarGiro(giro, rueda, () => {
+      cancelarAnimacion = undefined;
+      void (cual === 'panoramas' ? terminoPanoramas(giro) : terminoOrganizacion(giro));
+    });
+  }
+
+  protegerPagina((sesion: SesionActiva) => {
+    yo = sesion.persona;
+    iniciarRelojServidor();
+    $('guardia').classList.add('hidden');
+    $('app').classList.remove('hidden');
+    pintarPasos();
+    void asegurarMarcador(parejaId).catch(() => {});
+
+    for (const p of PERSONAS) {
+      observarNombre(parejaId, p, (n) => { if (n) nombres[p] = n; });
+    }
+
+    observarPanoramas(parejaId, (lista) => {
+      panoramas = lista;
+      pintarLista();
+      pintarRuedaInactiva();
+    });
+
+    observarGiro(parejaId, 'panoramas', (g) => seguirGiro('panoramas', g));
+    observarGiro(parejaId, 'organizacion', (g) => seguirGiro('organizacion', g));
+
+    $('form-agregar').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      mostrarError(null);
+      const input = $('nuevo-panorama') as HTMLInputElement;
+      try {
+        await agregarPanorama(parejaId, sesion.persona, input.value, panoramas);
+        input.value = '';
+      } catch (err) {
+        mostrarError(err instanceof ErrorPanorama ? err.message : 'No se pudo agregar. Revisa tu conexión.');
+      }
+    });
+
+    $('btn-girar').addEventListener('click', async () => {
+      if (fase === 'panoramas' || fase === 'organizacion' || panoramas.length === 0) return;
+      btn().disabled = true;
+      $('evento-listo').classList.add('hidden');
+
+      const r = await reclamarGiro(
+        parejaId, 'panoramas', sesion.persona,
+        panoramas.map((p) => ({ id: p.id, etiqueta: p.nombre, peso: p.peso })),
+      );
+
+      if (r.resultado === 'ocupado') {
+        const aviso = $('aviso-giro');
+        aviso.textContent = 'Se adelantó tu pareja: verán el mismo giro.';
+        aviso.classList.remove('hidden');
+      }
+    });
+  });
+</script>

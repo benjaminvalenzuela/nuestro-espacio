@@ -1,0 +1,32 @@
+{
+  "name": "nuestro-espacio",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "frontend",
+    "backend",
+    "shared"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "emu": "firebase emulators:start --project demo-nuestro-espacio",
+    "emu:export": "firebase emulators:start --project demo-nuestro-espacio --import ./emulator-data --export-on-exit ./emulator-data",
+    "secrets:scan": "gitleaks detect --source . --config .gitleaks.toml --redact --verbose",
+    "desa": "npm --workspace backend run provisionar -- --entorno=desa",
+    "dev": "npm --workspace frontend run dev",
+    "build": "npm --workspace frontend run build",
+    "provisionar": "npm --workspace backend run provisionar --",
+    "dispositivos": "npm --workspace backend run dispositivos --",
+    "rules:qa": "firebase deploy --only firestore:rules,firestore:indexes,database --project qa",
+    "rules:prod": "firebase deploy --only firestore:rules,firestore:indexes,database --project prod",
+    "typecheck": "npm --workspace frontend run typecheck",
+    "test:dominio": "npm --workspace frontend run test",
+    "test:reglas": "npm --workspace backend run test:rules",
+    "test": "npm run typecheck && npm run test:dominio && npm run test:reglas"
+  },
+  "devDependencies": {
+    "firebase-tools": "^15.29.0"
+  }
+}

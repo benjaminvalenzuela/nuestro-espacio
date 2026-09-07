@@ -1,0 +1,84 @@
+name: Desplegar a PRODUCCIÓN
+
+# main → https://benjaminvalenzuela.github.io/nuestro-espacio/
+#
+# El entorno `production` de GitHub debe tener configurado un REVISOR
+# REQUERIDO: el workflow se detiene ahí y espera aprobación manual antes de
+# tocar los datos reales. Es la única puerta manual del pipeline, y es a
+# propósito.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: despliegue-prod
+  cancel-in-progress: false   # nunca cancelar un despliegue a medias
+
+permissions:
+  contents: write             # escribe en la rama gh-pages
+
+jobs:
+  desplegar:
+    name: Compilar y publicar en la raíz
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Configuración del entorno PRODUCCIÓN
+        # Se escribe un .env en vez de exportar variables: Vite lee los .env de
+        # forma predecible, y así el build es idéntico al que se hace en local.
+        #
+        # Estos valores son IDENTIFICADORES PÚBLICOS, no secretos: acaban en el
+        # bundle igualmente. Lo que protege los datos son las Security Rules,
+        # el registro cerrado, las restricciones de referrer y App Check.
+        run: |
+          cat > frontend/.env <<'EOF'
+          PUBLIC_ENTORNO=prod
+          PUBLIC_FIREBASE_API_KEY=${{ vars.FIREBASE_API_KEY }}
+          PUBLIC_FIREBASE_AUTH_DOMAIN=${{ vars.FIREBASE_AUTH_DOMAIN }}
+          PUBLIC_FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }}
+          PUBLIC_FIREBASE_APP_ID=${{ vars.FIREBASE_APP_ID }}
+          PUBLIC_FIREBASE_DATABASE_URL=${{ vars.FIREBASE_DATABASE_URL }}
+          PUBLIC_PAREJA_ID=${{ vars.PAREJA_ID }}
+          PUBLIC_RECAPTCHA_SITE_KEY=${{ vars.RECAPTCHA_SITE_KEY }}
+          EOF
+          echo "Variables escritas (los valores no se imprimen)."
+
+      - name: Compilar
+        env:
+          # GitHub Pages sirve el sitio bajo una subruta. Astro necesita saberla
+          # en compilación para reescribir enlaces y assets.
+          PUBLIC_BASE_PATH: /nuestro-espacio/
+          PUBLIC_SITE_URL: https://benjaminvalenzuela.github.io
+        run: npm run build
+
+      - name: Publicar en la raíz de gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./frontend/dist
+          # keep_files: true es OBLIGATORIO aquí. Sin él, publicar producción
+          # en la raíz borraría la carpeta /qa. El precio es que pueden quedar
+          # assets huérfanos de despliegues antiguos; como Astro les pone un
+          # hash en el nombre son inofensivos, y el workflow `pages-cleanup`
+          # permite hacer una limpieza total cuando convenga.
+          keep_files: true
+          commit_message: "prod: ${{ github.event.head_commit.message }}"
+
+      - name: Resumen
+        run: |
+          echo "### Producción desplegada ✅" >> $GITHUB_STEP_SUMMARY
+          echo "https://benjaminvalenzuela.github.io/nuestro-espacio/" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Para revertir: \`git revert <commit>\` sobre main." >> $GITHUB_STEP_SUMMARY

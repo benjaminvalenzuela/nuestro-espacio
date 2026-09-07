@@ -1,0 +1,70 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  titulo: string;
+  descripcion?: string;
+}
+
+const { titulo, descripcion = 'Nuestro espacio' } = Astro.props;
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  CONTENT SECURITY POLICY
+ *
+ *  GitHub Pages no permite cabeceras HTTP personalizadas, así que la CSP viaja
+ *  en un <meta>. Cubre script-src y connect-src (lo importante para XSS y para
+ *  exfiltración de datos); queda fuera frame-ancestors, que solo funciona como
+ *  cabecera — riesgo residual documentado en el Paso 2.
+ *
+ *  Solo se emite en producción: en desarrollo rompería el HMR de Vite, que
+ *  necesita un WebSocket a localhost y evaluación dinámica.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+const csp = [
+  "default-src 'self'",
+  "script-src 'self' https://www.google.com https://www.gstatic.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https://lh3.googleusercontent.com",
+  "font-src 'self' data:",
+  [
+    'connect-src',
+    "'self'",
+    'https://*.googleapis.com',
+    'https://*.firebaseio.com',
+    'wss://*.firebaseio.com',
+    'https://*.firebasedatabase.app',
+    'wss://*.firebasedatabase.app',
+  ].join(' '),
+  // signInWithPopup y App Check (reCAPTCHA) abren estos orígenes
+  "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com",
+  "base-uri 'self'",
+  "form-action 'none'",
+  "object-src 'none'",
+].join('; ');
+---
+
+<!doctype html>
+<html lang="es-CL">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    {import.meta.env.PROD && <meta http-equiv="Content-Security-Policy" content={csp} />}
+
+    <title>{titulo}</title>
+    <meta name="description" content={descripcion} />
+
+    {/* App privada: fuera de los buscadores. */}
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+    <meta name="theme-color" content="#fdf8f4" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#191416" media="(prefers-color-scheme: dark)" />
+
+    <link rel="icon" href={`${import.meta.env.BASE_URL}favicon.svg`} type="image/svg+xml" />
+  </head>
+
+  <body class="min-h-dvh antialiased">
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,400 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+
+<AppLayout
+  titulo="Administración · Nuestro Espacio"
+  encabezado="Administración"
+  bajada="Gestiona el contenido y los historiales sin tocar el código."
+>
+  <div id="secciones" role="tablist" class="mb-5 grid grid-cols-4 gap-1.5">
+    {
+      [
+        ['preguntas', 'Preguntas'],
+        ['dilemas', 'Dilemas'],
+        ['datos', 'Datos'],
+        ['registro', 'Registro'],
+      ].map(([v, t]) => (
+        <button type="button" role="tab" data-sec={v}
+          class="rounded-lg border border-borde px-2 py-2 text-xs font-medium text-tinta-suave transition"
+        >{t}</button>
+      ))
+    }
+  </div>
+
+  {/* ── PREGUNTAS ─────────────────────────────────────────────────────── */}
+  <section id="sec-preguntas" role="tabpanel" class="hidden flex-col gap-4">
+    <div class="tarjeta flex flex-col gap-3 px-4 py-4">
+      <p class="text-sm font-semibold text-tinta">Nueva pregunta</p>
+      <textarea id="np-texto" rows="3" maxlength="300" placeholder="¿Qué es lo que más miedo te da…?"
+        class="w-full resize-none rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta placeholder:text-tinta-tenue focus:border-acento focus:outline-none"></textarea>
+      <select id="np-categoria"
+        class="w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta focus:border-acento focus:outline-none">
+        <option value="profundas">Profundas</option>
+        <option value="subidas_de_tono">Subidas de tono</option>
+        <option value="supuestos">Supuestos</option>
+      </select>
+      <button id="np-crear" type="button"
+        class="rounded-lg bg-acento px-3 py-2.5 text-sm font-medium text-white transition hover:bg-acento-fuerte">
+        Agregar pregunta
+      </button>
+    </div>
+    <p id="preguntas-resumen" class="text-xs text-tinta-tenue"></p>
+    <ul id="lista-preguntas" class="flex flex-col gap-2"></ul>
+  </section>
+
+  {/* ── DILEMAS ───────────────────────────────────────────────────────── */}
+  <section id="sec-dilemas" role="tabpanel" class="hidden flex-col gap-4">
+    <div class="tarjeta flex flex-col gap-3 px-4 py-4">
+      <p class="text-sm font-semibold text-tinta">Nuevo dilema</p>
+      <input id="nd-a" type="text" maxlength="120" placeholder="Opción A"
+        class="w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta placeholder:text-tinta-tenue focus:border-acento focus:outline-none" />
+      <input id="nd-b" type="text" maxlength="120" placeholder="Opción B"
+        class="w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta placeholder:text-tinta-tenue focus:border-acento focus:outline-none" />
+      <select id="nd-categoria"
+        class="w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta focus:border-acento focus:outline-none">
+        <option value="general">General</option>
+        <option value="profundas">Profundas</option>
+        <option value="subidas_de_tono">Subidas de tono</option>
+        <option value="absurdas">Absurdas</option>
+      </select>
+      <button id="nd-crear" type="button"
+        class="rounded-lg bg-acento px-3 py-2.5 text-sm font-medium text-white transition hover:bg-acento-fuerte">
+        Agregar dilema
+      </button>
+    </div>
+    <p id="dilemas-resumen" class="text-xs text-tinta-tenue"></p>
+    <ul id="lista-dilemas" class="flex flex-col gap-2"></ul>
+  </section>
+
+  {/* ── DATOS ─────────────────────────────────────────────────────────── */}
+  <section id="sec-datos" role="tabpanel" class="hidden flex-col gap-4">
+    <div class="tarjeta flex flex-col gap-3 px-4 py-4">
+      <p class="text-sm font-semibold text-tinta">Anti-repetición</p>
+      <p class="text-xs text-tinta-tenue">
+        Cuántas preguntas recientes se descartan antes de volver a sacarlas.
+        Se recorta sola si el catálogo es pequeño.
+      </p>
+      <div class="flex gap-2">
+        <input id="cfg-ventana" type="number" min="0" max="500"
+          class="min-w-0 flex-1 rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta focus:border-acento focus:outline-none" />
+        <button id="cfg-guardar" type="button"
+          class="shrink-0 rounded-lg border border-acento px-3 py-2.5 text-sm font-medium text-acento transition hover:bg-acento-suave">
+          Guardar
+        </button>
+      </div>
+    </div>
+
+    <div class="tarjeta flex flex-col gap-3 px-4 py-4">
+      <p class="text-sm font-semibold text-peligro">Zona de limpieza</p>
+      <p class="text-xs text-tinta-tenue">
+        Estas acciones borran datos de forma definitiva y quedan registradas en
+        el registro de actividad.
+      </p>
+      <div id="limpiezas" class="flex flex-col gap-2"></div>
+      <button id="reiniciar-marcador" type="button"
+        class="rounded-lg border border-peligro/40 px-3 py-2.5 text-sm font-medium text-peligro transition hover:bg-peligro/5">
+        Reiniciar marcador de organización
+      </button>
+    </div>
+  </section>
+
+  {/* ── REGISTRO ──────────────────────────────────────────────────────── */}
+  <section id="sec-registro" role="tabpanel" class="hidden flex-col gap-3">
+    <p class="text-xs text-tinta-tenue">
+      Append-only e inmutable: nadie, ni el administrador, puede editar o borrar
+      estas entradas.
+    </p>
+    <ul id="lista-auditoria" class="flex flex-col gap-2"></ul>
+  </section>
+
+  <p id="admin-error" role="alert" class="mt-4 hidden rounded-xl border border-peligro/30 bg-peligro/5 px-4 py-2.5 text-sm text-peligro"></p>
+  <p id="admin-ok" role="status" class="mt-4 hidden rounded-xl border border-salvia/30 bg-salvia-suave px-4 py-2.5 text-sm text-salvia"></p>
+</AppLayout>
+
+<script>
+  import { protegerPagina } from '../domain/identidad/guardia';
+  import {
+    observarPreguntasAdmin, crearPregunta, editarPregunta,
+    observarDilemasAdmin, crearDilema, editarDilema,
+    observarConfig, guardarVentana, contar, limpiarColeccion, reiniciarMarcador,
+    observarAuditoria, ETIQUETA_COLECCION, ErrorAdmin,
+    type ItemPregunta, type ItemDilema, type Coleccion, type EventoAuditoria,
+  } from '../domain/admin/adminService';
+  import { formatearUltimaConexion } from '../domain/presencia/formatoFecha';
+  import { observarNombre } from '../domain/presencia/presenciaService';
+  import { ETIQUETA_CATEGORIA, type CategoriaPregunta, type CategoriaDilema, type Persona } from '@shared/enums';
+  import { ENV } from '../config/env';
+
+  const $ = (id: string) => document.getElementById(id)!;
+  const parejaId = ENV.PUBLIC_PAREJA_ID;
+  const COLECCIONES: Coleccion[] = ['historialPanoramas', 'historialOrganizacion', 'preguntasServidas', 'partidasDilemas'];
+
+  let yo: Persona = 'a';
+  const nombres: Record<Persona, string> = { a: 'Persona A', b: 'Persona B' };
+
+  function aviso(texto: string | null, tipo: 'error' | 'ok' = 'error') {
+    const el = $(tipo === 'error' ? 'admin-error' : 'admin-ok');
+    const otro = $(tipo === 'error' ? 'admin-ok' : 'admin-error');
+    otro.classList.add('hidden');
+    el.textContent = texto ?? '';
+    el.classList.toggle('hidden', !texto);
+    if (texto && tipo === 'ok') setTimeout(() => el.classList.add('hidden'), 3500);
+  }
+
+  function verSeccion(cual: string) {
+    for (const s of ['preguntas', 'dilemas', 'datos', 'registro']) {
+      const el = $(`sec-${s}`);
+      el.classList.toggle('hidden', s !== cual);
+      el.classList.toggle('flex', s === cual);
+    }
+    for (const b of document.querySelectorAll<HTMLButtonElement>('#secciones button')) {
+      const on = b.dataset.sec === cual;
+      b.classList.toggle('border-acento', on);
+      b.classList.toggle('bg-acento-suave', on);
+      b.classList.toggle('text-acento', on);
+      b.classList.toggle('text-tinta-suave', !on);
+      b.setAttribute('aria-selected', String(on));
+    }
+  }
+
+  /** Interruptor activo/inactivo. Nunca "borrar": ADR-010, borrado lógico. */
+  function interruptor(activo: boolean, alCambiar: () => void): HTMLButtonElement {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className =
+      'shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition ' +
+      (activo ? 'bg-salvia-suave text-salvia' : 'bg-superficie-alt text-tinta-tenue');
+    b.textContent = activo ? 'Activa' : 'Oculta';
+    b.setAttribute('aria-pressed', String(activo));
+    b.addEventListener('click', alCambiar);
+    return b;
+  }
+
+  function campoEditable(valor: string, alGuardar: (v: string) => Promise<void>): HTMLElement {
+    const p = document.createElement('p');
+    p.className = 'min-w-0 flex-1 cursor-text text-sm text-tinta';
+    p.textContent = valor;
+    p.title = 'Pulsa para editar';
+    p.addEventListener('click', () => {
+      const input = document.createElement('textarea');
+      input.value = valor;
+      input.rows = 3;
+      input.className =
+        'min-w-0 flex-1 resize-none rounded-lg border border-acento bg-superficie-alt px-2 py-1.5 text-sm text-tinta focus:outline-none';
+      const confirmar = async () => {
+        const nuevo = input.value.trim();
+        input.replaceWith(p);
+        if (nuevo === valor || !nuevo) return;
+        try { await alGuardar(nuevo); aviso('Guardado.', 'ok'); }
+        catch (e) { aviso(e instanceof ErrorAdmin ? e.message : 'No se pudo guardar.'); }
+      };
+      input.addEventListener('blur', () => void confirmar());
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') input.replaceWith(p);
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void confirmar(); }
+      });
+      p.replaceWith(input);
+      input.focus();
+    });
+    return p;
+  }
+
+  function pintarPreguntas(items: ItemPregunta[]) {
+    const ul = $('lista-preguntas');
+    ul.replaceChildren();
+    const activas = items.filter((i) => i.activa).length;
+    $('preguntas-resumen').textContent = `${items.length} en el banco · ${activas} activas`;
+
+    for (const p of items) {
+      const li = document.createElement('li');
+      li.className = 'tarjeta flex items-start gap-3 px-4 py-3';
+      const col = document.createElement('div');
+      col.className = 'min-w-0 flex-1';
+      col.appendChild(campoEditable(p.texto, (v) => editarPregunta(p.id, { texto: v })));
+      const cat = document.createElement('p');
+      cat.className = 'mt-1 text-[11px] text-tinta-tenue';
+      cat.textContent = ETIQUETA_CATEGORIA[p.categoria] ?? p.categoria;
+      col.appendChild(cat);
+      li.append(col, interruptor(p.activa, () => {
+        void editarPregunta(p.id, { activa: !p.activa }).catch(() => aviso('No se pudo cambiar.'));
+      }));
+      ul.appendChild(li);
+    }
+  }
+
+  function pintarDilemas(items: ItemDilema[]) {
+    const ul = $('lista-dilemas');
+    ul.replaceChildren();
+    $('dilemas-resumen').textContent = `${items.length} en el banco · ${items.filter((i) => i.activo).length} activos`;
+
+    for (const d of items) {
+      const li = document.createElement('li');
+      li.className = 'tarjeta flex items-start gap-3 px-4 py-3';
+      const col = document.createElement('div');
+      col.className = 'min-w-0 flex-1';
+      col.appendChild(campoEditable(d.opcionA, (v) => editarDilema(d.id, { opcionA: v })));
+      const o = document.createElement('p');
+      o.className = 'my-0.5 text-[10px] font-semibold tracking-wide text-tinta-tenue uppercase';
+      o.textContent = 'o';
+      col.appendChild(o);
+      col.appendChild(campoEditable(d.opcionB, (v) => editarDilema(d.id, { opcionB: v })));
+      const cat = document.createElement('p');
+      cat.className = 'mt-1 text-[11px] text-tinta-tenue';
+      cat.textContent = ETIQUETA_CATEGORIA[d.categoria] ?? d.categoria;
+      col.appendChild(cat);
+      li.append(col, interruptor(d.activo, () => {
+        void editarDilema(d.id, { activo: !d.activo }).catch(() => aviso('No se pudo cambiar.'));
+      }));
+      ul.appendChild(li);
+    }
+  }
+
+  async function pintarLimpiezas() {
+    const cont = $('limpiezas');
+    cont.replaceChildren();
+    for (const c of COLECCIONES) {
+      const n = await contar(parejaId, c).catch(() => 0);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.disabled = n === 0;
+      b.className =
+        'flex items-center justify-between rounded-lg border border-borde px-3 py-2.5 text-sm transition disabled:opacity-40 ' +
+        (n > 0 ? 'text-tinta hover:border-peligro hover:text-peligro' : 'text-tinta-tenue');
+      const t = document.createElement('span');
+      t.textContent = ETIQUETA_COLECCION[c];
+      const cuenta = document.createElement('span');
+      cuenta.className = 'text-xs font-semibold';
+      cuenta.textContent = n === 0 ? 'vacío' : `${n} · limpiar`;
+      b.append(t, cuenta);
+
+      b.addEventListener('click', async () => {
+        // Doble confirmación: la primera pulsación arma, la segunda ejecuta.
+        if (b.dataset.armado !== 'si') {
+          b.dataset.armado = 'si';
+          cuenta.textContent = '¿Seguro? Pulsa otra vez';
+          setTimeout(() => { b.dataset.armado = ''; cuenta.textContent = `${n} · limpiar`; }, 4000);
+          return;
+        }
+        b.disabled = true;
+        try {
+          const borrados = await limpiarColeccion(parejaId, yo, c);
+          aviso(`${ETIQUETA_COLECCION[c]}: ${borrados} registros eliminados.`, 'ok');
+        } catch {
+          aviso('No se pudo limpiar. Revisa tu conexión.');
+        }
+        await pintarLimpiezas();
+      });
+
+      cont.appendChild(b);
+    }
+  }
+
+  function pintarAuditoria(eventos: EventoAuditoria[]) {
+    const ul = $('lista-auditoria');
+    ul.replaceChildren();
+    if (eventos.length === 0) {
+      const p = document.createElement('li');
+      p.className = 'rounded-xl border border-dashed border-borde px-4 py-8 text-center text-sm text-tinta-tenue';
+      p.textContent = 'Sin actividad registrada todavía.';
+      ul.appendChild(p);
+      return;
+    }
+    for (const e of eventos) {
+      const li = document.createElement('li');
+      li.className = 'tarjeta px-4 py-3';
+      const t = document.createElement('p');
+      t.className = 'text-sm font-medium text-tinta';
+      t.textContent = `${nombres[e.actor]} · ${e.accion}`;
+      const r = document.createElement('p');
+      r.className = 'truncate text-xs text-tinta-tenue';
+      r.textContent = e.recurso;
+      const f = document.createElement('p');
+      f.className = 'mt-0.5 text-xs text-tinta-tenue';
+      f.textContent = formatearUltimaConexion(e.ocurridoEn);
+      li.append(t, r, f);
+      ul.appendChild(li);
+    }
+  }
+
+  protegerPagina((sesion) => {
+    yo = sesion.persona;
+    $('guardia').classList.add('hidden');
+    $('app').classList.remove('hidden');
+    verSeccion('preguntas');
+
+    for (const b of document.querySelectorAll<HTMLButtonElement>('#secciones button')) {
+      b.addEventListener('click', () => {
+        verSeccion(b.dataset.sec ?? 'preguntas');
+        if (b.dataset.sec === 'datos') void pintarLimpiezas();
+      });
+    }
+
+    for (const p of ['a', 'b'] as const) {
+      observarNombre(parejaId, p, (n) => { if (n) nombres[p] = n; });
+    }
+
+    observarPreguntasAdmin(pintarPreguntas);
+    observarDilemasAdmin(pintarDilemas);
+    observarAuditoria(parejaId, pintarAuditoria);
+    observarConfig(parejaId, (v) => { ($('cfg-ventana') as HTMLInputElement).value = String(v); });
+
+    $('np-crear').addEventListener('click', async () => {
+      aviso(null);
+      const texto = ($('np-texto') as HTMLTextAreaElement).value;
+      const cat = ($('np-categoria') as HTMLSelectElement).value as CategoriaPregunta;
+      try {
+        await crearPregunta(yo, texto, cat);
+        ($('np-texto') as HTMLTextAreaElement).value = '';
+        aviso('Pregunta agregada.', 'ok');
+      } catch (e) {
+        aviso(e instanceof ErrorAdmin ? e.message : 'No se pudo agregar.');
+      }
+    });
+
+    $('nd-crear').addEventListener('click', async () => {
+      aviso(null);
+      try {
+        await crearDilema(
+          yo,
+          ($('nd-a') as HTMLInputElement).value,
+          ($('nd-b') as HTMLInputElement).value,
+          ($('nd-categoria') as HTMLSelectElement).value as CategoriaDilema,
+        );
+        ($('nd-a') as HTMLInputElement).value = '';
+        ($('nd-b') as HTMLInputElement).value = '';
+        aviso('Dilema agregado.', 'ok');
+      } catch (e) {
+        aviso(e instanceof ErrorAdmin ? e.message : 'No se pudo agregar.');
+      }
+    });
+
+    $('cfg-guardar').addEventListener('click', async () => {
+      aviso(null);
+      try {
+        await guardarVentana(parejaId, Number(($('cfg-ventana') as HTMLInputElement).value));
+        aviso('Configuración guardada.', 'ok');
+      } catch (e) {
+        aviso(e instanceof ErrorAdmin ? e.message : 'No se pudo guardar.');
+      }
+    });
+
+    $('reiniciar-marcador').addEventListener('click', async () => {
+      const b = $('reiniciar-marcador') as HTMLButtonElement;
+      if (b.dataset.armado !== 'si') {
+        b.dataset.armado = 'si';
+        b.textContent = '¿Seguro? Pulsa otra vez';
+        setTimeout(() => { b.dataset.armado = ''; b.textContent = 'Reiniciar marcador de organización'; }, 4000);
+        return;
+      }
+      b.dataset.armado = '';
+      b.textContent = 'Reiniciar marcador de organización';
+      try {
+        await reiniciarMarcador(parejaId, yo);
+        aviso('Marcador reiniciado a cero.', 'ok');
+      } catch {
+        aviso('No se pudo reiniciar.');
+      }
+    });
+  });
+</script>

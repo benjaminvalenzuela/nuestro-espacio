@@ -1,0 +1,48 @@
+# ══════════════════════════════════════════════════════════════════════
+#  SECRETOS  —  el repositorio es PÚBLICO (R1). Nada de esto sale de aquí.
+# ══════════════════════════════════════════════════════════════════════
+.env
+.env.*
+!.env.example
+*.env.local
+
+# Service Accounts del Firebase Admin SDK (credencial de superusuario)
+backend/secrets/
+**/serviceAccount*.json
+**/*service-account*.json
+**/*-firebase-adminsdk-*.json
+*.pem
+*.p12
+*.key
+
+# ── Dependencias y builds ──────────────────────────────────────────────
+node_modules/
+dist/
+.astro/
+.output/
+*.tsbuildinfo
+
+# ── Firebase CLI / Emuladores ──────────────────────────────────────────
+.firebase/
+firebase-debug.log
+firestore-debug.log
+database-debug.log
+ui-debug.log
+pubsub-debug.log
+emulator-data/
+*.log
+
+# ── Testing ────────────────────────────────────────────────────────────
+coverage/
+playwright-report/
+test-results/
+.nyc_output/
+
+# ── Sistema / editores ─────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.recommended.json
+.idea/

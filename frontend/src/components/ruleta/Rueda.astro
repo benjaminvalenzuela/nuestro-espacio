@@ -1,0 +1,49 @@
+---
+interface Props {
+  /** Texto del botón de giro. */
+  accion: string;
+}
+const { accion } = Astro.props;
+---
+
+<div class="tarjeta flex flex-col items-center gap-5 px-5 py-6">
+  <div class="relative w-full max-w-[19rem]">
+    {/* El puntero vive FUERA del SVG: si estuviera dentro, la rotación de la
+        rueda se lo llevaría consigo. */}
+    <div class="pointer-events-none absolute top-0 left-1/2 z-10 -translate-x-1/2 -translate-y-1">
+      <svg viewBox="0 0 24 20" class="puntero-ruleta h-6 w-6" aria-hidden="true">
+        <path d="M12 20 L2 2 L22 2 Z" fill="var(--acento)" />
+      </svg>
+    </div>
+
+    <svg id="rueda" class="h-auto w-full"></svg>
+
+    <div
+      id="rueda-vacia"
+      class="absolute inset-0 hidden flex-col items-center justify-center gap-2 rounded-full px-8 text-center"
+    >
+      <p class="text-sm font-medium text-tinta-suave">Aún no hay opciones</p>
+      <p class="text-xs text-tinta-tenue">Agrega la primera abajo</p>
+    </div>
+  </div>
+
+  <div
+    id="resultado"
+    role="status"
+    aria-live="polite"
+    class="hidden w-full rounded-xl border border-acento/30 bg-acento-suave px-4 py-3 text-center"
+  >
+    <p class="text-[11px] font-medium tracking-wide text-acento uppercase">Resultado</p>
+    <p id="resultado-texto" class="mt-0.5 text-lg font-semibold break-words text-tinta"></p>
+  </div>
+
+  <button
+    id="btn-girar"
+    type="button"
+    class="w-full rounded-xl bg-acento px-4 py-3.5 font-medium text-white transition hover:bg-acento-fuerte active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    <span id="btn-girar-texto">{accion}</span>
+  </button>
+
+  <p id="aviso-giro" class="hidden text-center text-xs text-tinta-tenue"></p>
+</div>

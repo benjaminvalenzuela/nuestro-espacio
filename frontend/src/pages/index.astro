@@ -1,0 +1,24 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout titulo="Nuestro Espacio">
+  <div class="flex min-h-dvh items-center justify-center">
+    <span class="h-6 w-6 animate-spin rounded-full border-2 border-borde border-t-acento"></span>
+    <span class="sr-only">Cargando</span>
+  </div>
+</BaseLayout>
+
+<script>
+  // Punto de entrada: decide destino según este dispositivo esté vinculado o no.
+  // El sitio es 100% estático, así que la decisión solo puede tomarse aquí.
+  import { $identidad, iniciarIdentidad } from '../domain/identidad/identidad';
+  import { ruta } from '../config/env';
+
+  iniciarIdentidad();
+
+  $identidad.subscribe((s) => {
+    if (s.fase === 'cargando') return;
+    window.location.replace(ruta(s.fase === 'vinculado' ? '/inicio' : '/identificarse'));
+  });
+</script>

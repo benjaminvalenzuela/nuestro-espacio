@@ -1,0 +1,19 @@
+[
+  { "id": "dl_001", "categoria": "general", "opcionA": "Subir un cerro al amanecer", "opcionB": "Día de campo con mantel y siesta" },
+  { "id": "dl_002", "categoria": "general", "opcionA": "Cocinar juntos en casa", "opcionB": "Probar un restaurante nuevo" },
+  { "id": "dl_003", "categoria": "general", "opcionA": "Playa en verano", "opcionB": "Sur con lluvia y estufa" },
+  { "id": "dl_004", "categoria": "general", "opcionA": "Maratón de series bajo la manta", "opcionB": "Salir a caminar sin rumbo" },
+  { "id": "dl_005", "categoria": "general", "opcionA": "Viaje planificado al detalle", "opcionB": "Tomar la micro y ver qué pasa" },
+  { "id": "dl_006", "categoria": "general", "opcionA": "Concierto ruidoso", "opcionB": "Cine en función vacía" },
+
+  { "id": "dl_101", "categoria": "profundas", "opcionA": "Saber toda la verdad aunque duela", "opcionB": "Que me cuiden del dolor innecesario" },
+  { "id": "dl_102", "categoria": "profundas", "opcionA": "Discutir en el momento", "opcionB": "Enfriar y hablarlo mañana" },
+  { "id": "dl_103", "categoria": "profundas", "opcionA": "Vivir cerca de la familia", "opcionB": "Vivir lejos y visitarla" },
+
+  { "id": "dl_201", "categoria": "absurdas", "opcionA": "Tener manos de tenedor", "opcionB": "Estornudar confeti para siempre" },
+  { "id": "dl_202", "categoria": "absurdas", "opcionA": "Que todo lo que digas sea cantado", "opcionB": "Que todo lo que pienses aparezca escrito en tu frente" },
+  { "id": "dl_203", "categoria": "absurdas", "opcionA": "Hablar todos los idiomas menos el tuyo", "opcionB": "Hablar con los animales pero no con desconocidos" },
+
+  { "id": "dl_301", "categoria": "subidas_de_tono", "opcionA": "Una noche larga y tranquila", "opcionB": "Algo rápido e inesperado" },
+  { "id": "dl_302", "categoria": "subidas_de_tono", "opcionA": "Que te lo diga al oído", "opcionB": "Que te lo escriba y lo leas después" }
+]

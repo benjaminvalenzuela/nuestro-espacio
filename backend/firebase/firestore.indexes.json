@@ -1,0 +1,37 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "preguntas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "activa", "order": "ASCENDING" },
+        { "fieldPath": "categoria", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "dilemas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "activo", "order": "ASCENDING" },
+        { "fieldPath": "categoria", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "panoramas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "activo", "order": "ASCENDING" },
+        { "fieldPath": "nombreNormalizado", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "historialPanoramas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "panoramaId", "order": "ASCENDING" },
+        { "fieldPath": "ocurridoEn", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

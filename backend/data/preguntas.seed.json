@@ -1,0 +1,24 @@
+[
+  { "id": "pf_001", "categoria": "profundas", "texto": "¿Cuál es el recuerdo de tu infancia que más te ha marcado y por qué?" },
+  { "id": "pf_002", "categoria": "profundas", "texto": "¿Qué es lo que más miedo te da de nuestro futuro juntos?" },
+  { "id": "pf_003", "categoria": "profundas", "texto": "¿En qué momento sentiste por primera vez que esto iba en serio?" },
+  { "id": "pf_004", "categoria": "profundas", "texto": "¿Hay algo que te cueste decirme aunque sepas que debería saberlo?" },
+  { "id": "pf_005", "categoria": "profundas", "texto": "¿Qué parte de ti crees que ha cambiado desde que estamos juntos?" },
+  { "id": "pf_006", "categoria": "profundas", "texto": "¿Cómo te gustaría que te cuidara cuando estás mal y no quieres hablar?" },
+  { "id": "pf_007", "categoria": "profundas", "texto": "¿Qué le dirías hoy a la versión de ti de hace cinco años?" },
+  { "id": "pf_008", "categoria": "profundas", "texto": "¿Cuál ha sido el momento en que más orgullo has sentido de ti?" },
+
+  { "id": "st_001", "categoria": "subidas_de_tono", "texto": "¿Cuál fue el momento en que más ganas tuviste de besarme y te aguantaste?" },
+  { "id": "st_002", "categoria": "subidas_de_tono", "texto": "¿Qué gesto mío te resulta más irresistible y nunca me lo has dicho?" },
+  { "id": "st_003", "categoria": "subidas_de_tono", "texto": "¿Qué fantasía te daría vergüenza contarme en frío pero sí ahora?" },
+  { "id": "st_004", "categoria": "subidas_de_tono", "texto": "Si tuviéramos la casa sola un fin de semana entero, ¿qué harías primero?" },
+  { "id": "st_005", "categoria": "subidas_de_tono", "texto": "¿Prefieres que te sorprenda o que te avise con tiempo?" },
+  { "id": "st_006", "categoria": "subidas_de_tono", "texto": "¿Cuál es la prenda mía que más te gusta y cuál te gustaría que no usara nunca más?" },
+
+  { "id": "sp_001", "categoria": "supuestos", "texto": "Si ganáramos mucho dinero mañana, ¿qué sería lo primero que harías?" },
+  { "id": "sp_002", "categoria": "supuestos", "texto": "Si tuviéramos que mudarnos a otro país en un mes, ¿cuál elegirías?" },
+  { "id": "sp_003", "categoria": "supuestos", "texto": "Si pudieras revivir un día conmigo exactamente igual, ¿cuál sería?" },
+  { "id": "sp_004", "categoria": "supuestos", "texto": "Si yo perdiera la memoria, ¿qué sería lo primero que me contarías de nosotros?" },
+  { "id": "sp_005", "categoria": "supuestos", "texto": "Si tuvieras que describirme con una canción, ¿cuál sería y por qué?" },
+  { "id": "sp_006", "categoria": "supuestos", "texto": "Si pudiéramos tener un solo ritual para el resto de la vida, ¿cuál elegirías?" }
+]

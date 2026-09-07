@@ -1,0 +1,33 @@
+---
+interface Props {
+  /** Prefijo de los ids que rellena el script de la página. */
+  id: string;
+  etiqueta: string;
+}
+const { id, etiqueta } = Astro.props;
+---
+
+<article class="tarjeta flex items-center gap-4 px-4 py-4">
+  <!-- Punto de estado: el anillo late solo cuando hay alguien conectado -->
+  <span class="relative flex h-3 w-3 shrink-0" aria-hidden="true">
+    <span
+      id={`${id}-anillo`}
+      class="absolute inline-flex h-full w-full rounded-full bg-tinta-tenue opacity-0 transition-opacity"
+    ></span>
+    <span
+      id={`${id}-punto`}
+      class="relative inline-flex h-3 w-3 rounded-full bg-tinta-tenue transition-colors"
+    ></span>
+  </span>
+
+  <div class="min-w-0 flex-1">
+    <p class="text-[11px] font-medium tracking-wide text-tinta-tenue uppercase">{etiqueta}</p>
+    <p id={`${id}-nombre`} class="truncate font-medium text-tinta">…</p>
+  </div>
+
+  <div class="shrink-0 text-right">
+    <p id={`${id}-estado`} class="text-sm font-semibold text-tinta-tenue">—</p>
+    <!-- <time> con datetime en ISO: el texto es local, el dato es UTC -->
+    <time id={`${id}-detalle`} class="text-xs text-tinta-tenue"></time>
+  </div>
+</article>

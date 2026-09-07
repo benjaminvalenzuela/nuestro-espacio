@@ -1,0 +1,25 @@
+{
+  "name": "@nuestro-espacio/backend",
+  "private": true,
+  "type": "module",
+  "description": "Tareas administrativas y de migración con Firebase Admin SDK. NUNCA se publica al navegador.",
+  "scripts": {
+    "provisionar": "tsx scripts/provisionar-espacio.ts",
+    "dispositivos": "tsx scripts/dispositivos.ts",
+    "seed": "tsx scripts/seed-contenido.ts",
+    "test:rules": "vitest run",
+    "presencia": "tsx scripts/inspeccionar-presencia.ts"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "firebase-admin": "^14.3.0",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.18.0",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.0"
+  }
+}

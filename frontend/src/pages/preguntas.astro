@@ -1,0 +1,190 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+
+<AppLayout
+  titulo="Preguntas · Nuestro Espacio"
+  encabezado="Preguntas"
+  bajada="La misma carta en las dos pantallas, sin repetir lo reciente."
+>
+  <div
+    id="filtros"
+    role="group"
+    aria-label="Categoría de preguntas"
+    class="mb-5 flex flex-wrap gap-2"
+  >
+    {
+      [
+        ['mix', 'Mix'],
+        ['profundas', 'Profundas'],
+        ['subidas_de_tono', 'Subidas de tono'],
+        ['supuestos', 'Supuestos'],
+      ].map(([valor, etiqueta]) => (
+        <button
+          type="button"
+          data-filtro={valor}
+          class="rounded-full border border-borde px-3.5 py-2 text-sm font-medium text-tinta-suave transition"
+        >{etiqueta}</button>
+      ))
+    }
+  </div>
+
+  <section class="tarjeta flex min-h-56 flex-col justify-between gap-6 px-5 py-7">
+    <p id="etiqueta-categoria" class="text-[11px] font-medium tracking-wide text-acento uppercase"></p>
+
+    <p id="texto-pregunta" class="text-center text-xl leading-relaxed font-medium text-balance text-tinta">
+      Elige una categoría y pulsa para empezar.
+    </p>
+
+    <p id="pie-pregunta" class="text-center text-xs text-tinta-tenue"></p>
+  </section>
+
+  <button
+    id="btn-siguiente"
+    type="button"
+    class="mt-5 w-full rounded-xl bg-acento px-4 py-3.5 font-medium text-white transition hover:bg-acento-fuerte active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    <span id="btn-siguiente-texto">Empezar</span>
+  </button>
+
+  <p id="estado-banco" class="mt-4 text-center text-xs text-tinta-tenue"></p>
+</AppLayout>
+
+<script>
+  import { protegerPagina } from '../domain/identidad/guardia';
+  import { iniciarRelojServidor } from '../domain/tiempo/relojServidor';
+  import {
+    cargarPreguntas, observarPreguntaActiva, observarServidas, leerVentana,
+    elegirPregunta, servirPregunta, registrarServida,
+    type Pregunta, type FiltroCategoria,
+  } from '../domain/preguntas/preguntasService';
+  import { ETIQUETA_CATEGORIA } from '@shared/enums';
+  import { ENV } from '../config/env';
+
+  const $ = (id: string) => document.getElementById(id)!;
+  const parejaId = ENV.PUBLIC_PAREJA_ID;
+
+  let filtro: FiltroCategoria = 'mix';
+  let catalogo: Pregunta[] = [];
+  /** Índice global id -> texto: la carta activa puede ser de otra categoría
+   *  que la seleccionada aquí, si fue la otra persona quien la sirvió. */
+  let indice = new Map<string, Pregunta>();
+  let servidas = new Map<string, number>();
+  let ventana = 25;
+  let idActual: string | null = null;
+  let ocupado = false;
+  /** Suscripción a la carta de la categoría actual: se rehace al cambiar de filtro. */
+  let cancelarActiva: (() => void) | undefined;
+
+  function marcarFiltro() {
+    for (const b of document.querySelectorAll<HTMLButtonElement>('#filtros button')) {
+      const activo = b.dataset.filtro === filtro;
+      b.classList.toggle('border-acento', activo);
+      b.classList.toggle('bg-acento-suave', activo);
+      b.classList.toggle('text-acento', activo);
+      b.classList.toggle('text-tinta-suave', !activo);
+      b.setAttribute('aria-pressed', String(activo));
+    }
+  }
+
+  /** Deja la tarjeta en blanco: se usa al cambiar de categoría. */
+  function limpiarCarta() {
+    idActual = null;
+    $('texto-pregunta').textContent = 'Pulsa para sacar una pregunta de esta categoría.';
+    $('etiqueta-categoria').textContent = '';
+    $('pie-pregunta').textContent = '';
+    $('btn-siguiente-texto').textContent = 'Sacar pregunta';
+  }
+
+  function mostrarPregunta(p: Pregunta | null, servidaPorMi: boolean) {
+    // textContent siempre: el banco lo edita el admin, pero el principio no cambia.
+    $('texto-pregunta').textContent = p ? p.texto : 'No hay preguntas en esta categoría.';
+    $('etiqueta-categoria').textContent = p ? (ETIQUETA_CATEGORIA[p.categoria] ?? '') : '';
+    $('pie-pregunta').textContent = p
+      ? servidaPorMi ? 'La sacaste tú' : 'La sacó tu pareja'
+      : '';
+    $('texto-pregunta').classList.remove('destello');
+    void $('texto-pregunta').offsetWidth;   // reinicia la animación
+    if (p) $('texto-pregunta').classList.add('destello');
+  }
+
+  async function recargarCatalogo() {
+    catalogo = await cargarPreguntas(filtro);
+    for (const p of catalogo) indice.set(p.id, p);
+    $('estado-banco').textContent =
+      catalogo.length === 0
+        ? 'No hay preguntas activas en esta categoría.'
+        : `${catalogo.length} preguntas disponibles · se descartan las ${Math.min(ventana, Math.floor(catalogo.length * 0.7))} más recientes`;
+    ($('btn-siguiente') as HTMLButtonElement).disabled = catalogo.length === 0;
+  }
+
+  /** Escucha la carta de la categoría seleccionada en este momento. */
+  function escucharCategoria(yo: string) {
+    const deEsteFiltro = filtro;
+    return observarPreguntaActiva(parejaId, deEsteFiltro, (activa) => {
+      // Llegó tarde tras cambiar de filtro: se descarta.
+      if (deEsteFiltro !== filtro) return;
+      if (!activa) { limpiarCarta(); return; }
+      if (activa.preguntaId === idActual) return;
+      idActual = activa.preguntaId;
+      mostrarPregunta(indice.get(activa.preguntaId) ?? null, activa.servidaPor === yo);
+      $('btn-siguiente-texto').textContent = 'Siguiente pregunta';
+    });
+  }
+
+  protegerPagina((sesion) => {
+    iniciarRelojServidor();
+    $('guardia').classList.add('hidden');
+    $('app').classList.remove('hidden');
+    marcarFiltro();
+
+    void (async () => {
+      ventana = await leerVentana(parejaId);
+      // El índice completo permite mostrar cualquier carta que llegue por RTDB,
+      // aunque este dispositivo tenga otro filtro seleccionado.
+      for (const p of await cargarPreguntas('mix')) indice.set(p.id, p);
+      await recargarCatalogo();
+    })();
+
+    observarServidas(parejaId, (m) => { servidas = m; });
+
+    cancelarActiva = escucharCategoria(sesion.persona);
+
+    for (const b of document.querySelectorAll<HTMLButtonElement>('#filtros button')) {
+      b.addEventListener('click', async () => {
+        const nuevo = (b.dataset.filtro ?? 'mix') as FiltroCategoria;
+        if (nuevo === filtro) return;
+        filtro = nuevo;
+        marcarFiltro();
+
+        // Cada categoría tiene SU propia carta en curso. Se limpia la tarjeta y
+        // se escucha el nodo del filtro nuevo: así no se arrastra la pregunta
+        // de "Mix" a "Profundas", que era el comportamiento reportado.
+        limpiarCarta();
+        cancelarActiva?.();
+        cancelarActiva = escucharCategoria(sesion.persona);
+
+        await recargarCatalogo();
+      });
+    }
+
+    $('btn-siguiente').addEventListener('click', async () => {
+      if (ocupado || catalogo.length === 0) return;
+      ocupado = true;
+      ($('btn-siguiente') as HTMLButtonElement).disabled = true;
+
+      try {
+        const elegida = elegirPregunta(catalogo, servidas, ventana, idActual);
+        if (!elegida) return;
+
+        // Solo anota quien realmente sirvió: si los dos pulsaron a la vez, el
+        // antirrebote del servidor deja pasar a uno y el otro no duplica nada.
+        const servi = await servirPregunta(parejaId, sesion.persona, elegida, filtro);
+        if (servi) await registrarServida(parejaId, elegida.id);
+      } finally {
+        ocupado = false;
+        ($('btn-siguiente') as HTMLButtonElement).disabled = catalogo.length === 0;
+      }
+    });
+  });
+</script>

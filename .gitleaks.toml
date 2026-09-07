@@ -1,0 +1,50 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  gitleaks — detección de secretos antes de que salgan de la máquina.
+#  Se ejecuta en el hook pre-commit y como job bloqueante en CI.
+#
+#  El repositorio es PÚBLICO: un secreto commiteado se considera comprometido
+#  desde el instante del push, aunque se borre después (queda en el historial
+#  y en los mirrors de GitHub). La única defensa útil es que nunca entre.
+# ═══════════════════════════════════════════════════════════════════════════
+
+title = "nuestro-espacio"
+
+[extend]
+useDefault = true   # reglas estándar: AWS, GCP, tokens de GitHub, claves privadas...
+
+# ── Reglas propias del proyecto ────────────────────────────────────────────
+
+[[rules]]
+id = "firebase-service-account"
+description = "Service Account de Firebase / GCP (llave maestra del proyecto)"
+regex = '''"type"\s*:\s*"service_account"'''
+tags = ["firebase", "critical"]
+
+[[rules]]
+id = "clave-privada-pem"
+description = "Bloque de clave privada"
+regex = '''-----BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----'''
+tags = ["key", "critical"]
+
+[[rules]]
+id = "firebase-api-key-fuera-de-config"
+description = "API key de Firebase escrita a mano en el código en vez de inyectada por entorno"
+regex = '''AIza[0-9A-Za-z_\-]{35}'''
+tags = ["firebase"]
+# Nota: la API key de Firebase Web NO es un secreto (es un identificador público),
+# pero hardcodearla rompe la separación de entornos: un build de QA acabaría
+# escribiendo en PROD. Se marca para forzar el uso de import.meta.env.
+
+[allowlist]
+description = "Rutas y valores que no son secretos reales"
+paths = [
+  '''\.gitleaks\.toml$''',
+  '''\.env\.example$''',
+  '''(^|/)docs/''',
+  '''(^|/)node_modules/''',
+  '''package-lock\.json$''',
+]
+regexes = [
+  '''demo-nuestro-espacio''',
+  '''FAKE|EJEMPLO|PLACEHOLDER|xxxxx''',
+]

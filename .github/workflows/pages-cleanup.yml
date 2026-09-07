@@ -1,0 +1,71 @@
+name: Limpiar gh-pages
+
+# El despliegue de producción usa keep_files:true para no borrar /qa, así que
+# con el tiempo se acumulan assets huérfanos de versiones antiguas. Son
+# inofensivos (Astro les pone hash en el nombre) pero ocupan espacio.
+#
+# Este workflow reconstruye la rama gh-pages desde cero: primero producción
+# desde main y después QA desde develop. Manual y deliberado.
+on:
+  workflow_dispatch:
+    inputs:
+      confirmar:
+        description: Escribe RECONSTRUIR para continuar
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: despliegue-prod   # nunca a la vez que un despliegue real
+
+jobs:
+  reconstruir:
+    if: inputs.confirmar == 'RECONSTRUIR'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+
+      - name: Compilar producción
+        env:
+          PUBLIC_ENTORNO: prod
+          PUBLIC_BASE_PATH: /nuestro-espacio/
+          PUBLIC_SITE_URL: https://benjaminvalenzuela.github.io
+          PUBLIC_FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+          PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ vars.FIREBASE_AUTH_DOMAIN }}
+          PUBLIC_FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          PUBLIC_FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID }}
+          PUBLIC_FIREBASE_DATABASE_URL: ${{ vars.FIREBASE_DATABASE_URL }}
+          PUBLIC_PAREJA_ID: ${{ vars.PAREJA_ID }}
+        run: |
+          cat > frontend/.env <<ENV
+          PUBLIC_ENTORNO=$PUBLIC_ENTORNO
+          PUBLIC_FIREBASE_API_KEY=$PUBLIC_FIREBASE_API_KEY
+          PUBLIC_FIREBASE_AUTH_DOMAIN=$PUBLIC_FIREBASE_AUTH_DOMAIN
+          PUBLIC_FIREBASE_PROJECT_ID=$PUBLIC_FIREBASE_PROJECT_ID
+          PUBLIC_FIREBASE_APP_ID=$PUBLIC_FIREBASE_APP_ID
+          PUBLIC_FIREBASE_DATABASE_URL=$PUBLIC_FIREBASE_DATABASE_URL
+          PUBLIC_PAREJA_ID=$PUBLIC_PAREJA_ID
+          ENV
+          npm run build
+
+      - name: Reemplazar gh-pages por completo
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./frontend/dist
+          force_orphan: true          # historial limpio, sin arrastrar basura
+          commit_message: "reconstrucción total de gh-pages"
+
+      - name: Recordatorio
+        run: |
+          echo "### gh-pages reconstruida ✅" >> $GITHUB_STEP_SUMMARY
+          echo "⚠ **/qa quedó borrado.** Relanza el workflow *Desplegar a QA* para volver a publicarlo." >> $GITHUB_STEP_SUMMARY

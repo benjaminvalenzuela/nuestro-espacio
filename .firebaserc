@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "demo-nuestro-espacio",
+    "desa": "demo-nuestro-espacio",
+    "qa": "nuestro-espacio-qa",
+    "prod": "nuestro-espacio-prod"
+  }
+}

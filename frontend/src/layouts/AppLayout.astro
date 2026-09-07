@@ -1,0 +1,39 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  titulo: string;
+  encabezado: string;
+  bajada?: string;
+}
+
+const { titulo, encabezado, bajada } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<BaseLayout titulo={titulo}>
+  {/* Mientras el guardia decide, no se enseña nada: evita el parpadeo de
+      contenido vacío antes de saber si este dispositivo está vinculado. */}
+  <div id="guardia" class="flex min-h-dvh items-center justify-center">
+    <span class="h-6 w-6 animate-spin rounded-full border-2 border-borde border-t-acento"></span>
+    <span class="sr-only">Cargando</span>
+  </div>
+
+  <div id="app" class="mx-auto hidden max-w-md px-5 pt-6 pb-20">
+    <header class="mb-6">
+      <a
+        href={`${base}/inicio`}
+        class="-ml-1 inline-flex items-center gap-1.5 rounded-lg px-1 py-1 text-sm text-tinta-suave transition hover:text-acento"
+      >
+        <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+        Inicio
+      </a>
+      <h1 class="mt-2 text-2xl font-semibold text-tinta">{encabezado}</h1>
+      {bajada && <p class="mt-1 text-sm text-tinta-suave">{bajada}</p>}
+    </header>
+
+    <slot />
+  </div>
+</BaseLayout>

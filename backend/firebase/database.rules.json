@@ -1,0 +1,247 @@
+{
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  NUESTRO-ESPACIO · Reglas de Realtime Database
+  //
+  //  MODELO DE IDENTIDAD (ADR-012):
+  //    Firebase Anonymous Auth da un uid real y persistente por DISPOSITIVO.
+  //    Ese uid se vincula a una PERSONA ('a' o 'b') presentando un código
+  //    secreto. A partir de ahí, todo el sistema razona en personas, no en uids:
+  //    tu PC y tu celular son dos dispositivos de la misma persona.
+  //
+  //    esMiembro  ≡  existe /salas/$pareja/dispositivos/$authUid
+  //    miPersona  ≡  /salas/$pareja/dispositivos/$authUid/persona
+  //
+  //  ⚠ RTDB no soporta funciones en las reglas: esas dos expresiones se repiten
+  //    literalmente. Es verboso a propósito — cualquier atajo aquí sería un
+  //    agujero.
+  //
+  //  ⚠ Los permisos CASCADEAN y no se pueden revocar en un hijo. Por eso no hay
+  //    ningún ".read" en /salas/$parejaId: si lo hubiera, /asientos (los códigos)
+  //    y /votos (la votación ciega) quedarían expuestos.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "salas": {
+      "$parejaId": {
+
+        // ═════════════════════════════════════════════════════════════════
+        //  ASIENTOS · los códigos de vinculación
+        //
+        //  NADIE puede leer esto: ni los miembros. Solo el motor de reglas
+        //  accede a los valores (vía root.child(...)) para comparar, y solo
+        //  el Admin SDK los escribe. Un código que nunca sale del servidor
+        //  no se puede filtrar desde el cliente.
+        // ═════════════════════════════════════════════════════════════════
+        "asientos": {
+          ".read": false,
+          ".write": false
+        },
+
+        // ═════════════════════════════════════════════════════════════════
+        //  DISPOSITIVOS · la vinculación uid -> persona
+        //
+        //  Cada aparato escribe SU propio nodo UNA SOLA VEZ, y solo si el
+        //  código que presenta coincide con el del asiento que reclama.
+        //  Después queda inmutable: no se puede cambiar de persona ni de
+        //  nombre reescribiéndolo.
+        // ═════════════════════════════════════════════════════════════════
+        "dispositivos": {
+          "$uid": {
+            // Solo tú lees tu propio vínculo. Nadie ve los dispositivos ajenos.
+            ".read": "auth != null && auth.uid === $uid",
+
+            // Escritura única. Revocar un aparato = que el Admin SDK borre
+            // este nodo: ese dispositivo pierde todo al instante y los demás
+            // siguen funcionando.
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.exists()",
+
+            ".validate": "newData.hasChildren(['persona', 'nombre', 'codigo', 'vinculadoEn'])",
+
+            "persona": { ".validate": "newData.val().matches(/^(a|b)$/)" },
+            "nombre":  { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40 && !newData.val().matches(/[<>]/)" },
+
+            // ═══ EL PORTERO DE LA VINCULACIÓN ═══
+            // El código enviado debe coincidir con el guardado en el asiento
+            // que se reclama. La comparación la hace el SERVIDOR contra un
+            // dato que el cliente no puede leer.
+            "codigo": {
+              ".validate": "newData.val() === root.child('salas').child($parejaId).child('asientos').child(newData.parent().child('persona').val()).child('codigo').val()"
+            },
+
+            "vinculadoEn": { ".validate": "newData.val() === now" },
+            "$otro": { ".validate": false }
+          }
+        },
+
+        // ═════════════════════════════════════════════════════════════════
+        //  PERSONAS · el nombre visible de cada uno
+        // ═════════════════════════════════════════════════════════════════
+        "personas": {
+          ".read": "auth != null && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).exists()",
+
+          "$persona": {
+            // Solo editas TU nombre, desde cualquiera de tus dispositivos.
+            ".write": "auth != null && $persona.matches(/^(a|b)$/) && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).child('persona').val() === $persona",
+            ".validate": "newData.hasChildren(['nombre'])",
+            "nombre":        { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40 && !newData.val().matches(/[<>]/)" },
+            "actualizadoEn": { ".validate": "newData.val() === now" },
+            "$otro":         { ".validate": false }
+          }
+        },
+
+        // ═════════════════════════════════════════════════════════════════
+        //  PRESENCIA · indexada por PERSONA, no por dispositivo
+        //
+        //  Un hijo de conexiones/ por aparato abierto. Cerrar el portátil no
+        //  te marca desconectado si el celular sigue abierto: la UI cuenta
+        //  conexiones vivas en vez de fiarse del campo 'estado'.
+        // ═════════════════════════════════════════════════════════════════
+        "presencia": {
+          ".read": "auth != null && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).exists()",
+
+          "$persona": {
+            ".write": "auth != null && $persona.matches(/^(a|b)$/) && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).child('persona').val() === $persona",
+
+            // NO hay campo 'estado' a propósito. Se probó y era un campo que
+            // MIENTE: el onDisconnect de cada pestaña escribe sobre el nodo
+            // compartido de la persona, así que cerrar una pestaña lo ponía en
+            // 'offline' aunque otro dispositivo siguiera conectado. La verdad
+            // está en contar los hijos de conexiones/.
+            //
+            // 'now' es la hora del SERVIDOR. Al exigir igualdad, el único valor
+            // aceptable es ServerValue.TIMESTAMP: un reloj de cliente adelantado
+            // no puede inventar una última conexión falsa.
+            "ultimaConexion": { ".validate": "newData.isNumber() && newData.val() === now" },
+
+            "conexiones": {
+              "$sesionId": {
+                ".validate": "newData.hasChildren(['iniciadaEn', 'agente'])",
+                "iniciadaEn": { ".validate": "newData.isNumber() && newData.val() === now" },
+                "agente":     { ".validate": "newData.isString() && newData.val().length <= 40" },
+                "$otro":      { ".validate": false }
+              }
+            },
+
+            "$otro": { ".validate": false }
+          }
+        },
+
+        // ═════════════════════════════════════════════════════════════════
+        //  GIRO DE RULETAS · ADR-003
+        //  Determinista y sincronizado: ambos animan desde la misma semilla.
+        // ═════════════════════════════════════════════════════════════════
+        "giro": {
+          ".read": "auth != null && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).exists()",
+
+          "$ruleta": {
+            // ─── CANDADO DE LA CONDICIÓN DE CARRERA ───
+            // Se admite un giro nuevo solo si: (a) no había, (b) el anterior no
+            // está en curso, (c) es el mismo giro actualizándose, o (d) el
+            // anterior lleva colgado más de 30 s (auto-sanación tras un corte
+            // de red a mitad de animación).
+            ".write": "auth != null && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).exists() && $ruleta.matches(/^(panoramas|organizacion)$/) && ( !data.exists() || data.child('estado').val() !== 'girando' || newData.child('id').val() === data.child('id').val() || now > (data.child('iniciadoEn').val() + 30000) )",
+
+            ".validate": "newData.hasChildren(['id', 'estado', 'iniciadoPor', 'semilla', 'indiceGanador', 'iniciadoEn', 'duracionMs'])",
+
+            "id":            { ".validate": "newData.isString() && newData.val().length >= 8 && newData.val().length <= 40" },
+            "estado":        { ".validate": "newData.val().matches(/^(idle|girando|resuelto)$/)" },
+            "iniciadoPor":   { ".validate": "newData.val().matches(/^(a|b)$/)" },
+            "semilla":       { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "indiceGanador": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 200" },
+            "opcionesSnapshot": { ".validate": "newData.hasChildren()" },
+            "iniciadoEn":    { ".validate": "newData.val() === now || newData.val() === data.val()" },
+            "duracionMs":    { ".validate": "newData.isNumber() && newData.val() >= 3000 && newData.val() <= 12000" },
+            "confirmadoEn":  { ".validate": "newData.val() === now || newData.val() === data.val()" },
+            "$otro":         { ".validate": false }
+          }
+        },
+
+        // ═════════════════════════════════════════════════════════════════
+        //  PREGUNTA ACTIVA · ambos ven la misma carta a la vez
+        //
+        //  Indexada POR CATEGORÍA. Antes era un único nodo compartido y eso
+        //  producía un efecto raro: sacabas una carta en "Mix", cambiabas a
+        //  "Profundas" y seguías viendo la misma aunque no fuera de esa
+        //  categoría. Cada filtro lleva ahora su propia carta en curso, y la
+        //  sincronización entre las dos pantallas se mantiene dentro de cada uno.
+        // ═════════════════════════════════════════════════════════════════
+        "preguntaActiva": {
+          ".read": "auth != null && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).exists()",
+
+          "$filtro": {
+            ".write": "auth != null && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).exists() && $filtro.matches(/^(mix|profundas|subidas_de_tono|supuestos)$/)",
+            ".validate": "newData.hasChildren(['preguntaId', 'mostradaEn', 'servidaPor'])",
+            "preguntaId": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "mostradaEn": { ".validate": "newData.val() === now" },
+            "servidaPor": { ".validate": "newData.val().matches(/^(a|b)$/)" },
+            "$otro":      { ".validate": false }
+          }
+        },
+
+        // ═════════════════════════════════════════════════════════════════
+        //  "QUÉ PREFIERES" · VOTACIÓN CIEGA CON REVELACIÓN SIMULTÁNEA
+        //
+        //  Al indexar por persona ('a'/'b') en vez de por uid, el portero se
+        //  vuelve trivial: hasChildren(['a','b']). Antes hacía falta un mapa
+        //  auxiliar para resolver "quién es el otro".
+        // ═════════════════════════════════════════════════════════════════
+        "dilemas": {
+          // Único uso de la escritura a este nivel: purgar el subárbol entero.
+          // Como en cualquier escritura real newData sí existe, esta regla
+          // nunca otorga permiso hacia abajo.
+          ".write": "auth != null && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).exists() && !newData.exists()",
+
+          "$rondaId": {
+            // Señal de sincronización para la UI. NO es un control de
+            // seguridad: aunque se falsee, /votos sigue cerrado.
+            "meta": {
+              ".read":  "auth != null && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).exists()",
+              ".write": "auth != null && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).exists()",
+              ".validate": "newData.hasChildren(['dilemaId', 'abiertoEn'])",
+              "dilemaId":      { ".validate": "newData.isString() && newData.val().length <= 60" },
+              "abiertoEn":     { ".validate": "newData.val() === now || newData.val() === data.val()" },
+              "votosEmitidos": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2" },
+              // Marca de "esta ronda ya se archivó en Firestore". Se disputa con
+              // una transacción para que, con dos pantallas abiertas, solo una
+              // escriba el registro histórico. Solo puede pasar de ausente a
+              // true: nadie puede desarchivar para duplicar la partida.
+              "archivada":     { ".validate": "newData.isBoolean() && newData.val() === true && !data.exists()" },
+              "$otro":         { ".validate": false }
+            },
+
+            "votos": {
+              // ═══ EL PORTERO DE LA REVELACIÓN SIMULTÁNEA ═══
+              // Los votos solo son legibles cuando EXISTEN LOS DOS. Antes de
+              // eso el servidor responde permission_denied. No depende de la
+              // buena fe del cliente: lo impone el motor de reglas.
+              ".read": "auth != null && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).exists() && data.child('a').exists() && data.child('b').exists()",
+
+              "$persona": {
+                // Escritura única: no puedes votar, mirar el del otro y cambiarlo.
+                ".write": "auth != null && $persona.matches(/^(a|b)$/) && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).child('persona').val() === $persona && !data.exists() && newData.exists()",
+                ".validate": "newData.hasChildren(['opcion', 'emitidoEn'])",
+                "opcion":    { ".validate": "newData.val().matches(/^(A|B)$/)" },
+                "emitidoEn": { ".validate": "newData.isNumber() && newData.val() === now" },
+                "$otro":     { ".validate": false }
+              }
+            },
+
+            "$otro": { ".validate": false }
+          }
+        },
+
+        "estado": {
+          ".read":  "auth != null && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).exists()",
+          ".write": "auth != null && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).exists()",
+          "rondaDilemaActual": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "$otro": { ".validate": false }
+        },
+
+        "$otro": { ".validate": false }
+      }
+    }
+  }
+}

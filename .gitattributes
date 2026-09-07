@@ -1,0 +1,10 @@
+# Normaliza los finales de línea: el repo guarda siempre LF, y en Windows se
+# entrega CRLF al trabajar. Sin esto, cada commit desde Windows generaría
+# diferencias fantasma en archivos que nadie tocó.
+* text=auto eol=lf
+
+# Binarios: que git no intente convertir nada.
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary

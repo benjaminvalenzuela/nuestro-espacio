@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      # Un PR por familia en vez de veinte sueltos: se revisan mejor.
+      astro: { patterns: ["astro", "@astrojs/*"] }
+      firebase: { patterns: ["firebase", "firebase-admin", "firebase-tools", "@firebase/*"] }
+      pruebas: { patterns: ["vitest", "@vitest/*"] }
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }

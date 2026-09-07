@@ -1,0 +1,89 @@
+name: CI
+
+# Se ejecuta en cada PR y en cada push a las ramas de despliegue.
+# Ningún cambio llega a QA ni a producción sin pasar por aquí.
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+# Un PR que recibe varios pushes cancela las ejecuciones anteriores:
+# no tiene sentido gastar minutos validando un commit ya superado.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  calidad:
+    name: Calidad y pruebas
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gitleaks necesita el historial completo: un secreto borrado en el
+          # último commit sigue estando en los anteriores.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # Los emuladores de Firestore y Realtime Database están escritos en Java.
+      # El de Auth no, pero los tests de reglas necesitan los tres.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Fuga de secretos (gitleaks)
+        run: |
+          VERSION=8.28.0
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          ./gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1
+
+      - name: Vulnerabilidades conocidas
+        # Solo bloquea por severidad alta o crítica: las moderadas de las
+        # herramientas de desarrollo no llegan al navegador y no deben frenar un PR.
+        run: npm audit --audit-level=high
+
+      - name: Chequeo de tipos
+        run: npm run typecheck
+
+      - name: Pruebas de dominio
+        run: npm run test:dominio
+
+      - name: Pruebas de Security Rules
+        # emulators:exec levanta los emuladores, corre el comando y los apaga.
+        # Es la única forma de probar de verdad las reglas que se despliegan.
+        run: >
+          npx firebase emulators:exec
+          --project demo-nuestro-espacio
+          --only auth,firestore,database
+          "npm run test:reglas"
+
+      - name: Compilación de producción
+        # Valores de relleno: aquí solo se comprueba que compila. El build real
+        # con la configuración de cada entorno lo hacen los workflows de CD.
+        env:
+          PUBLIC_ENTORNO: desa
+        run: npm run build
+
+      - name: Tamaño del bundle inicial
+        # Aviso, no bloqueo: un salto grande de peso merece una mirada, pero no
+        # debe frenar un PR por sí solo.
+        run: |
+          TOTAL=$(du -sk frontend/dist | cut -f1)
+          echo "Peso total de dist: ${TOTAL} KB"
+          if [ "$TOTAL" -gt 4096 ]; then
+            echo "::warning::dist supera los 4 MB (${TOTAL} KB). Revisa qué se está incluyendo."
+          fi
