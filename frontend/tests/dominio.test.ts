@@ -314,6 +314,14 @@ describe('Content Security Policy', () => {
     expect(directiva('script-src')).toContain('https://*.firebasedatabase.app');
   });
 
+  it('permite a reCAPTCHA cargar script, iframe e imágenes', () => {
+    // El distintivo de reCAPTCHA trae imágenes de gstatic: sin img-src queda
+    // roto, y una directiva corta no avisa con un error legible.
+    expect(directiva('script-src')).toContain('https://www.google.com');
+    expect(directiva('img-src')).toContain('https://www.gstatic.com');
+    expect(directiva('frame-src')).toContain('https://www.google.com');
+  });
+
   it('permite websocket y REST hacia Firebase en connect-src', () => {
     const conexion = directiva('connect-src');
     expect(conexion).toContain('wss://*.firebaseio.com');
