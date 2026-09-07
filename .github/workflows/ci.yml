@@ -23,7 +23,7 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # gitleaks necesita el historial completo: un secreto borrado en el
           # último commit sigue estando en los anteriores.
