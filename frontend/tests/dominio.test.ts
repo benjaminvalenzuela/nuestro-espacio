@@ -314,12 +314,14 @@ describe('Content Security Policy', () => {
     expect(directiva('script-src')).toContain('https://*.firebasedatabase.app');
   });
 
-  it('permite a reCAPTCHA cargar script, iframe e imágenes', () => {
-    // El distintivo de reCAPTCHA trae imágenes de gstatic: sin img-src queda
-    // roto, y una directiva corta no avisa con un error legible.
+  it('permite a reCAPTCHA las cuatro cosas que necesita', () => {
+    // Las cuatro, no tres: el fetch a /recaptcha/enterprise/clr se descubrió
+    // desplegado, y su ausencia solo se manifiesta como un genérico
+    // "AppCheck credentials are invalid" que no menciona la CSP.
     expect(directiva('script-src')).toContain('https://www.google.com');
     expect(directiva('img-src')).toContain('https://www.gstatic.com');
     expect(directiva('frame-src')).toContain('https://www.google.com');
+    expect(directiva('connect-src')).toContain('https://www.google.com');
   });
 
   it('permite websocket y REST hacia Firebase en connect-src', () => {

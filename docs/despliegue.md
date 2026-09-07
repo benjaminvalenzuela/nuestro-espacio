@@ -83,20 +83,27 @@ databaseURL   →  PUBLIC_FIREBASE_DATABASE_URL   (la del paso 15)
 > identificadores, no credenciales. Google lo documenta así. Lo que protege los
 > datos son las Security Rules, las restricciones de referrer y App Check.
 
-## 1.6 reCAPTCHA v3 (para App Check)
+## 1.6 · 1.7 App Check con reCAPTCHA Enterprise
 
-19. Ve a **[google.com/recaptcha/admin](https://www.google.com/recaptcha/admin)** → **+**.
-20. Etiqueta: `nuestro-espacio-qa` · Tipo: **reCAPTCHA v3** ·
-    Dominios: `benjaminvalenzuela.github.io`.
-21. Guarda las dos claves: **clave del sitio** (pública) y **clave secreta**.
+> **Esto cambió y las guías antiguas mienten.** Google movió reCAPTCHA a Cloud:
+> ya no se crean claves v3 sueltas desde `google.com/recaptcha/admin`, y las
+> apps nuevas se registran con **reCAPTCHA Enterprise**. Sigue siendo gratis
+> —10.000 evaluaciones al mes, sin tarjeta— y el proyecto no sale de Spark.
 
-## 1.7 App Check
+19. Firebase → **Compilación → App Check → Apps** → tu app web.
+20. Proveedor **reCAPTCHA Enterprise** → Firebase crea la clave y la registra.
+21. Copia la **clave de sitio** que queda a la vista. Es pública: viaja en el
+    HTML. Con Enterprise **no hay clave secreta** que guardar.
+22. Deja el **TTL del token** en 7 días. Menos llamadas a reCAPTCHA, menos
+    cuota consumida; con dos usuarios el riesgo de un token robado es teórico.
+23. En **APIs**, deja **Firestore**, **Realtime Database** y **Authentication**
+    en **`Sin aplicar`** por ahora.
 
-22. Firebase → **Compilación → App Check → Comenzar**.
-23. Selecciona tu app web → proveedor **reCAPTCHA v3** → pega la **clave secreta**
-    del paso 21 → Guardar.
-24. En **APIs**, deja **Firestore** y **Realtime Database** en **`Sin aplicar`**
-    por ahora.
+> ⚠️ El SDK tiene **dos providers distintos y no intercambiables**:
+> `ReCaptchaV3Provider` y `ReCaptchaEnterpriseProvider`. Usar el que no
+> corresponde no da ningún error visible mientras el enforcement esté en «sin
+> aplicar» — y tumba la aplicación entera en cuanto lo actives. El código usa
+> Enterprise: ver `frontend/src/infra/firebase/appcheck.ts`.
 
 > El enforcement se activa **al final**, cuando la app ya funcione en esa URL.
 > Activarlo antes solo produce errores difíciles de diagnosticar.
@@ -106,12 +113,23 @@ databaseURL   →  PUBLIC_FIREBASE_DATABASE_URL   (la del paso 15)
 25. **[console.cloud.google.com](https://console.cloud.google.com)** → mismo proyecto →
     **APIs y servicios → Credenciales**.
 26. Abre la clave `Browser key (auto created by Firebase)`.
-27. **Restricciones de aplicación → Sitios web (referentes HTTP)** → agrega:
+27. **Restricciones de aplicación → Sitios web (referentes HTTP)** → agrega
+    **el origen entero, sin ruta**, en los dos entornos:
 
-| Entorno | Referente |
-|---|---|
-| QA | `https://benjaminvalenzuela.github.io/nuestro-espacio/qa/*` |
-| PROD | `https://benjaminvalenzuela.github.io/nuestro-espacio/*` |
+```
+https://benjaminvalenzuela.github.io/*
+```
+
+> **Por qué no se puede restringir por ruta.** La app envía
+> `<meta name="referrer" content="strict-origin-when-cross-origin">`, así que
+> el navegador manda solo el origen — nunca `/nuestro-espacio/qa/`. Una
+> restricción con ruta es entonces **imposible de satisfacer** y produce
+> `auth/requests-from-referer-...-are-blocked`. En `localhost` no se nota,
+> porque ahí la ruta va en la propia URL de desarrollo.
+>
+> Consecuencia aceptada: QA y PROD comparten origen, así que la restricción
+> por referrer no los separa entre sí. Lo que sí los separa —y es lo que
+> importa— son proyectos distintos, bases distintas y códigos distintos.
 
 28. **Solo en QA**, agrega además `http://localhost:4321/*` para poder probar en
     local contra la nube. En PROD, nunca.

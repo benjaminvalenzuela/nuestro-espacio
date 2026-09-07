@@ -17,11 +17,18 @@
 const RTDB = ['https://*.firebaseio.com', 'https://*.firebasedatabase.app'];
 
 /**
- * reCAPTCHA Enterprise (App Check). Carga su script desde google.com, sus
- * recursos estáticos desde gstatic.com, y muestra el distintivo en un iframe.
- * Se listan los dos orígenes en img-src porque el distintivo trae imágenes:
- * una directiva corta aquí no da un error legible, deja la insignia rota o
- * —peor— impide obtener el token y tumba la app con el enforcement activado.
+ * reCAPTCHA Enterprise (App Check). Toca CUATRO directivas, y hasta que no se
+ * probó desplegado no quedó claro que fueran cuatro:
+ *
+ *   script-src   carga enterprise.js desde google.com
+ *   img-src      el distintivo trae imágenes de gstatic
+ *   frame-src    el distintivo vive en un iframe de google.com
+ *   connect-src  hace fetch a google.com/recaptcha/enterprise/clr  ← el que faltaba
+ *
+ * Sin el último, el SDK no consigue token y Firebase avisa con un genérico
+ * "Provided AppCheck credentials are invalid", que no menciona la CSP por
+ * ningún lado. Mientras el enforcement está en «sin aplicar» no se nota nada:
+ * la aplicación funciona igual. Se cae entera el día que lo actives.
  */
 const RECAPTCHA = ['https://www.google.com', 'https://www.gstatic.com'];
 
@@ -45,7 +52,7 @@ export const POLITICA_CSP = [
   ['img-src', "'self'", 'data:', ...RECAPTCHA].join(' '),
   "font-src 'self' data:",
 
-  ['connect-src', "'self'", 'https://*.googleapis.com', ...RTDB,
+  ['connect-src', "'self'", 'https://*.googleapis.com', ...RECAPTCHA, ...RTDB,
    'wss://*.firebaseio.com', 'wss://*.firebasedatabase.app'].join(' '),
 
   // App Check (reCAPTCHA) muestra su distintivo en un iframe de google.com.
