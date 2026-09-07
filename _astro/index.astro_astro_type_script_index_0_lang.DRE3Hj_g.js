@@ -1,0 +1,1 @@
+import{m as e,r as t,t as n}from"./identidad.Bv1Hm0iY.js";t(),n.subscribe(t=>{t.fase!==`cargando`&&window.location.replace(e(t.fase===`vinculado`?`/inicio`:`/identificarse`))});
