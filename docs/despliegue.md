@@ -349,4 +349,7 @@ Solo cuando la app YA funcione en su URL:
 | "Código incorrecto" con el código bueno | Provisionaste otro entorno; los códigos son por proyecto |
 | Página en blanco tras desplegar | `PUBLIC_BASE_PATH` mal: revisa la subruta en el workflow |
 | Todo falla justo tras activar App Check | `RECAPTCHA_SITE_KEY` ausente o de otro proyecto. Vuelve a `Sin aplicar` y revisa |
+| `auth/requests-from-referer-...-are-blocked` | Restricción de API key **por ruta**. Debe ser por origen (ver paso 27) |
+| `Configuración de entorno inválida` en el sitio desplegado | El workflow corrió antes de crear las Variables del environment. Relanza el despliegue |
+| Cambias algo y el sitio sigue igual | Caché de GitHub Pages. Prueba con `?v=2` al final de la URL |
 | El workflow no puede hacer push | Falta el paso 3.6 (permisos de escritura) |
