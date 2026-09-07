@@ -1,0 +1,1 @@
+import{C as e,S as t,l as n}from"./identidad.DDyXyEHW.js";var r=0,i=!1;function a(){i||(i=!0,t(e(n(),`.info/serverTimeOffset`),e=>{let t=e.val();typeof t==`number`&&Number.isFinite(t)&&(r=t)}))}function o(){return Date.now()+r}export{a as n,o as t};
