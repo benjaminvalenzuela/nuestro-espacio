@@ -1,0 +1,1 @@
+import{m as e,r as t,t as n}from"./identidad.B6HReE2P.js";function r(r){let i=!1;t(),n.subscribe(t=>{if(t.fase!==`cargando`){if(t.fase!==`vinculado`){window.location.replace(e(`/identificarse`));return}i||(i=!0,r(t))}})}export{r as t};
