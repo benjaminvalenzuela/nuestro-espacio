@@ -118,6 +118,25 @@ ustedes agregaron desde la app con el mismo nombre no se duplica.
 Si el seed dice `20 creados, 0 ya estaban` en un entorno que ya usaban,
 algo va mal: revisar `PAREJA_ID` en el `.env` antes de seguir.
 
+### Cuentas anónimas huérfanas
+
+Abrir la app crea una cuenta anónima **antes** de saber si quien entra
+escribirá un código válido. Los intentos fallidos y las pruebas dejan cuentas
+que no están vinculadas a ningún dispositivo: son inofensivas —sin vínculo no
+pasan ninguna regla— pero se acumulan.
+
+```
+npm run dispositivos -- --entorno=<qa|prod> --huerfanos           # solo informa
+npm run dispositivos -- --entorno=<qa|prod> --huerfanos --purgar  # borra
+```
+
+Nunca toca una cuenta vinculada, y respeta 24 horas de gracia: una cuenta
+recién creada puede ser la de alguien que está tecleando su código ahora.
+
+⛔ **Esto sustituye a la "limpieza automática" de Firebase, que debe seguir
+desactivada.** Aquella borra por antigüedad sin mirar el vínculo: se llevaría
+los dispositivos legítimos, que están pensados para durar años.
+
 ---
 
 ## 7 · Falsos positivos de gitleaks
