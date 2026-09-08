@@ -8,7 +8,8 @@
     "dispositivos": "tsx scripts/dispositivos.ts",
     "seed": "tsx scripts/seed-contenido.ts",
     "test:rules": "vitest run",
-    "presencia": "tsx scripts/inspeccionar-presencia.ts"
+    "presencia": "tsx scripts/inspeccionar-presencia.ts",
+    "vinculos": "tsx scripts/diagnostico-vinculos.ts"
   },
   "dependencies": {
     "dotenv": "^17.2.3",

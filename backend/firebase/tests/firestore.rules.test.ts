@@ -280,3 +280,66 @@ describe('Evento en curso · desde el banner solo se toca la fecha', () => {
     );
   });
 });
+
+describe('Progreso del banco · un documento con mapa, no mil documentos', () => {
+  const ruta = (juego: string) => `parejas/${PAREJA}/progreso/${juego}`;
+
+  it('un miembro LEE su progreso aunque el documento no exista todavía', async () => {
+    await assertSucceeds(getDoc(doc(como(UID_A1), ruta('preguntas'))));
+  });
+
+  it('un miembro CREA el documento de progreso vacío', async () => {
+    await assertSucceeds(setDoc(doc(como(UID_A1), ruta('preguntas')), { items: {} }));
+  });
+
+  it('marca una carta como hecha con una ruta de campo', async () => {
+    await setDoc(doc(como(UID_A1), ruta('preguntas')), { items: {} });
+    await assertSucceeds(
+      updateDoc(doc(como(UID_A1), ruta('preguntas')), {
+        'items.prof-001.h': true,
+        'items.prof-001.q': 'a',
+        'items.prof-001.t': 1770000000000,
+      }),
+    );
+  });
+
+  it('los DOS miembros escriben el mismo progreso: es compartido', async () => {
+    await setDoc(doc(como(UID_A1), ruta('preguntas')), { items: {} });
+    await assertSucceeds(
+      updateDoc(doc(como(UID_B1), ruta('preguntas')), { 'items.prof-002.p': 1 }),
+    );
+  });
+
+  it('el segundo dispositivo de la misma persona también escribe', async () => {
+    await setDoc(doc(como(UID_A1), ruta('dilemas')), { items: {} });
+    await assertSucceeds(
+      updateDoc(doc(como(UID_A2), ruta('dilemas')), { 'items.gen-001.h': true }),
+    );
+  });
+
+  it('un intruso NO lee el progreso', async () => {
+    await assertFails(getDoc(doc(como(UID_INTRUSO), ruta('preguntas'))));
+  });
+
+  it('un intruso NO escribe el progreso', async () => {
+    await assertFails(setDoc(doc(como(UID_INTRUSO), ruta('preguntas')), { items: {} }));
+  });
+
+  it('sin sesión no se lee nada', async () => {
+    await assertFails(getDoc(doc(sinSesion(), ruta('preguntas'))));
+  });
+
+  it('RECHAZA un juego que no existe', async () => {
+    await assertFails(setDoc(doc(como(UID_A1), ruta('bachillerato')), { items: {} }));
+  });
+
+  it('RECHAZA campos fuera de items: el documento tiene una sola forma', async () => {
+    await assertFails(
+      setDoc(doc(como(UID_A1), ruta('preguntas')), { items: {}, trampa: 'algo' }),
+    );
+  });
+
+  it('RECHAZA que items sea otra cosa que un mapa', async () => {
+    await assertFails(setDoc(doc(como(UID_A1), ruta('preguntas')), { items: 'texto' }));
+  });
+});

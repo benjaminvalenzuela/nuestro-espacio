@@ -55,7 +55,21 @@ function resumir(items: Record<string, unknown>): Progreso {
   return { items: limpio, hechas, descartadas };
 }
 
-/** Escucha el progreso en tiempo real: lo que uno marca aparece en la otra pantalla. */
+/**
+ * Escucha el progreso en tiempo real: lo que uno marca aparece en la otra
+ * pantalla.
+ *
+ * El callback de error NO vacía el estado, y la razón es una carrera real que
+ * se vio en producción: al cargar la página, el SDK puede emitir la primera
+ * lectura antes de que el token de autenticación esté disponible. El servidor
+ * la evalúa sin sesión, `esMiembro` da falso y llega un permission-denied que
+ * no significa nada — un instante después, con el token puesto, la misma
+ * suscripción entrega los datos correctos.
+ *
+ * Vaciando el estado ahí, el contador parpadeaba a cero y volvía. Peor: si el
+ * usuario pulsaba "pasar" en ese instante, el contador de pases se calculaba
+ * sobre un progreso vacío y volvía a empezar desde uno.
+ */
 export function observarProgreso(
   parejaId: string,
   juego: Juego,
@@ -65,8 +79,8 @@ export function observarProgreso(
     doc(obtenerFirestore(), rutaDoc(parejaId, juego)),
     (snap) => alCambiar(snap.exists() ? resumir(snap.data()?.items ?? {}) : VACIO),
     (e) => {
-      console.warn('[progreso] lectura rechazada:', e.message);
-      alCambiar(VACIO);
+      // Se informa y se conserva lo último bueno: Firestore reintenta solo.
+      console.info('[progreso] lectura reintentándose:', e.message);
     },
   );
 }
@@ -96,9 +110,19 @@ async function escribirCampos(
   const referencia = doc(obtenerFirestore(), rutaDoc(parejaId, juego));
   try {
     await updateDoc(referencia, campos);
+    return;
   } catch {
+    // Sigue: casi siempre es que el documento aún no existe.
+  }
+
+  // Segundo intento creando el documento. Si esto también falla, el error se
+  // propaga con un mensaje que se entiende — antes quedaba como una promesa
+  // sin capturar y la consola solo mostraba "permission-denied" sin contexto.
+  try {
     await setDoc(referencia, { items: {} }, { merge: true });
     await updateDoc(referencia, campos);
+  } catch (e) {
+    throw new Error(`No se pudo guardar el progreso de ${juego}: ${(e as Error).message}`);
   }
 }
 
