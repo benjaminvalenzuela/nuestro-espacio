@@ -1,13 +1,13 @@
-import {
-  collection, doc, getDocs, getDoc, setDoc, updateDoc, onSnapshot,
-  query, where, serverTimestamp, increment, type Unsubscribe,
-} from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, type Unsubscribe } from 'firebase/firestore';
 import { ref, onValue, runTransaction, serverTimestamp as tsRtdb } from 'firebase/database';
 import { obtenerFirestore } from '../../infra/firebase/firestore';
 import { obtenerRtdb } from '../../infra/firebase/rtdb';
 import { FS, RTDB } from '@shared/rutas-datos';
-import { CATEGORIAS_PREGUNTA, type CategoriaPregunta, type Persona } from '@shared/enums';
+import { CATEGORIAS_PREGUNTA, type CategoriaPregunta, type Nivel, type Persona } from '@shared/enums';
 import { ahoraServidor } from '../tiempo/relojServidor';
+import { cargarPreguntas as cargarBanco } from '../banco/cacheBanco';
+import { elegirCarta, contarPendientes } from '../banco/seleccion';
+import type { EntradaProgreso } from '@shared/schemas/progreso.schema';
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
@@ -31,6 +31,7 @@ export interface Pregunta {
   id: string;
   texto: string;
   categoria: CategoriaPregunta;
+  nivel: Nivel;
 }
 
 export interface PreguntaActiva {
@@ -45,44 +46,70 @@ const VENTANA_POR_DEFECTO = 25;
 /** Si dos pulsan "Siguiente" casi a la vez, el segundo se retira. */
 const ANTIRREBOTE_MS = 1500;
 
+/**
+ * Trae las preguntas de una categoría desde la caché local.
+ *
+ * Antes esto consultaba Firestore en cada llamada. Con veinte preguntas era
+ * gratis; con mil son mil lecturas por visita y el plan gratuito da cincuenta
+ * mil al día. Ahora el catálogo se descarga una vez por dispositivo y el filtro
+ * por categoría se hace en memoria, que además es instantáneo al cambiar de
+ * pestaña.
+ */
 export async function cargarPreguntas(filtro: FiltroCategoria): Promise<Pregunta[]> {
-  const col = collection(obtenerFirestore(), FS.preguntas);
-  const consulta =
-    filtro === 'mix'
-      ? query(col, where('activa', '==', true))
-      : query(col, where('activa', '==', true), where('categoria', '==', filtro));
+  const todas = await cargarBanco();
 
-  const snap = await getDocs(consulta);
-  return snap.docs
-    .map((d) => {
-      const x = d.data();
-      return {
-        id: d.id,
-        texto: String(x.texto ?? ''),
-        categoria: (CATEGORIAS_PREGUNTA as readonly string[]).includes(x.categoria)
-          ? (x.categoria as CategoriaPregunta)
-          : 'profundas',
-      };
-    })
-    .filter((p) => p.texto.length > 0);
+  return todas
+    .filter((p) => filtro === 'mix' || p.categoria === filtro)
+    .map((p) => ({
+      id: p.id,
+      texto: p.texto,
+      categoria: (CATEGORIAS_PREGUNTA as readonly string[]).includes(p.categoria)
+        ? (p.categoria as CategoriaPregunta)
+        : 'profundas',
+      nivel: p.nivel,
+    }));
 }
 
+/**
+ * Elige la siguiente pregunta: descarta las pasadas tres veces, prioriza las
+ * que nunca han salido y pondera por nivel. La lógica vive en banco/seleccion
+ * porque el juego de dilemas necesita exactamente la misma.
+ */
+export function elegirSiguiente(
+  candidatas: Pregunta[],
+  progreso: Record<string, EntradaProgreso>,
+  recientes: Set<string>,
+  excluir?: string | null,
+): Pregunta | null {
+  return elegirCarta({ candidatas, progreso, recientes, excluir });
+}
+
+export { contarPendientes };
+
 /** Mapa preguntaId -> última vez que salió (epoch ms). */
-export function observarServidas(
-  parejaId: string,
-  alCambiar: (servidas: Map<string, number>) => void,
-): Unsubscribe {
-  return onSnapshot(
-    collection(obtenerFirestore(), FS.preguntasServidas(parejaId)),
-    (snap) => {
-      const m = new Map<string, number>();
-      for (const d of snap.docs) m.set(d.id, d.data().ultimaVezEn?.toMillis?.() ?? 0);
-      alCambiar(m);
-    },
-    () => alCambiar(new Map()),
+/**
+ * Ids servidos hace poco, para no repetir la misma carta dos veces seguidas.
+ *
+ * Sale del propio progreso: cada carta guarda `t`, la última vez que apareció.
+ * Antes esto vivía en una colección aparte, `preguntasServidas`, con un
+ * documento por pregunta — el mismo problema de cuota que el resto: con mil
+ * preguntas servidas, mil lecturas por apertura. Ahora es un cálculo en memoria
+ * sobre datos que ya estaban cargados.
+ */
+export function recientesDe(
+  progreso: Record<string, { t?: number }>,
+  cuantas: number,
+): Set<string> {
+  return new Set(
+    Object.entries(progreso)
+      .filter(([, e]) => (e.t ?? 0) > 0)
+      .sort((x, y) => (y[1].t ?? 0) - (x[1].t ?? 0))
+      .slice(0, Math.max(0, cuantas))
+      .map(([id]) => id),
   );
 }
 
+/** Ventana anti-repetición configurable desde el panel. */
 export async function leerVentana(parejaId: string): Promise<number> {
   try {
     const d = await getDoc(doc(obtenerFirestore(), FS.configPareja(parejaId)));
@@ -91,37 +118,6 @@ export async function leerVentana(parejaId: string): Promise<number> {
   } catch {
     return VENTANA_POR_DEFECTO;
   }
-}
-
-/**
- * Elige la siguiente pregunta descartando las más recientes.
- *
- * La ventana se recorta al 70 % del catálogo: con pocas preguntas cargadas, una
- * ventana de 25 dejaría cero candidatas y el juego se quedaría en blanco. Si
- * aun así no queda ninguna, se admite todo el catálogo — mejor repetir que no
- * dar nada.
- */
-export function elegirPregunta(
-  candidatas: Pregunta[],
-  servidas: Map<string, number>,
-  ventana: number,
-  excluir?: string | null,
-): Pregunta | null {
-  if (candidatas.length === 0) return null;
-
-  const tope = Math.min(ventana, Math.floor(candidatas.length * 0.7));
-  const recientes = new Set(
-    [...servidas.entries()]
-      .sort((x, y) => y[1] - x[1])
-      .slice(0, tope)
-      .map(([id]) => id),
-  );
-
-  let elegibles = candidatas.filter((p) => !recientes.has(p.id) && p.id !== excluir);
-  if (elegibles.length === 0) elegibles = candidatas.filter((p) => p.id !== excluir);
-  if (elegibles.length === 0) elegibles = candidatas;
-
-  return elegibles[Math.floor(Math.random() * elegibles.length)] ?? null;
 }
 
 /**
@@ -187,14 +183,19 @@ export async function servirPregunta(
   return tx.committed;
 }
 
-/** Anota que la pregunta salió, para la ventana anti-repetición. */
+/**
+ * Anota que la pregunta salió. Alimenta la ventana anti-repetición.
+ *
+ * Escribe una sola ruta de campo para que el servidor fusione: si los dos
+ * dispositivos anotan cartas distintas a la vez, ninguna pisa a la otra.
+ */
 export async function registrarServida(parejaId: string, preguntaId: string): Promise<void> {
-  const referencia = doc(obtenerFirestore(), `${FS.preguntasServidas(parejaId)}/${preguntaId}`);
+  const referencia = doc(obtenerFirestore(), FS.progresoPreguntas(parejaId));
+  const campo = { [`items.${preguntaId}.t`]: Date.now() };
   try {
-    // Las reglas exigen veces===1 al crear y +1 al actualizar, así que no vale
-    // un set() genérico: hay que saber si el documento ya existía.
-    await updateDoc(referencia, { veces: increment(1), ultimaVezEn: serverTimestamp() });
+    await updateDoc(referencia, campo);
   } catch {
-    await setDoc(referencia, { veces: 1, ultimaVezEn: serverTimestamp() }).catch(() => {});
+    await setDoc(referencia, { items: {} }, { merge: true });
+    await updateDoc(referencia, campo).catch(() => {});
   }
 }

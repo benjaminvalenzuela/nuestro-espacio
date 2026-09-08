@@ -1,5 +1,17 @@
 ---
 import AppLayout from '../layouts/AppLayout.astro';
+
+const CATS_PREGUNTA = [
+  ['profundas', '💭 Profundas'],
+  ['subidas_de_tono', '🔥 Subidas de tono'],
+  ['supuestos', '🤔 Supuestos'],
+];
+const CATS_DILEMA = [
+  ['general', '🎯 General'],
+  ['profundas', '💭 Profundas'],
+  ['subidas_de_tono', '🔥 Subidas de tono'],
+  ['absurdas', '🤪 Absurdas'],
+];
 ---
 
 <AppLayout
@@ -7,64 +19,146 @@ import AppLayout from '../layouts/AppLayout.astro';
   encabezado="Administración"
   bajada="Gestiona el contenido y los historiales sin tocar el código."
 >
-  <div id="secciones" role="tablist" class="mb-5 grid grid-cols-4 gap-1.5">
+  <div id="secciones" role="tablist" class="mb-5 grid grid-cols-5 gap-1.5">
     {
       [
-        ['preguntas', 'Preguntas'],
-        ['dilemas', 'Dilemas'],
-        ['datos', 'Datos'],
-        ['registro', 'Registro'],
+        ['banco', '🗂️'],
+        ['nuevo', '➕'],
+        ['progreso', '📊'],
+        ['datos', '🧹'],
+        ['registro', '📋'],
       ].map(([v, t]) => (
         <button type="button" role="tab" data-sec={v}
-          class="rounded-lg border border-borde px-2 py-2 text-xs font-medium text-tinta-suave transition"
+          class="rounded-lg border border-borde px-2 py-2.5 text-base transition"
         >{t}</button>
       ))
     }
   </div>
 
-  {/* ── PREGUNTAS ─────────────────────────────────────────────────────── */}
-  <section id="sec-preguntas" role="tabpanel" class="hidden flex-col gap-4">
+  {/* ── BANCO ─────────────────────────────────────────────────────────── */}
+  <section id="sec-banco" role="tabpanel" class="hidden flex-col gap-3">
+    <div class="flex gap-2">
+      <button type="button" data-juego="preguntas"
+        class="juego-tab flex-1 rounded-lg border border-borde px-3 py-2 text-sm font-medium transition">
+        Preguntas
+      </button>
+      <button type="button" data-juego="dilemas"
+        class="juego-tab flex-1 rounded-lg border border-borde px-3 py-2 text-sm font-medium transition">
+        Qué prefieres
+      </button>
+    </div>
+
+    <input id="buscador" type="search" placeholder="🔍 Buscar en el banco…"
+      class="w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta placeholder:text-tinta-tenue focus:border-acento focus:outline-none" />
+
+    <select id="filtro-categoria"
+      class="w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta focus:border-acento focus:outline-none">
+      <option value="todas">Todas las categorías</option>
+    </select>
+
+    <p id="banco-resumen" class="text-xs text-tinta-tenue"></p>
+    <ul id="lista-banco" class="flex flex-col gap-2"></ul>
+    <button id="ver-mas" type="button" hidden
+      class="rounded-lg border border-borde px-3 py-2.5 text-sm font-medium text-tinta-suave transition hover:bg-superficie-alta">
+      Ver más
+    </button>
+  </section>
+
+  {/* ── NUEVO ─────────────────────────────────────────────────────────── */}
+  <section id="sec-nuevo" role="tabpanel" class="hidden flex-col gap-4">
     <div class="tarjeta flex flex-col gap-3 px-4 py-4">
-      <p class="text-sm font-semibold text-tinta">Nueva pregunta</p>
+      <p class="text-sm font-semibold text-tinta">➕ Nueva pregunta</p>
       <textarea id="np-texto" rows="3" maxlength="300" placeholder="¿Qué es lo que más miedo te da…?"
         class="w-full resize-none rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta placeholder:text-tinta-tenue focus:border-acento focus:outline-none"></textarea>
       <select id="np-categoria"
         class="w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta focus:border-acento focus:outline-none">
-        <option value="profundas">Profundas</option>
-        <option value="subidas_de_tono">Subidas de tono</option>
-        <option value="supuestos">Supuestos</option>
+        {CATS_PREGUNTA.map(([v, t]) => <option value={v}>{t}</option>)}
       </select>
+      <div id="np-nivel-caja" class="hidden flex-col gap-1.5">
+        <label for="np-nivel" class="text-xs text-tinta-tenue">Intensidad</label>
+        <select id="np-nivel"
+          class="w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta focus:border-acento focus:outline-none">
+          <option value="1">1 · Suave</option>
+          <option value="2">2 · Directa</option>
+          <option value="3">3 · Explícita</option>
+        </select>
+      </div>
       <button id="np-crear" type="button"
         class="rounded-lg bg-acento px-3 py-2.5 text-sm font-medium text-white transition hover:bg-acento-fuerte">
         Agregar pregunta
       </button>
     </div>
-    <p id="preguntas-resumen" class="text-xs text-tinta-tenue"></p>
-    <ul id="lista-preguntas" class="flex flex-col gap-2"></ul>
-  </section>
 
-  {/* ── DILEMAS ───────────────────────────────────────────────────────── */}
-  <section id="sec-dilemas" role="tabpanel" class="hidden flex-col gap-4">
     <div class="tarjeta flex flex-col gap-3 px-4 py-4">
-      <p class="text-sm font-semibold text-tinta">Nuevo dilema</p>
+      <p class="text-sm font-semibold text-tinta">➕ Nuevo «qué prefieres»</p>
       <input id="nd-a" type="text" maxlength="120" placeholder="Opción A"
         class="w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta placeholder:text-tinta-tenue focus:border-acento focus:outline-none" />
       <input id="nd-b" type="text" maxlength="120" placeholder="Opción B"
         class="w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta placeholder:text-tinta-tenue focus:border-acento focus:outline-none" />
       <select id="nd-categoria"
         class="w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta focus:border-acento focus:outline-none">
-        <option value="general">General</option>
-        <option value="profundas">Profundas</option>
-        <option value="subidas_de_tono">Subidas de tono</option>
-        <option value="absurdas">Absurdas</option>
+        {CATS_DILEMA.map(([v, t]) => <option value={v}>{t}</option>)}
       </select>
+      <div id="nd-nivel-caja" class="hidden flex-col gap-1.5">
+        <label for="nd-nivel" class="text-xs text-tinta-tenue">Intensidad</label>
+        <select id="nd-nivel"
+          class="w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta focus:border-acento focus:outline-none">
+          <option value="1">1 · Suave</option>
+          <option value="2">2 · Directa</option>
+          <option value="3">3 · Explícita</option>
+        </select>
+      </div>
       <button id="nd-crear" type="button"
         class="rounded-lg bg-acento px-3 py-2.5 text-sm font-medium text-white transition hover:bg-acento-fuerte">
         Agregar dilema
       </button>
     </div>
-    <p id="dilemas-resumen" class="text-xs text-tinta-tenue"></p>
-    <ul id="lista-dilemas" class="flex flex-col gap-2"></ul>
+  </section>
+
+  {/* ── PROGRESO ──────────────────────────────────────────────────────── */}
+  <section id="sec-progreso" role="tabpanel" class="hidden flex-col gap-4">
+    <div class="grid grid-cols-2 gap-2.5">
+      <button id="tarjeta-preguntas" type="button"
+        class="tarjeta flex flex-col items-start gap-1 px-4 py-4 text-left transition hover:border-acento">
+        <span class="text-xs text-tinta-tenue">Preguntas hechas</span>
+        <span id="m-preguntas" class="text-2xl font-semibold text-tinta">—</span>
+        <span id="m-preguntas-pie" class="text-[11px] text-tinta-tenue"></span>
+      </button>
+      <button id="tarjeta-dilemas" type="button"
+        class="tarjeta flex flex-col items-start gap-1 px-4 py-4 text-left transition hover:border-acento">
+        <span class="text-xs text-tinta-tenue">Dilemas respondidos</span>
+        <span id="m-dilemas" class="text-2xl font-semibold text-tinta">—</span>
+        <span id="m-dilemas-pie" class="text-[11px] text-tinta-tenue"></span>
+      </button>
+    </div>
+
+    <div id="detalle" hidden class="flex flex-col gap-3">
+      <div class="flex items-center justify-between gap-2">
+        <p id="detalle-titulo" class="text-sm font-semibold text-tinta"></p>
+        <button id="detalle-cerrar" type="button"
+          class="rounded-lg border border-borde px-2.5 py-1.5 text-xs text-tinta-suave transition hover:bg-superficie-alta">
+          Cerrar
+        </button>
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        <button id="sel-todas" type="button"
+          class="rounded-lg border border-borde px-3 py-2 text-xs font-medium text-tinta-suave transition hover:bg-superficie-alta">
+          Seleccionar todas
+        </button>
+        <button id="sel-ninguna" type="button"
+          class="rounded-lg border border-borde px-3 py-2 text-xs font-medium text-tinta-suave transition hover:bg-superficie-alta">
+          Ninguna
+        </button>
+        <button id="sel-eliminar" type="button" disabled
+          class="ml-auto rounded-lg border border-peligro/40 px-3 py-2 text-xs font-medium text-peligro transition hover:bg-peligro/5 disabled:opacity-40">
+          Eliminar seleccionadas
+        </button>
+      </div>
+
+      <p id="detalle-resumen" class="text-xs text-tinta-tenue"></p>
+      <ul id="lista-detalle" class="flex flex-col gap-2"></ul>
+    </div>
   </section>
 
   {/* ── DATOS ─────────────────────────────────────────────────────────── */}
@@ -72,7 +166,7 @@ import AppLayout from '../layouts/AppLayout.astro';
     <div class="tarjeta flex flex-col gap-3 px-4 py-4">
       <p class="text-sm font-semibold text-tinta">Anti-repetición</p>
       <p class="text-xs text-tinta-tenue">
-        Cuántas preguntas recientes se descartan antes de volver a sacarlas.
+        Cuántas cartas recientes se descartan antes de volver a sacarlas.
         Se recorta sola si el catálogo es pequeño.
       </p>
       <div class="flex gap-2">
@@ -89,7 +183,8 @@ import AppLayout from '../layouts/AppLayout.astro';
       <p class="text-sm font-semibold text-peligro">Zona de limpieza</p>
       <p class="text-xs text-tinta-tenue">
         Estas acciones borran datos de forma definitiva y quedan registradas en
-        el registro de actividad.
+        el registro de actividad. El banco de preguntas y dilemas nunca se toca
+        desde aquí.
       </p>
       <div id="limpiezas" class="flex flex-col gap-2"></div>
       <button id="reiniciar-marcador" type="button"
@@ -115,23 +210,41 @@ import AppLayout from '../layouts/AppLayout.astro';
 <script>
   import { protegerPagina } from '../domain/identidad/guardia';
   import {
-    observarPreguntasAdmin, crearPregunta, editarPregunta,
-    observarDilemasAdmin, crearDilema, editarDilema,
     observarConfig, guardarVentana, contar, limpiarColeccion, reiniciarMarcador,
     observarAuditoria, ETIQUETA_COLECCION, ErrorAdmin,
-    type ItemPregunta, type ItemDilema, type Coleccion, type EventoAuditoria,
+    type Coleccion, type EventoAuditoria,
   } from '../domain/admin/adminService';
+  import {
+    cargarFilas, filtrar, calcularMetricas, crearPregunta, crearDilema,
+    retirarDelBanco, type FilaBanco,
+  } from '../domain/admin/bancoAdmin';
+  import { leerProgreso, type Juego } from '../domain/progreso/progresoService';
   import { formatearUltimaConexion } from '../domain/presencia/formatoFecha';
   import { observarNombre } from '../domain/presencia/presenciaService';
-  import { ETIQUETA_CATEGORIA, type CategoriaPregunta, type CategoriaDilema, type Persona } from '@shared/enums';
+  import {
+    ETIQUETA_CATEGORIA, ETIQUETA_NIVEL,
+    type CategoriaPregunta, type CategoriaDilema, type Nivel, type Persona,
+  } from '@shared/enums';
   import { ENV } from '../config/env';
 
   const $ = (id: string) => document.getElementById(id)!;
   const parejaId = ENV.PUBLIC_PAREJA_ID;
-  const COLECCIONES: Coleccion[] = ['historialPanoramas', 'historialOrganizacion', 'preguntasServidas', 'partidasDilemas'];
+  const COLECCIONES: Coleccion[] = ['historialPanoramas', 'historialOrganizacion', 'partidasDilemas'];
+
+  /** Cuántas filas se pintan de golpe. Con dos mil cartas, volcarlas todas al
+   *  DOM congela el teléfono varios segundos; se pagina y se filtra. */
+  const PAGINA = 40;
 
   let yo: Persona = 'a';
   const nombres: Record<Persona, string> = { a: 'Persona A', b: 'Persona B' };
+
+  let juego: Juego = 'preguntas';
+  let filas: FilaBanco[] = [];
+  let mostradas = PAGINA;
+
+  let detalleJuego: Juego = 'preguntas';
+  let detalleFilas: FilaBanco[] = [];
+  const seleccion = new Set<string>();
 
   function aviso(texto: string | null, tipo: 'error' | 'ok' = 'error') {
     const el = $(tipo === 'error' ? 'admin-error' : 'admin-ok');
@@ -143,7 +256,7 @@ import AppLayout from '../layouts/AppLayout.astro';
   }
 
   function verSeccion(cual: string) {
-    for (const s of ['preguntas', 'dilemas', 'datos', 'registro']) {
+    for (const s of ['banco', 'nuevo', 'progreso', 'datos', 'registro']) {
       const el = $(`sec-${s}`);
       el.classList.toggle('hidden', s !== cual);
       el.classList.toggle('flex', s === cual);
@@ -152,103 +265,203 @@ import AppLayout from '../layouts/AppLayout.astro';
       const on = b.dataset.sec === cual;
       b.classList.toggle('border-acento', on);
       b.classList.toggle('bg-acento-suave', on);
-      b.classList.toggle('text-acento', on);
-      b.classList.toggle('text-tinta-suave', !on);
       b.setAttribute('aria-selected', String(on));
     }
   }
 
-  /** Interruptor activo/inactivo. Nunca "borrar": ADR-010, borrado lógico. */
-  function interruptor(activo: boolean, alCambiar: () => void): HTMLButtonElement {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className =
-      'shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition ' +
-      (activo ? 'bg-salvia-suave text-salvia' : 'bg-superficie-alt text-tinta-tenue');
-    b.textContent = activo ? 'Activa' : 'Oculta';
-    b.setAttribute('aria-pressed', String(activo));
-    b.addEventListener('click', alCambiar);
-    return b;
+  // ── Banco ─────────────────────────────────────────────────────────────
+
+  function opcionesCategoria() {
+    const sel = $('filtro-categoria') as HTMLSelectElement;
+    const cats =
+      juego === 'preguntas'
+        ? ['profundas', 'subidas_de_tono', 'supuestos']
+        : ['general', 'profundas', 'subidas_de_tono', 'absurdas'];
+    sel.replaceChildren();
+    const todas = document.createElement('option');
+    todas.value = 'todas';
+    todas.textContent = 'Todas las categorías';
+    sel.append(todas);
+    for (const c of cats) {
+      const o = document.createElement('option');
+      o.value = c;
+      o.textContent = ETIQUETA_CATEGORIA[c as CategoriaPregunta] ?? c;
+      sel.append(o);
+    }
   }
 
-  function campoEditable(valor: string, alGuardar: (v: string) => Promise<void>): HTMLElement {
-    const p = document.createElement('p');
-    p.className = 'min-w-0 flex-1 cursor-text text-sm text-tinta';
-    p.textContent = valor;
-    p.title = 'Pulsa para editar';
-    p.addEventListener('click', () => {
-      const input = document.createElement('textarea');
-      input.value = valor;
-      input.rows = 3;
-      input.className =
-        'min-w-0 flex-1 resize-none rounded-lg border border-acento bg-superficie-alt px-2 py-1.5 text-sm text-tinta focus:outline-none';
-      const confirmar = async () => {
-        const nuevo = input.value.trim();
-        input.replaceWith(p);
-        if (nuevo === valor || !nuevo) return;
-        try { await alGuardar(nuevo); aviso('Guardado.', 'ok'); }
-        catch (e) { aviso(e instanceof ErrorAdmin ? e.message : 'No se pudo guardar.'); }
-      };
-      input.addEventListener('blur', () => void confirmar());
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') input.replaceWith(p);
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void confirmar(); }
-      });
-      p.replaceWith(input);
-      input.focus();
+  function marcarJuego() {
+    for (const b of document.querySelectorAll<HTMLButtonElement>('.juego-tab')) {
+      const on = b.dataset.juego === juego;
+      b.classList.toggle('border-acento', on);
+      b.classList.toggle('bg-acento-suave', on);
+      b.classList.toggle('text-acento', on);
+      b.classList.toggle('text-tinta-suave', !on);
+    }
+  }
+
+  /** Fila del banco. Todo con createElement: el texto es editable y nunca se
+   *  interpola en HTML. */
+  function filaBanco(f: FilaBanco, activa: boolean): HTMLLIElement {
+    const li = document.createElement('li');
+    li.className = 'tarjeta flex items-start gap-3 px-4 py-3';
+
+    const col = document.createElement('div');
+    col.className = 'min-w-0 flex-1';
+
+    const t = document.createElement('p');
+    t.className = 'text-sm text-tinta';
+    t.textContent = f.titulo;
+    col.append(t);
+
+    const meta = document.createElement('p');
+    meta.className = 'mt-1 flex flex-wrap gap-x-2 text-[11px] text-tinta-tenue';
+    const trozos = [ETIQUETA_CATEGORIA[f.categoria as CategoriaPregunta] ?? f.categoria];
+    if (f.categoria === 'subidas_de_tono') trozos.push(ETIQUETA_NIVEL[f.nivel] ?? '');
+    if (f.hecha) trozos.push('✅ hecha');
+    if (f.descartada) trozos.push('🚫 descartada');
+    else if (f.pases > 0) trozos.push(`⏭️ ${f.pases} pases`);
+    meta.textContent = trozos.filter(Boolean).join(' · ');
+    col.append(meta);
+
+    li.append(col);
+
+    const quitar = document.createElement('button');
+    quitar.type = 'button';
+    quitar.className =
+      'shrink-0 rounded-full border border-borde px-2.5 py-1 text-[11px] font-semibold text-tinta-tenue transition hover:border-peligro hover:text-peligro';
+    quitar.textContent = 'Eliminar';
+    quitar.addEventListener('click', async () => {
+      if (quitar.dataset.armado !== 'si') {
+        quitar.dataset.armado = 'si';
+        quitar.textContent = '¿Seguro?';
+        setTimeout(() => { quitar.dataset.armado = ''; quitar.textContent = 'Eliminar'; }, 4000);
+        return;
+      }
+      quitar.disabled = true;
+      try {
+        await retirarDelBanco(parejaId, yo, juego, [f.id]);
+        aviso('Eliminada del banco. No volverá a salir.', 'ok');
+        await recargarBanco();
+      } catch {
+        aviso('No se pudo eliminar.');
+        quitar.disabled = false;
+      }
     });
-    return p;
+
+    if (activa) li.append(quitar);
+    return li;
   }
 
-  function pintarPreguntas(items: ItemPregunta[]) {
-    const ul = $('lista-preguntas');
-    ul.replaceChildren();
-    const activas = items.filter((i) => i.activa).length;
-    $('preguntas-resumen').textContent = `${items.length} en el banco · ${activas} activas`;
+  function pintarBanco() {
+    const texto = ($('buscador') as HTMLInputElement).value;
+    const cat = ($('filtro-categoria') as HTMLSelectElement).value;
+    const visibles = filtrar(filas, texto, cat);
 
-    for (const p of items) {
-      const li = document.createElement('li');
-      li.className = 'tarjeta flex items-start gap-3 px-4 py-3';
-      const col = document.createElement('div');
-      col.className = 'min-w-0 flex-1';
-      col.appendChild(campoEditable(p.texto, (v) => editarPregunta(p.id, { texto: v })));
-      const cat = document.createElement('p');
-      cat.className = 'mt-1 text-[11px] text-tinta-tenue';
-      cat.textContent = ETIQUETA_CATEGORIA[p.categoria] ?? p.categoria;
-      col.appendChild(cat);
-      li.append(col, interruptor(p.activa, () => {
-        void editarPregunta(p.id, { activa: !p.activa }).catch(() => aviso('No se pudo cambiar.'));
-      }));
-      ul.appendChild(li);
+    const ul = $('lista-banco');
+    ul.replaceChildren();
+    for (const f of visibles.slice(0, mostradas)) ul.append(filaBanco(f, true));
+
+    $('banco-resumen').textContent =
+      visibles.length === filas.length
+        ? `${filas.length} en el banco`
+        : `${visibles.length} de ${filas.length}`;
+
+    const masCount = visibles.length - mostradas;
+    ($('ver-mas') as HTMLButtonElement).hidden = masCount <= 0;
+    $('ver-mas').textContent = `Ver ${Math.min(masCount, PAGINA)} más`;
+  }
+
+  async function recargarBanco() {
+    const progreso = await leerProgreso(parejaId, juego);
+    filas = await cargarFilas(juego, progreso.items);
+    mostradas = PAGINA;
+    pintarBanco();
+    await pintarMetricas();
+  }
+
+  // ── Progreso ──────────────────────────────────────────────────────────
+
+  async function pintarMetricas() {
+    for (const j of ['preguntas', 'dilemas'] as Juego[]) {
+      const progreso = await leerProgreso(parejaId, j);
+      const m = calcularMetricas(await cargarFilas(j, progreso.items));
+      $(`m-${j}`).textContent = String(m.hechas);
+      $(`m-${j}-pie`).textContent =
+        `${m.porcentaje}% de ${m.total}` + (m.descartadas ? ` · ${m.descartadas} descartadas` : '');
     }
   }
 
-  function pintarDilemas(items: ItemDilema[]) {
-    const ul = $('lista-dilemas');
+  function pintarDetalle() {
+    const ul = $('lista-detalle');
     ul.replaceChildren();
-    $('dilemas-resumen').textContent = `${items.length} en el banco · ${items.filter((i) => i.activo).length} activos`;
 
-    for (const d of items) {
+    if (detalleFilas.length === 0) {
+      const vacio = document.createElement('li');
+      vacio.className =
+        'rounded-xl border border-dashed border-borde px-4 py-8 text-center text-sm text-tinta-tenue';
+      vacio.textContent = 'Todavía no han marcado ninguna como hecha.';
+      ul.append(vacio);
+    }
+
+    for (const f of detalleFilas.slice(0, 200)) {
       const li = document.createElement('li');
       li.className = 'tarjeta flex items-start gap-3 px-4 py-3';
+
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.className = 'mt-1 size-4 shrink-0 accent-current';
+      check.checked = seleccion.has(f.id);
+      check.addEventListener('change', () => {
+        if (check.checked) seleccion.add(f.id); else seleccion.delete(f.id);
+        actualizarSeleccion();
+      });
+
       const col = document.createElement('div');
       col.className = 'min-w-0 flex-1';
-      col.appendChild(campoEditable(d.opcionA, (v) => editarDilema(d.id, { opcionA: v })));
-      const o = document.createElement('p');
-      o.className = 'my-0.5 text-[10px] font-semibold tracking-wide text-tinta-tenue uppercase';
-      o.textContent = 'o';
-      col.appendChild(o);
-      col.appendChild(campoEditable(d.opcionB, (v) => editarDilema(d.id, { opcionB: v })));
-      const cat = document.createElement('p');
-      cat.className = 'mt-1 text-[11px] text-tinta-tenue';
-      cat.textContent = ETIQUETA_CATEGORIA[d.categoria] ?? d.categoria;
-      col.appendChild(cat);
-      li.append(col, interruptor(d.activo, () => {
-        void editarDilema(d.id, { activo: !d.activo }).catch(() => aviso('No se pudo cambiar.'));
-      }));
-      ul.appendChild(li);
+      const t = document.createElement('p');
+      t.className = 'text-sm text-tinta';
+      t.textContent = f.titulo;
+      const meta = document.createElement('p');
+      meta.className = 'mt-1 text-[11px] text-tinta-tenue';
+      meta.textContent = ETIQUETA_CATEGORIA[f.categoria as CategoriaPregunta] ?? f.categoria;
+      col.append(t, meta);
+
+      li.append(check, col);
+      ul.append(li);
     }
+
+    if (detalleFilas.length > 200) {
+      const nota = document.createElement('li');
+      nota.className = 'px-1 text-xs text-tinta-tenue';
+      nota.textContent = `Mostrando 200 de ${detalleFilas.length}. Usa "Seleccionar todas" para actuar sobre el resto.`;
+      ul.append(nota);
+    }
+
+    actualizarSeleccion();
   }
+
+  function actualizarSeleccion() {
+    const n = seleccion.size;
+    ($('sel-eliminar') as HTMLButtonElement).disabled = n === 0;
+    $('sel-eliminar').textContent = n === 0 ? 'Eliminar seleccionadas' : `Eliminar ${n}`;
+    $('detalle-resumen').textContent =
+      `${detalleFilas.length} hechas · ${n} seleccionada${n === 1 ? '' : 's'}`;
+  }
+
+  async function abrirDetalle(j: Juego) {
+    detalleJuego = j;
+    seleccion.clear();
+    const progreso = await leerProgreso(parejaId, j);
+    detalleFilas = (await cargarFilas(j, progreso.items)).filter((f) => f.hecha && !f.descartada);
+    $('detalle-titulo').textContent =
+      j === 'preguntas' ? 'Preguntas ya hechas' : 'Dilemas ya respondidos';
+    $('detalle').hidden = false;
+    pintarDetalle();
+    $('detalle').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // ── Limpieza y registro ───────────────────────────────────────────────
 
   async function pintarLimpiezas() {
     const cont = $('limpiezas');
@@ -286,7 +499,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         await pintarLimpiezas();
       });
 
-      cont.appendChild(b);
+      cont.append(b);
     }
   }
 
@@ -297,7 +510,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       const p = document.createElement('li');
       p.className = 'rounded-xl border border-dashed border-borde px-4 py-8 text-center text-sm text-tinta-tenue';
       p.textContent = 'Sin actividad registrada todavía.';
-      ul.appendChild(p);
+      ul.append(p);
       return;
     }
     for (const e of eventos) {
@@ -313,40 +526,114 @@ import AppLayout from '../layouts/AppLayout.astro';
       f.className = 'mt-0.5 text-xs text-tinta-tenue';
       f.textContent = formatearUltimaConexion(e.ocurridoEn);
       li.append(t, r, f);
-      ul.appendChild(li);
+      ul.append(li);
     }
   }
+
+  // ── Arranque ──────────────────────────────────────────────────────────
 
   protegerPagina((sesion) => {
     yo = sesion.persona;
     $('guardia').classList.add('hidden');
     $('app').classList.remove('hidden');
-    verSeccion('preguntas');
+    verSeccion('banco');
+    marcarJuego();
+    opcionesCategoria();
+    void recargarBanco();
 
     for (const b of document.querySelectorAll<HTMLButtonElement>('#secciones button')) {
       b.addEventListener('click', () => {
-        verSeccion(b.dataset.sec ?? 'preguntas');
-        if (b.dataset.sec === 'datos') void pintarLimpiezas();
+        const sec = b.dataset.sec ?? 'banco';
+        verSeccion(sec);
+        if (sec === 'datos') void pintarLimpiezas();
+        if (sec === 'progreso') void pintarMetricas();
       });
     }
+
+    for (const b of document.querySelectorAll<HTMLButtonElement>('.juego-tab')) {
+      b.addEventListener('click', async () => {
+        const nuevo = (b.dataset.juego ?? 'preguntas') as Juego;
+        if (nuevo === juego) return;
+        juego = nuevo;
+        marcarJuego();
+        opcionesCategoria();
+        await recargarBanco();
+      });
+    }
+
+    // Buscar mientras se escribe, sin ir a la red: el banco ya está en memoria.
+    $('buscador').addEventListener('input', () => { mostradas = PAGINA; pintarBanco(); });
+    $('filtro-categoria').addEventListener('change', () => { mostradas = PAGINA; pintarBanco(); });
+    $('ver-mas').addEventListener('click', () => { mostradas += PAGINA; pintarBanco(); });
 
     for (const p of ['a', 'b'] as const) {
       observarNombre(parejaId, p, (n) => { if (n) nombres[p] = n; });
     }
 
-    observarPreguntasAdmin(pintarPreguntas);
-    observarDilemasAdmin(pintarDilemas);
     observarAuditoria(parejaId, pintarAuditoria);
     observarConfig(parejaId, (v) => { ($('cfg-ventana') as HTMLInputElement).value = String(v); });
+
+    // El nivel solo aparece donde significa algo.
+    const alternarNivel = (selectId: string, cajaId: string) => {
+      const sel = $(selectId) as HTMLSelectElement;
+      const sync = () => {
+        const on = sel.value === 'subidas_de_tono';
+        $(cajaId).classList.toggle('hidden', !on);
+        $(cajaId).classList.toggle('flex', on);
+      };
+      sel.addEventListener('change', sync);
+      sync();
+    };
+    alternarNivel('np-categoria', 'np-nivel-caja');
+    alternarNivel('nd-categoria', 'nd-nivel-caja');
+
+    $('tarjeta-preguntas').addEventListener('click', () => void abrirDetalle('preguntas'));
+    $('tarjeta-dilemas').addEventListener('click', () => void abrirDetalle('dilemas'));
+    $('detalle-cerrar').addEventListener('click', () => { $('detalle').hidden = true; });
+
+    $('sel-todas').addEventListener('click', () => {
+      for (const f of detalleFilas) seleccion.add(f.id);
+      pintarDetalle();
+    });
+    $('sel-ninguna').addEventListener('click', () => { seleccion.clear(); pintarDetalle(); });
+
+    $('sel-eliminar').addEventListener('click', async () => {
+      const b = $('sel-eliminar') as HTMLButtonElement;
+      const n = seleccion.size;
+      if (n === 0) return;
+
+      // Doble confirmación: esto retira cartas del banco para siempre.
+      if (b.dataset.armado !== 'si') {
+        b.dataset.armado = 'si';
+        b.textContent = `¿Eliminar ${n}? Pulsa otra vez`;
+        setTimeout(() => { b.dataset.armado = ''; actualizarSeleccion(); }, 5000);
+        return;
+      }
+      b.dataset.armado = '';
+      b.disabled = true;
+      try {
+        await retirarDelBanco(parejaId, yo, detalleJuego, [...seleccion]);
+        aviso(`${n} eliminadas del banco.`, 'ok');
+        seleccion.clear();
+        await abrirDetalle(detalleJuego);
+        await recargarBanco();
+      } catch {
+        aviso('No se pudieron eliminar.');
+      } finally {
+        b.disabled = false;
+      }
+    });
 
     $('np-crear').addEventListener('click', async () => {
       aviso(null);
       const texto = ($('np-texto') as HTMLTextAreaElement).value;
       const cat = ($('np-categoria') as HTMLSelectElement).value as CategoriaPregunta;
+      const nivel = Number(($('np-nivel') as HTMLSelectElement).value) as Nivel;
       try {
-        await crearPregunta(yo, texto, cat);
+        await crearPregunta(yo, texto, cat, cat === 'subidas_de_tono' ? nivel : 1);
         ($('np-texto') as HTMLTextAreaElement).value = '';
         aviso('Pregunta agregada.', 'ok');
+        await recargarBanco();
       } catch (e) {
         aviso(e instanceof ErrorAdmin ? e.message : 'No se pudo agregar.');
       }
@@ -354,16 +641,20 @@ import AppLayout from '../layouts/AppLayout.astro';
 
     $('nd-crear').addEventListener('click', async () => {
       aviso(null);
+      const cat = ($('nd-categoria') as HTMLSelectElement).value as CategoriaDilema;
+      const nivel = Number(($('nd-nivel') as HTMLSelectElement).value) as Nivel;
       try {
         await crearDilema(
           yo,
           ($('nd-a') as HTMLInputElement).value,
           ($('nd-b') as HTMLInputElement).value,
-          ($('nd-categoria') as HTMLSelectElement).value as CategoriaDilema,
+          cat,
+          cat === 'subidas_de_tono' ? nivel : 1,
         );
         ($('nd-a') as HTMLInputElement).value = '';
         ($('nd-b') as HTMLInputElement).value = '';
         aviso('Dilema agregado.', 'ok');
+        await recargarBanco();
       } catch (e) {
         aviso(e instanceof ErrorAdmin ? e.message : 'No se pudo agregar.');
       }

@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   crearRng, elegirIndice, anguloFinal, suavizado, estadoEn,
 } from '../src/domain/ruleta/animacionGiro';
-import { elegirPregunta, type Pregunta } from '../src/domain/preguntas/preguntasService';
+import { recientesDe } from '../src/domain/preguntas/preguntasService';
+import { elegirCarta, contarPendientes } from '../src/domain/banco/seleccion';
+import { estaDescartada, PASES_PARA_DESCARTAR, type EntradaProgreso } from '@shared/schemas/progreso.schema';
 import { formatearUltimaConexion, formatearCompleto } from '../src/domain/presencia/formatoFecha';
 import { parsearCodigo, formatearCodigo, normalizarCodigo, generarCuerpo, ALFABETO_CODIGO, LARGO_CUERPO } from '@shared/schemas/codigo';
 import { derivarPresencia } from '@shared/schemas/presencia.schema';
@@ -144,21 +146,23 @@ describe('Pesos de la ruleta', () => {
   });
 });
 
-describe('Anti-repetición de preguntas', () => {
-  const banco = (n: number): Pregunta[] =>
-    Array.from({ length: n }, (_, i) => ({
-      id: `p${i}`, texto: `Pregunta ${i}`, categoria: 'profundas' as const,
-    }));
+describe('Elección de carta · anti-repetición, descartes y niveles', () => {
+  const banco = (n: number, nivel: 1 | 2 | 3 = 1) =>
+    Array.from({ length: n }, (_, i) => ({ id: `p${i}`, nivel }));
 
-  it('no repite mientras queden preguntas frescas', () => {
+  const entrada = (o: Partial<EntradaProgreso> = {}): EntradaProgreso =>
+    ({ h: false, p: 0, t: 0, q: null, ...o });
+
+  it('no repite mientras queden cartas sin estrenar', () => {
     const catalogo = banco(20);
-    const servidas = new Map<string, number>();
+    const progreso: Record<string, EntradaProgreso> = {};
     const vistas: string[] = [];
 
     for (let i = 0; i < 14; i++) {
-      const p = elegirPregunta(catalogo, servidas, 25, vistas.at(-1) ?? null)!;
-      vistas.push(p.id);
-      servidas.set(p.id, Date.now() + i);
+      const recientes = recientesDe(progreso, 25);
+      const c = elegirCarta({ candidatas: catalogo, progreso, recientes, excluir: vistas.at(-1) })!;
+      vistas.push(c.id);
+      progreso[c.id] = entrada({ t: Date.now() + i });
     }
 
     expect(new Set(vistas).size).toBe(vistas.length);
@@ -166,19 +170,104 @@ describe('Anti-repetición de preguntas', () => {
 
   it('con catálogo pequeño no se queda sin candidatas', () => {
     const catalogo = banco(3);
-    const servidas = new Map(catalogo.map((p, i) => [p.id, Date.now() + i]));
-    expect(elegirPregunta(catalogo, servidas, 25, null)).not.toBeNull();
+    const progreso = Object.fromEntries(
+      catalogo.map((c, i) => [c.id, entrada({ t: Date.now() + i })]),
+    );
+    expect(elegirCarta({ candidatas: catalogo, progreso })).not.toBeNull();
   });
 
-  it('nunca devuelve la que ya está en pantalla si hay alternativa', () => {
+  it('nunca devuelve la que está en pantalla si hay alternativa', () => {
     const catalogo = banco(6);
     for (let i = 0; i < 50; i++) {
-      expect(elegirPregunta(catalogo, new Map(), 25, 'p0')!.id).not.toBe('p0');
+      expect(elegirCarta({ candidatas: catalogo, progreso: {}, excluir: 'p0' })!.id).not.toBe('p0');
     }
   });
 
   it('con catálogo vacío devuelve null en vez de reventar', () => {
-    expect(elegirPregunta([], new Map(), 25, null)).toBeNull();
+    expect(elegirCarta({ candidatas: [], progreso: {} })).toBeNull();
+  });
+
+  it('una carta pasada tres veces no vuelve a salir', () => {
+    const catalogo = banco(4);
+    const progreso = { p0: entrada({ p: PASES_PARA_DESCARTAR }) };
+
+    for (let i = 0; i < 80; i++) {
+      expect(elegirCarta({ candidatas: catalogo, progreso })!.id).not.toBe('p0');
+    }
+    expect(estaDescartada(progreso.p0)).toBe(true);
+  });
+
+  it('si TODAS están descartadas devuelve null, no una descartada', () => {
+    const catalogo = banco(3);
+    const progreso = Object.fromEntries(
+      catalogo.map((c) => [c.id, entrada({ p: PASES_PARA_DESCARTAR })]),
+    );
+    expect(elegirCarta({ candidatas: catalogo, progreso })).toBeNull();
+  });
+
+  it('prefiere las no hechas antes que las hechas', () => {
+    const catalogo = banco(5);
+    const progreso = {
+      p0: entrada({ h: true }), p1: entrada({ h: true }),
+      p2: entrada({ h: true }), p3: entrada({ h: true }),
+    };
+    // Solo p4 está sin hacer: debe salir siempre mientras exista.
+    for (let i = 0; i < 40; i++) {
+      expect(elegirCarta({ candidatas: catalogo, progreso })!.id).toBe('p4');
+    }
+  });
+
+  it('las hechas vuelven a salir cuando ya no quedan nuevas', () => {
+    const catalogo = banco(3);
+    const progreso = Object.fromEntries(catalogo.map((c) => [c.id, entrada({ h: true })]));
+    expect(elegirCarta({ candidatas: catalogo, progreso })).not.toBeNull();
+  });
+
+  it('respeta el reparto de niveles pedido: 55 % para 1 y 2, 45 % para el 3', () => {
+    // Mismo número de cartas por nivel, para que la única diferencia sea el peso.
+    const catalogo = [
+      ...Array.from({ length: 100 }, (_, i) => ({ id: `a${i}`, nivel: 1 as const })),
+      ...Array.from({ length: 100 }, (_, i) => ({ id: `b${i}`, nivel: 2 as const })),
+      ...Array.from({ length: 100 }, (_, i) => ({ id: `c${i}`, nivel: 3 as const })),
+    ];
+
+    // Azar determinista: recorre la cuerda de pesos de forma uniforme, así el
+    // test mide el reparto real y no la suerte de una tirada.
+    let paso = 0;
+    const azar = () => ((paso++ * 0.0007) % 1);
+
+    const cuenta = { 1: 0, 2: 0, 3: 0 };
+    for (let i = 0; i < 6000; i++) {
+      const c = elegirCarta({ candidatas: catalogo, progreso: {}, azar })!;
+      cuenta[c.nivel]++;
+    }
+
+    const total = cuenta[1] + cuenta[2] + cuenta[3];
+    const pct = (n: number) => (n / total) * 100;
+
+    expect(pct(cuenta[1]) + pct(cuenta[2])).toBeGreaterThan(50);
+    expect(pct(cuenta[1]) + pct(cuenta[2])).toBeLessThan(60);
+    expect(pct(cuenta[3])).toBeGreaterThan(40);
+    expect(pct(cuenta[3])).toBeLessThan(50);
+  });
+
+  it('cuenta pendientes, hechas y descartadas por separado', () => {
+    const catalogo = banco(10);
+    const progreso = {
+      p0: entrada({ h: true }),
+      p1: entrada({ h: true }),
+      p2: entrada({ p: PASES_PARA_DESCARTAR }),
+    };
+    const c = contarPendientes(catalogo, progreso);
+    expect(c).toEqual({ total: 10, hechas: 2, descartadas: 1, pendientes: 7 });
+  });
+
+  it('una carta descartada no cuenta además como hecha', () => {
+    // Se puede marcar hecha y luego pasarla tres veces. No debe contarse dos veces.
+    const catalogo = banco(3);
+    const progreso = { p0: entrada({ h: true, p: PASES_PARA_DESCARTAR }) };
+    const c = contarPendientes(catalogo, progreso);
+    expect(c.hechas + c.descartadas + c.pendientes).toBe(c.total);
   });
 });
 

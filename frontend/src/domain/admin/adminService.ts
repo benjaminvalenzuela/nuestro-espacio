@@ -4,8 +4,7 @@ import {
 } from 'firebase/firestore';
 import { obtenerFirestore } from '../../infra/firebase/firestore';
 import { FS } from '@shared/rutas-datos';
-import { textoSeguro } from '@shared/schemas/perfil.schema';
-import { CATEGORIAS_PREGUNTA, CATEGORIAS_DILEMA, type CategoriaPregunta, type CategoriaDilema, type Persona } from '@shared/enums';
+import type { CategoriaPregunta, CategoriaDilema, Persona } from '@shared/enums';
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
@@ -43,13 +42,7 @@ export interface ItemDilema {
   activo: boolean;
 }
 
-const TextoPregunta = textoSeguro(8, 300);
-const TextoOpcion = textoSeguro(2, 120);
 
-function exigir<T>(r: { success: boolean; data?: T; error?: { issues: { message: string }[] } }): T {
-  if (!r.success) throw new ErrorAdmin(r.error?.issues[0]?.message ?? 'Valor no válido');
-  return r.data as T;
-}
 
 /**
  * Deja constancia de una acción. Se llama ANTES de la operación destructiva:
@@ -70,100 +63,14 @@ export async function auditar(
   });
 }
 
-// ── Preguntas ──────────────────────────────────────────────────────────────
-
-export function observarPreguntasAdmin(alCambiar: (items: ItemPregunta[]) => void): Unsubscribe {
-  return onSnapshot(
-    collection(obtenerFirestore(), FS.preguntas),
-    (snap) => {
-      alCambiar(
-        snap.docs
-          .map((d) => {
-            const x = d.data();
-            return {
-              id: d.id,
-              texto: String(x.texto ?? ''),
-              categoria: (CATEGORIAS_PREGUNTA as readonly string[]).includes(x.categoria)
-                ? (x.categoria as CategoriaPregunta) : 'profundas',
-              activa: x.activa !== false,
-            };
-          })
-          .sort((a, b) => a.categoria.localeCompare(b.categoria) || a.texto.localeCompare(b.texto)),
-      );
-    },
-    (e) => { console.warn('[admin] preguntas:', e.message); alCambiar([]); },
-  );
-}
-
-export async function crearPregunta(
-  actor: Persona, texto: string, categoria: CategoriaPregunta,
-): Promise<void> {
-  const limpio = exigir(TextoPregunta.safeParse(texto));
-  await addDoc(collection(obtenerFirestore(), FS.preguntas), {
-    texto: limpio, categoria, activa: true,
-    creadaEn: serverTimestamp(), creadaPor: actor,
-  });
-}
-
-export async function editarPregunta(
-  id: string, cambios: Partial<Pick<ItemPregunta, 'texto' | 'categoria' | 'activa'>>,
-): Promise<void> {
-  const datos: Record<string, unknown> = {};
-  if (cambios.texto !== undefined) datos.texto = exigir(TextoPregunta.safeParse(cambios.texto));
-  if (cambios.categoria !== undefined) datos.categoria = cambios.categoria;
-  if (cambios.activa !== undefined) datos.activa = cambios.activa;
-  await updateDoc(doc(obtenerFirestore(), `${FS.preguntas}/${id}`), datos);
-}
-
-// ── Dilemas ────────────────────────────────────────────────────────────────
-
-export function observarDilemasAdmin(alCambiar: (items: ItemDilema[]) => void): Unsubscribe {
-  return onSnapshot(
-    collection(obtenerFirestore(), FS.dilemas),
-    (snap) => {
-      alCambiar(
-        snap.docs
-          .map((d) => {
-            const x = d.data();
-            return {
-              id: d.id,
-              opcionA: String(x.opcionA ?? ''),
-              opcionB: String(x.opcionB ?? ''),
-              categoria: (CATEGORIAS_DILEMA as readonly string[]).includes(x.categoria)
-                ? (x.categoria as CategoriaDilema) : 'general',
-              activo: x.activo !== false,
-            };
-          })
-          .sort((a, b) => a.categoria.localeCompare(b.categoria) || a.opcionA.localeCompare(b.opcionA)),
-      );
-    },
-    (e) => { console.warn('[admin] dilemas:', e.message); alCambiar([]); },
-  );
-}
-
-export async function crearDilema(
-  actor: Persona, opcionA: string, opcionB: string, categoria: CategoriaDilema,
-): Promise<void> {
-  const a = exigir(TextoOpcion.safeParse(opcionA));
-  const b = exigir(TextoOpcion.safeParse(opcionB));
-  if (a === b) throw new ErrorAdmin('Las dos opciones no pueden ser iguales.');
-
-  await addDoc(collection(obtenerFirestore(), FS.dilemas), {
-    opcionA: a, opcionB: b, categoria, activo: true,
-    creadoEn: serverTimestamp(), creadoPor: actor,
-  });
-}
-
-export async function editarDilema(
-  id: string, cambios: Partial<Pick<ItemDilema, 'opcionA' | 'opcionB' | 'categoria' | 'activo'>>,
-): Promise<void> {
-  const datos: Record<string, unknown> = {};
-  if (cambios.opcionA !== undefined) datos.opcionA = exigir(TextoOpcion.safeParse(cambios.opcionA));
-  if (cambios.opcionB !== undefined) datos.opcionB = exigir(TextoOpcion.safeParse(cambios.opcionB));
-  if (cambios.categoria !== undefined) datos.categoria = cambios.categoria;
-  if (cambios.activo !== undefined) datos.activo = cambios.activo;
-  await updateDoc(doc(obtenerFirestore(), `${FS.dilemas}/${id}`), datos);
-}
+/**
+ * El alta y la baja del banco viven en `bancoAdmin.ts`.
+ *
+ * Estaban aquí, con `onSnapshot` sobre la colección entera. Con veinte
+ * preguntas era gratis; con dos mil son dos mil lecturas cada vez que se abre
+ * el panel y otras dos mil por cada cambio. Se movieron a un módulo que lee de
+ * la caché compartida con el juego y filtra en memoria.
+ */
 
 // ── Limpiezas ──────────────────────────────────────────────────────────────
 

@@ -85,6 +85,19 @@ service cloud.firestore {
       return !v.matches('(?s).*[<>].*');
     }
 
+    /**
+     * Nivel de intensidad: opcional, y si viene tiene que ser 1, 2 o 3.
+     *
+     * Opcional a propósito: el banco tiene documentos anteriores a este campo y
+     * exigirlo los volvería ineditables. El cliente normaliza la ausencia a 1.
+     */
+    function nivelValido() {
+      return !request.resource.data.keys().hasAny(['nivel'])
+          || (request.resource.data.nivel is int
+              && request.resource.data.nivel >= 1
+              && request.resource.data.nivel <= 3);
+    }
+
     function texto(v, min, max) {
       return v is string && v.size() >= min && v.size() <= max
           && v.trim() == v && sinHtml(v);
@@ -134,18 +147,20 @@ service cloud.firestore {
       allow read: if esMiembroDelEspacio();
 
       allow create: if esMiembroDelEspacio()
-        && soloCampos(['texto', 'categoria', 'activa', 'creadaEn', 'creadaPor'])
+        && soloCampos(['texto', 'categoria', 'nivel', 'activa', 'creadaEn', 'creadaPor'])
         && exigeCampos(['texto', 'categoria', 'activa', 'creadaEn', 'creadaPor'])
         && texto(request.resource.data.texto, 8, 300)
         && request.resource.data.categoria in ['profundas', 'subidas_de_tono', 'supuestos']
+        && nivelValido()
         && request.resource.data.activa is bool
         && tsServidor('creadaEn')
         && esPersonaValida(request.resource.data.creadaPor);
 
       allow update: if esMiembroDelEspacio()
-        && cambios().hasOnly(['texto', 'categoria', 'activa'])
+        && cambios().hasOnly(['texto', 'categoria', 'nivel', 'activa'])
         && (!cambios().hasAny(['texto']) || texto(request.resource.data.texto, 8, 300))
         && (!cambios().hasAny(['categoria']) || request.resource.data.categoria in ['profundas', 'subidas_de_tono', 'supuestos'])
+        && (!cambios().hasAny(['nivel']) || nivelValido())
         && (!cambios().hasAny(['activa']) || request.resource.data.activa is bool);
 
       // ADR-010: nunca se destruye. "Borrar" en la UI = activa:false.
@@ -156,20 +171,23 @@ service cloud.firestore {
       allow read: if esMiembroDelEspacio();
 
       allow create: if esMiembroDelEspacio()
-        && soloCampos(['opcionA', 'opcionB', 'categoria', 'activo', 'creadoEn', 'creadoPor'])
+        && soloCampos(['opcionA', 'opcionB', 'categoria', 'nivel', 'activo', 'creadoEn', 'creadoPor'])
         && exigeCampos(['opcionA', 'opcionB', 'categoria', 'activo', 'creadoEn', 'creadoPor'])
         && texto(request.resource.data.opcionA, 2, 120)
         && texto(request.resource.data.opcionB, 2, 120)
         && request.resource.data.opcionA != request.resource.data.opcionB
         && request.resource.data.categoria in ['general', 'profundas', 'subidas_de_tono', 'absurdas']
+        && nivelValido()
         && request.resource.data.activo is bool
         && tsServidor('creadoEn')
         && esPersonaValida(request.resource.data.creadoPor);
 
       allow update: if esMiembroDelEspacio()
-        && cambios().hasOnly(['opcionA', 'opcionB', 'categoria', 'activo'])
+        && cambios().hasOnly(['opcionA', 'opcionB', 'categoria', 'nivel', 'activo'])
         && (!cambios().hasAny(['opcionA']) || texto(request.resource.data.opcionA, 2, 120))
-        && (!cambios().hasAny(['opcionB']) || texto(request.resource.data.opcionB, 2, 120));
+        && (!cambios().hasAny(['opcionB']) || texto(request.resource.data.opcionB, 2, 120))
+        && (!cambios().hasAny(['nivel']) || nivelValido())
+        && (!cambios().hasAny(['activo']) || request.resource.data.activo is bool);
 
       allow delete: if false;
     }
@@ -410,6 +428,34 @@ service cloud.firestore {
           && cambios().hasOnly(['ultimaVezEn', 'veces'])
           && incrementoDeUno('veces')
           && tsServidor('ultimaVezEn');
+        allow delete: if esAdmin(parejaId);
+      }
+
+      /**
+       * ── 5.10 bis · Progreso del banco ───────────────────────────────
+       *
+       * Un documento por juego con el mapa de cartas hechas y pasadas.
+       *
+       * LÍMITE ACEPTADO Y DOCUMENTADO: las reglas no pueden recorrer un mapa de
+       * mil claves —no hay bucles en este lenguaje—, así que el CONTENIDO de
+       * `items` no se valida campo a campo. Se valida lo que sí se puede: que
+       * solo exista ese campo, que sea un mapa, y que quien escribe esté
+       * vinculado a este espacio.
+       *
+       * Por qué es asumible: los únicos que pueden escribir aquí son las dos
+       * personas de la pareja, sobre su propio progreso. El peor caso es que
+       * uno de los dos corrompa su propia partida, no una fuga ni un acceso
+       * ajeno. Es el mismo trato que reciben los arrays de los perfiles.
+       */
+      match /progreso/{juego} {
+        allow read: if esMiembro(parejaId);
+
+        allow write: if esMiembro(parejaId)
+          && juego in ['preguntas', 'dilemas']
+          && request.resource.data.keys().hasOnly(['items'])
+          && request.resource.data.items is map;
+
+        // Reiniciar el progreso entero es una acción legítima del panel.
         allow delete: if esAdmin(parejaId);
       }
 

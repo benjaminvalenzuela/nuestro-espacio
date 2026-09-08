@@ -41,6 +41,22 @@ export const FS = {
   partidasDilemas: (parejaId: string) => `parejas/${parejaId}/partidasDilemas`,
   preguntasServidas: (parejaId: string) => `parejas/${parejaId}/preguntasServidas`,
 
+  /**
+   * Progreso del banco: qué cartas están hechas y cuántas veces se han pasado.
+   *
+   * Es UN documento con un mapa, no una colección de documentos, y la razón es
+   * la cuota. Con 1.000 preguntas, una colección obligaría a leer 1.000
+   * documentos cada vez que se abre el juego; el plan Spark da 50.000 lecturas
+   * al día, así que medio centenar de aperturas dejarían la app muerta hasta el
+   * día siguiente. Un mapa de 1.000 entradas ocupa ~60 KB — muy por debajo del
+   * límite de 1 MiB por documento — y cuesta UNA lectura.
+   *
+   * El precio: Firestore admite ~1 escritura por segundo sostenida sobre un
+   * mismo documento. Con dos personas pulsando botones es irrelevante.
+   */
+  progresoPreguntas: (parejaId: string) => `parejas/${parejaId}/progreso/preguntas`,
+  progresoDilemas: (parejaId: string) => `parejas/${parejaId}/progreso/dilemas`,
+
   /** Evento en curso: panorama sorteado + quién organiza + fecha. Documento único. */
   eventoActual: (parejaId: string) => `parejas/${parejaId}/eventos/actual`,
   configPareja: (parejaId: string) => `parejas/${parejaId}/config/app`,
