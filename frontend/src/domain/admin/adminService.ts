@@ -74,24 +74,43 @@ export async function auditar(
 
 // ── Limpiezas ──────────────────────────────────────────────────────────────
 
-export type Coleccion = 'historialPanoramas' | 'historialOrganizacion' | 'preguntasServidas' | 'partidasDilemas';
+/**
+ * ═════════════════════════════════════════════════════════════════════════
+ *  LO ÚNICO QUE EL PANEL PUEDE BORRAR
+ *
+ *  Esta lista es una lista BLANCA, y es la única forma de llegar a un delete
+ *  masivo desde la aplicación. Todo lo que no esté aquí es inalcanzable para
+ *  el botón de limpieza, por construcción y no por cuidado:
+ *
+ *      NUNCA se puede limpiar desde aquí
+ *      ├── perfiles ................ lo que escribieron el uno del otro
+ *      ├── panoramas ............... con su contador de veces realizadas
+ *      ├── preguntas y dilemas ..... el banco; las reglas prohíben el delete
+ *      ├── progreso ................ qué cartas están hechas
+ *      ├── ciclo ................... menstruaciones, síntomas, relaciones
+ *      ├── perfilConjunto .......... fechas memorables e hitos
+ *      └── auditoría ............... append-only incluso para quien la escribe
+ *
+ *  Son los tres historiales y nada más. Añadir una entrada a este objeto es
+ *  darle al botón acceso a borrar algo nuevo: piénsalo dos veces.
+ * ═════════════════════════════════════════════════════════════════════════
+ */
+export type Coleccion = 'historialPanoramas' | 'historialOrganizacion' | 'partidasDilemas';
 
-const RUTA: Record<Coleccion, (p: string) => string> = {
+export const RUTA_LIMPIABLE: Record<Coleccion, (p: string) => string> = {
   historialPanoramas: FS.historialPanoramas,
   historialOrganizacion: FS.historialOrganizacion,
-  preguntasServidas: FS.preguntasServidas,
   partidasDilemas: FS.partidasDilemas,
 };
 
 export const ETIQUETA_COLECCION: Record<Coleccion, string> = {
   historialPanoramas: 'Historial de panoramas',
   historialOrganizacion: 'Historial de organización',
-  preguntasServidas: 'Preguntas ya vistas',
   partidasDilemas: 'Partidas de "Qué prefieres"',
 };
 
 export async function contar(parejaId: string, cual: Coleccion): Promise<number> {
-  const snap = await getDocs(collection(obtenerFirestore(), RUTA[cual](parejaId)));
+  const snap = await getDocs(collection(obtenerFirestore(), RUTA_LIMPIABLE[cual](parejaId)));
   return snap.size;
 }
 
@@ -107,7 +126,7 @@ export async function limpiarColeccion(
 
   let borrados = 0;
   for (;;) {
-    const snap = await getDocs(query(collection(db, RUTA[cual](parejaId)), limit(400)));
+    const snap = await getDocs(query(collection(db, RUTA_LIMPIABLE[cual](parejaId)), limit(400)));
     if (snap.empty) break;
     const lote = writeBatch(db);
     for (const d of snap.docs) lote.delete(d.ref);

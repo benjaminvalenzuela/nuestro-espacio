@@ -20,6 +20,7 @@ import {
 } from '@shared/bachillerato';
 import { POLITICA_CSP } from '../src/config/csp';
 import { siguienteTema, etiquetaDe, type Tema } from '../src/domain/tema/tema';
+import { RUTA_LIMPIABLE } from '../src/domain/admin/adminService';
 import type { Giro } from '@shared/schemas/giro.schema';
 
 /**
@@ -768,5 +769,38 @@ describe('Tema claro/oscuro', () => {
     // dentro del HTML. Un estilo inline no ejecuta código; un script sí.
     const styleSrc = POLITICA_CSP.split('; ').find((d) => d.startsWith('style-src')) ?? '';
     expect(styleSrc).toContain("'unsafe-inline'");
+  });
+});
+
+describe('El botón de limpieza solo alcanza los historiales', () => {
+  /**
+   * Este test existe por una preocupación concreta: que un cambio en la app no
+   * borre lo que ustedes escribieron. La limpieza del panel es la única ruta a
+   * un borrado masivo, y aquí se fija exactamente hasta dónde llega.
+   *
+   * Si alguien agrega una colección a RUTA_LIMPIABLE, este test falla y le
+   * obliga a justificarlo. Es más difícil ignorar un test rojo que un
+   * comentario.
+   */
+  it('la lista blanca contiene los tres historiales y nada más', () => {
+    expect(Object.keys(RUTA_LIMPIABLE).sort()).toEqual([
+      'historialOrganizacion', 'historialPanoramas', 'partidasDilemas',
+    ]);
+  });
+
+  it('ninguna ruta limpiable toca perfiles, banco, progreso ni ciclo', () => {
+    const prohibidos = [
+      'perfiles', 'perfilConjunto', 'panoramas', 'preguntas', 'dilemas',
+      'progreso', 'ciclo', 'dispositivos', 'secretos', 'auditoria',
+    ];
+
+    for (const [nombre, ruta] of Object.entries(RUTA_LIMPIABLE)) {
+      const generada = ruta('pareja_test');
+      for (const prohibido of prohibidos) {
+        // Se compara por segmento: "historialPanoramas" contiene "panoramas"
+        // como subcadena, pero no es la colección de panoramas.
+        expect(generada.split('/'), `${nombre} → ${generada}`).not.toContain(prohibido);
+      }
+    }
   });
 });
