@@ -1,5 +1,5 @@
 import {
-  ref, onValue, update, set, remove, runTransaction, serverTimestamp as tsRtdb,
+  ref, onValue, update, remove, get, runTransaction, serverTimestamp as tsRtdb,
   type Unsubscribe,
 } from 'firebase/database';
 import {
@@ -107,18 +107,20 @@ export function observarPartida(
     onValue(
       referencia,
       (snap) => {
-        const v = (snap.val() ?? {}) as Record<string, unknown>;
-        const acumulado = (v.acumulado ?? {}) as Record<string, unknown>;
+        const raiz = (snap.val() ?? {}) as Record<string, unknown>;
+        const c = (raiz.control ?? {}) as Record<string, unknown>;
+        const acumulado = (c.acumulado ?? {}) as Record<string, unknown>;
+
         alCambiar({
-          estado: ['esperando', 'girando', 'jugando', 'revisando'].includes(String(v.estado))
-            ? (v.estado as EstadoPartida)
+          estado: ['esperando', 'girando', 'jugando', 'revisando'].includes(String(c.estado))
+            ? (c.estado as EstadoPartida)
             : 'esperando',
-          semilla: Number(v.semilla ?? 0),
-          rondaId: String(v.rondaId ?? ''),
-          iniciadoEn: Number(v.iniciadoEn ?? 0),
-          stopPor: v.stopPor === 'a' || v.stopPor === 'b' ? v.stopPor : null,
+          semilla: Number(c.semilla ?? 0),
+          rondaId: String(c.rondaId ?? ''),
+          iniciadoEn: Number(c.iniciadoEn ?? 0),
+          stopPor: c.stopPor === 'a' || c.stopPor === 'b' ? c.stopPor : null,
           acumulado: { a: Number(acumulado.a ?? 0), b: Number(acumulado.b ?? 0) },
-          respuestas: (v.respuestas ?? {}) as RespuestasPartida,
+          respuestas: (raiz.respuestas ?? {}) as RespuestasPartida,
         });
       },
       (e) => {
@@ -141,7 +143,7 @@ export function observarPartida(
  * igual sin intercambiar nada.
  */
 export async function girarLetra(parejaId: string): Promise<boolean> {
-  const referencia = ref(obtenerRtdb(), RTDB.bachillerato(parejaId));
+  const referencia = ref(obtenerRtdb(), RTDB.bachilleratoControl(parejaId));
 
   const tx = await runTransaction(referencia, (actual: Record<string, unknown> | null) => {
     // No se interrumpe una ronda en curso.
@@ -154,16 +156,19 @@ export async function girarLetra(parejaId: string): Promise<boolean> {
       rondaId: `r${Date.now().toString(36)}`,
       iniciadoEn: tsRtdb(),
       stopPor: null,
-      respuestas: null,      // ronda nueva, tablero limpio
     };
   });
+
+  // El tablero se limpia aparte: las respuestas viven en otro nodo, y cada uno
+  // solo puede borrar las suyas.
+  if (tx.committed) await limpiarMisRespuestas(parejaId).catch(() => {});
 
   return tx.committed;
 }
 
 /** Pasa de la animación al juego. La llama quien terminó de ver girar. */
 export async function empezarRonda(parejaId: string): Promise<void> {
-  await update(ref(obtenerRtdb(), RTDB.bachillerato(parejaId)), { estado: 'jugando' });
+  await update(ref(obtenerRtdb(), RTDB.bachilleratoControl(parejaId)), { estado: 'jugando' });
 }
 
 /** Guarda una respuesta propia. Las reglas impiden escribir la fila del otro. */
@@ -193,18 +198,15 @@ export async function pararRonda(
   persona: Persona,
   categorias: string[],
 ): Promise<{ cerro: boolean; puntajes: Record<Persona, number> }> {
-  const referencia = ref(obtenerRtdb(), RTDB.bachillerato(parejaId));
+  const control = ref(obtenerRtdb(), RTDB.bachilleratoControl(parejaId));
+  const respuestas = await leerRespuestas(parejaId);
   let puntajes: Record<Persona, number> = { a: 0, b: 0 };
 
-  const tx = await runTransaction(referencia, (actual: Record<string, unknown> | null) => {
+  const tx = await runTransaction(control, (actual: Record<string, unknown> | null) => {
     if (!actual || actual.estado !== 'jugando') return undefined;   // ya se cerró
 
     const letra = letraDeSemilla(Number(actual.semilla ?? 0));
-    const resultado = puntuarRonda(
-      categorias,
-      (actual.respuestas ?? {}) as RespuestasPartida,
-      letra,
-    );
+    const resultado = puntuarRonda(categorias, respuestas, letra);
     puntajes = resultado.puntajes;
 
     const previo = (actual.acumulado ?? {}) as Record<string, unknown>;
@@ -233,11 +235,11 @@ export async function reiniciarPartida(
   parejaId: string,
   categorias: string[],
 ): Promise<{ puntajes: Record<Persona, number>; ganador: Ganador; hubo: boolean }> {
-  const referencia = ref(obtenerRtdb(), RTDB.bachillerato(parejaId));
+  const control = ref(obtenerRtdb(), RTDB.bachilleratoControl(parejaId));
   let puntajes: Record<Persona, number> = { a: 0, b: 0 };
   let letra = '';
 
-  await runTransaction(referencia, (actual: Record<string, unknown> | null) => {
+  await runTransaction(control, (actual: Record<string, unknown> | null) => {
     const previo = (actual?.acumulado ?? {}) as Record<string, unknown>;
     puntajes = { a: Number(previo.a ?? 0), b: Number(previo.b ?? 0) };
     letra = actual ? letraDeSemilla(Number(actual.semilla ?? 0)) : '';
@@ -249,9 +251,10 @@ export async function reiniciarPartida(
       iniciadoEn: 0,
       stopPor: null,
       acumulado: { a: 0, b: 0 },
-      respuestas: null,
     };
   });
+
+  await limpiarMisRespuestas(parejaId).catch(() => {});
 
   const hubo = puntajes.a > 0 || puntajes.b > 0;
   const ganador = ganadorDe(puntajes);
@@ -272,20 +275,32 @@ export async function reiniciarPartida(
   return { puntajes, ganador, hubo };
 }
 
-/** Limpia solo las respuestas, dejando el acumulado. Para empezar otra ronda. */
-export async function limpiarRespuestas(parejaId: string): Promise<void> {
-  await remove(ref(obtenerRtdb(), `${RTDB.bachillerato(parejaId)}/respuestas`));
+/**
+ * Borra las respuestas PROPIAS.
+ *
+ * Cada uno solo puede borrar su fila —lo imponen las reglas— así que al
+ * empezar una ronda cada dispositivo limpia la suya. El del otro la limpia
+ * cuando le llegue el cambio de ronda.
+ */
+export async function limpiarMisRespuestas(parejaId: string): Promise<void> {
+  const persona = personaActual;
+  if (!persona) return;
+  await remove(ref(obtenerRtdb(), RTDB.bachilleratoRespuestas(parejaId, persona)));
 }
 
-export async function reservarPartida(parejaId: string): Promise<void> {
-  await set(ref(obtenerRtdb(), RTDB.bachillerato(parejaId)), {
-    estado: 'esperando',
-    semilla: 0,
-    rondaId: '',
-    iniciadoEn: 0,
-    stopPor: null,
-    acumulado: { a: 0, b: 0 },
-  });
+/** Lectura puntual de las respuestas, para puntuar sin depender del snapshot. */
+async function leerRespuestas(parejaId: string): Promise<RespuestasPartida> {
+  const snap = await get(ref(obtenerRtdb(), `${RTDB.bachillerato(parejaId)}/respuestas`));
+  return (snap.val() ?? {}) as RespuestasPartida;
 }
+
+/**
+ * Quién es esta pantalla. Se fija al arrancar el juego.
+ *
+ * Hace falta porque limpiar el tablero es una operación por persona: no existe
+ * un "borrar todo", justamente porque nadie puede tocar la fila del otro.
+ */
+let personaActual: Persona | null = null;
+export function fijarPersona(p: Persona): void { personaActual = p; }
 
 export { letraDeSemilla, puntuarRonda, ganadorDe };

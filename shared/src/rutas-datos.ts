@@ -112,6 +112,17 @@ export const RTDB = {
    * teclear, mientras que RTDB está pensada exactamente para esto.
    */
   bachillerato: (parejaId: string) => `salas/${parejaId}/bachillerato`,
+
+  /**
+   * Control y respuestas son nodos HERMANOS, no un solo objeto.
+   *
+   * En RTDB el permiso de escritura cascadea: conceder `.write` en un nodo lo
+   * concede en todo su subárbol. Si las respuestas colgaran del nodo de
+   * control —que tiene que ser escribible para poder hacer transacciones sobre
+   * él—, cualquiera de los dos podría reescribir las palabras del otro después
+   * de ver las suyas.
+   */
+  bachilleratoControl: (parejaId: string) => `salas/${parejaId}/bachillerato/control`,
   bachilleratoRespuestas: (parejaId: string, persona: Persona) =>
     `salas/${parejaId}/bachillerato/respuestas/${persona}`,
 

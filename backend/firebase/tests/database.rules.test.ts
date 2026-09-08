@@ -278,3 +278,75 @@ describe('Denegación por defecto', () => {
     await assertFails(get(ref(sinSesion(), '/')));
   });
 });
+
+describe('Bachillerato · el control y las respuestas están separados a propósito', () => {
+  const control = `${S}/bachillerato/control`;
+  const respuestas = `${S}/bachillerato/respuestas`;
+
+  it('un miembro escribe el control entero: hace falta para las transacciones', async () => {
+    await assertSucceeds(
+      set(ref(como(UID_A1), control), {
+        estado: 'girando', semilla: 12345, rondaId: 'r1',
+        iniciadoEn: serverTimestamp(), stopPor: null,
+        acumulado: { a: 0, b: 0 },
+      }),
+    );
+  });
+
+  it('los dos miembros pueden mover el control: cualquiera gira y cualquiera para', async () => {
+    await set(ref(como(UID_A1), control), {
+      estado: 'jugando', semilla: 1, rondaId: 'r1', iniciadoEn: serverTimestamp(),
+      stopPor: null, acumulado: { a: 0, b: 0 },
+    });
+    await assertSucceeds(update(ref(como(UID_B1), control), { estado: 'revisando', stopPor: 'b' }));
+  });
+
+  it('cada uno escribe SOLO su propia fila de respuestas', async () => {
+    await assertSucceeds(set(ref(como(UID_A1), `${respuestas}/a`), { Nombre: 'Ana' }));
+    await assertSucceeds(set(ref(como(UID_B1), `${respuestas}/b`), { Nombre: 'Bruno' }));
+  });
+
+  /**
+   * EL FALLO QUE ESTA SEPARACIÓN IMPIDE.
+   *
+   * En RTDB el permiso de escritura CASCADEA: conceder .write en un nodo lo
+   * concede en todo su subárbol. Si las respuestas colgaran del nodo de
+   * control —que tiene que ser escribible para poder hacer transacciones sobre
+   * él— este test pasaría, y el juego dejaría de tener sentido: bastaría con
+   * mirar lo que puso el otro y reescribirlo.
+   */
+  it('NADIE puede reescribir las respuestas de su pareja', async () => {
+    await set(ref(como(UID_B1), `${respuestas}/b`), { Nombre: 'Bruno' });
+    await assertFails(set(ref(como(UID_A1), `${respuestas}/b`), { Nombre: 'Trampa' }));
+    await assertFails(update(ref(como(UID_A1), `${respuestas}/b`), { Nombre: 'Trampa' }));
+  });
+
+  it('el segundo dispositivo de A escribe la fila de A, no la de B', async () => {
+    await assertSucceeds(set(ref(como(UID_A2), `${respuestas}/a`), { Nombre: 'Ana' }));
+    await assertFails(set(ref(como(UID_A2), `${respuestas}/b`), { Nombre: 'Trampa' }));
+  });
+
+  it('RECHAZA un estado que no existe', async () => {
+    await assertFails(update(ref(como(UID_A1), control), { estado: 'haciendo_trampa' }));
+  });
+
+  it('RECHAZA HTML en una respuesta', async () => {
+    await assertFails(
+      set(ref(como(UID_A1), `${respuestas}/a`), { Nombre: '<script>alert(1)</script>' }),
+    );
+  });
+
+  it('RECHAZA un acumulado negativo o absurdo', async () => {
+    await assertFails(set(ref(como(UID_A1), `${control}/acumulado/a`), -50));
+    await assertFails(set(ref(como(UID_A1), `${control}/acumulado/a`), 999999999));
+  });
+
+  it('un intruso no lee ni escribe la partida', async () => {
+    await assertFails(get(ref(como(UID_INTRUSO), control)));
+    await assertFails(set(ref(como(UID_INTRUSO), `${respuestas}/a`), { Nombre: 'x' }));
+  });
+
+  it('sin sesión no se ve nada', async () => {
+    await assertFails(get(ref(sinSesion(), `${S}/bachillerato`)));
+  });
+});

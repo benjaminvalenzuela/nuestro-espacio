@@ -90,7 +90,7 @@ import AppLayout from '../layouts/AppLayout.astro';
   import {
     observarCategorias, guardarCategorias, observarPartida, girarLetra,
     empezarRonda, escribirRespuesta, pararRonda, reiniciarPartida,
-    limpiarRespuestas, letraDeSemilla, puntuarRonda,
+    limpiarMisRespuestas, fijarPersona, letraDeSemilla, puntuarRonda,
     DURACION_RULETA_MS, PARTIDA_VACIA, ErrorBachillerato,
     type Partida,
   } from '../domain/bachillerato/bachilleratoService';
@@ -353,6 +353,9 @@ import AppLayout from '../layouts/AppLayout.astro';
 
   protegerPagina((sesion) => {
     yo = sesion.persona;
+    // Limpiar el tablero es una operación por persona —nadie puede tocar la
+    // fila del otro—, así que el servicio necesita saber quién es esta pantalla.
+    fijarPersona(yo);
     iniciarRelojServidor();
     $('guardia').classList.add('hidden');
     $('app').classList.remove('hidden');
@@ -397,7 +400,7 @@ import AppLayout from '../layouts/AppLayout.astro';
     $('btn-girar').addEventListener('click', async () => {
       btn('btn-girar').disabled = true;
       try {
-        if (partida.estado === 'revisando') await limpiarRespuestas(parejaId);
+        if (partida.estado === 'revisando') await limpiarMisRespuestas(parejaId);
         const giro = await girarLetra(parejaId);
         if (!giro) avisar('Tu pareja ya estaba girando.');
       } catch {
