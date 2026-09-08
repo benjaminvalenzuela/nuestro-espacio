@@ -31,9 +31,31 @@ export default defineConfig({
     // Cada asset lleva un hash en el nombre: los despliegues sucesivos no
     // pueden servir una versión cacheada mezclada con otra.
     assets: '_astro',
+
+    /**
+     * NUNCA incrustar scripts dentro del HTML.
+     *
+     * Astro, por defecto, mete los scripts de página pequeños directamente en
+     * el <head> como <script type="module"> sin src. Es más rápido —se ahorra
+     * una petición— y aquí es inservible: la Content Security Policy declara
+     * `script-src 'self'` sin 'unsafe-inline', así que el navegador los
+     * bloquea.
+     *
+     * El fallo es especialmente traicionero porque depende del TAMAÑO del
+     * script: una pantalla con mucho código funciona y otra con poco no, y en
+     * desarrollo no se nota porque ahí la CSP ni se emite. Se descubrió con el
+     * botón del tema, que por ser corto acabó incrustado y no hacía nada en la
+     * versión desplegada.
+     */
+    inlineStylesheets: 'never',
   },
   vite: {
     plugins: [tailwindcss()],
+    build: {
+      // Mismo motivo que inlineStylesheets: 0 desactiva por completo que Vite
+      // convierta un asset pequeño en un data: URI o en contenido incrustado.
+      assetsInlineLimit: 0,
+    },
     resolve: {
       alias: {
         '@shared': fileURLToPath(new URL('../shared/src', import.meta.url)),

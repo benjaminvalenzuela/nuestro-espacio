@@ -65,7 +65,17 @@ jobs:
       - name: Chequeo de tipos
         run: npm run typecheck
 
-      - name: Pruebas de dominio
+      # El build va ANTES de los tests, no después, porque hay pruebas que
+      # inspeccionan el HTML compilado —que ningún script quede incrustado, que
+      # todo salga del propio dominio— y sin dist/ se saltarían en silencio.
+      - name: Compilación
+        # Valores de relleno: aquí solo se comprueba que compila. El build real
+        # con la configuración de cada entorno lo hacen los workflows de CD.
+        env:
+          PUBLIC_ENTORNO: desa
+        run: npm run build
+
+      - name: Pruebas de dominio y del sitio compilado
         run: npm run test:dominio
 
       - name: Pruebas de Security Rules
@@ -76,13 +86,6 @@ jobs:
           --project demo-nuestro-espacio
           --only auth,firestore,database
           "npm run test:reglas"
-
-      - name: Compilación de producción
-        # Valores de relleno: aquí solo se comprueba que compila. El build real
-        # con la configuración de cada entorno lo hacen los workflows de CD.
-        env:
-          PUBLIC_ENTORNO: desa
-        run: npm run build
 
       - name: Tamaño del bundle inicial
         # Aviso, no bloqueo: un salto grande de peso merece una mirada, pero no
