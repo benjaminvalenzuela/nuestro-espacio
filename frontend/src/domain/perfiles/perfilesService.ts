@@ -104,7 +104,10 @@ export async function guardarPerfil(
     doc(obtenerFirestore(), FS.perfil(parejaId, persona)),
     {
       nombre: limpio.nombre,
-      ...(limpio.fechaNacimiento ? { fechaNacimiento: limpio.fechaNacimiento } : {}),
+      // Se envía null cuando está vacía, en vez de omitir el campo. Con
+      // merge:true, omitirlo conserva el valor anterior: una fecha de
+      // nacimiento mal puesta sería imposible de borrar.
+      fechaNacimiento: limpio.fechaNacimiento ?? null,
       ...Object.fromEntries(CAMPOS_LISTA.map((c) => [c, limpio[c]])),
       actualizadoEn: serverTimestamp(),
     },
