@@ -1,6 +1,6 @@
 ---
 import AppLayout from '../layouts/AppLayout.astro';
-import { DIAS_SEMANA } from '@shared/ciclo';
+import { DIAS_SEMANA, EXPLICACION_FASES } from '@shared/ciclo';
 ---
 
 <AppLayout
@@ -8,10 +8,18 @@ import { DIAS_SEMANA } from '@shared/ciclo';
   encabezado="Calendario"
   bajada="El ciclo, los síntomas y lo que pasa entre medio."
 >
+  {/*
+    En teléfono todo va en una columna, como estaba. A partir de `lg` el
+    calendario se queda a la izquierda y el detalle del día a la derecha, para
+    no obligar a bajar la página cada vez que se pulsa un día en un monitor
+    donde sobra ancho por todas partes.
+  */}
+  <div class="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:items-start lg:gap-8">
+  <div>
   {/* ── Navegación del mes ─────────────────────────────────────────── */}
   <div class="mb-4 flex items-center justify-between gap-2">
     <button id="mes-anterior" type="button" aria-label="Mes anterior"
-      class="rounded-lg border border-borde px-3 py-2 text-tinta-suave transition hover:bg-superficie-alta">
+      class="rounded-lg border border-borde px-3 py-2 text-tinta-suave transition hover:bg-superficie-alt">
       ←
     </button>
     <div class="text-center">
@@ -20,15 +28,19 @@ import { DIAS_SEMANA } from '@shared/ciclo';
         class="text-xs text-acento underline-offset-2 hover:underline">Ir a hoy</button>
     </div>
     <button id="mes-siguiente" type="button" aria-label="Mes siguiente"
-      class="rounded-lg border border-borde px-3 py-2 text-tinta-suave transition hover:bg-superficie-alta">
+      class="rounded-lg border border-borde px-3 py-2 text-tinta-suave transition hover:bg-superficie-alt">
       →
     </button>
   </div>
 
   {/* ── Resumen ────────────────────────────────────────────────────── */}
-  <section id="resumen" class="tarjeta mb-4 px-4 py-3.5">
-    <p id="resumen-fase" class="text-sm font-medium text-tinta"></p>
-    <p id="resumen-prediccion" class="mt-0.5 text-xs text-tinta-tenue"></p>
+  <section id="resumen" class="tarjeta mb-4 flex items-start gap-3 px-4 py-3.5">
+    <span id="resumen-chip" class="fase-desconocida shrink-0 rounded-lg px-2.5 py-2 text-lg leading-none"
+      aria-hidden="true">❔</span>
+    <div class="min-w-0">
+      <p id="resumen-fase" class="text-sm font-medium text-tinta"></p>
+      <p id="resumen-prediccion" class="mt-0.5 text-xs text-tinta-tenue"></p>
+    </div>
   </section>
 
   {/* ── Rejilla ────────────────────────────────────────────────────── */}
@@ -39,19 +51,28 @@ import { DIAS_SEMANA } from '@shared/ciclo';
   </div>
   <div id="rejilla" class="grid grid-cols-7 gap-1"></div>
 
-  {/* ── Leyenda ────────────────────────────────────────────────────── */}
-  <div class="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-tinta-tenue">
+  {/* ── Leyenda ──────────────────────────────────────────────────────
+      Los cuadritos usan LAS MISMAS clases que las celdas del calendario
+      (fase-menstruacion, fase-lutea…), no un color copiado a mano. Así la
+      leyenda no puede quedarse desfasada de lo que se ve arriba. */}
+  <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-tinta-suave">
     <span class="flex items-center gap-1.5">
-      <span class="size-2.5 rounded-full" style="background:var(--color-peligro)"></span> Menstruación
+      <span class="fase-menstruacion size-4 rounded" aria-hidden="true"></span> Menstruación
     </span>
     <span class="flex items-center gap-1.5">
-      <span class="size-2.5 rounded-full" style="background:var(--color-acento)"></span> Ovulación
+      <span class="fase-folicular size-4 rounded" aria-hidden="true"></span> Folicular
     </span>
     <span class="flex items-center gap-1.5">
-      <span class="size-2.5 rounded-full border border-acento"></span> Días fértiles (estimado)
+      <span class="fase-ovulacion size-4 rounded" aria-hidden="true"></span> Ovulación
     </span>
     <span class="flex items-center gap-1.5">
-      <span class="size-2.5 rounded-full" style="background:var(--color-salvia)"></span> Fase lútea
+      <span class="fase-lutea size-4 rounded" aria-hidden="true"></span> Lútea
+    </span>
+    <span class="flex items-center gap-1.5">
+      <span class="dia-fertil size-4 rounded bg-superficie-alt" aria-hidden="true"></span> Días fértiles (estimado)
+    </span>
+    <span class="flex items-center gap-1.5">
+      <span class="dia-hoy size-4 rounded bg-superficie-alt" aria-hidden="true"></span> Hoy
     </span>
     <span>❤️ Relaciones</span>
     <span>• Síntomas</span>
@@ -63,15 +84,18 @@ import { DIAS_SEMANA } from '@shared/ciclo';
     anticonceptivo ni sustituyen a un profesional de la salud.
   </p>
 
+  </div>
+
+  <div class="mt-6 flex flex-col gap-5 lg:mt-0">
   {/* ── Detalle del día ────────────────────────────────────────────── */}
-  <section id="detalle-dia" hidden class="mt-5 flex flex-col gap-4">
+  <section id="detalle-dia" hidden class="flex flex-col gap-4">
     <div class="flex items-center justify-between gap-2">
       <div>
         <p id="dia-titulo" class="text-base font-semibold text-tinta"></p>
         <p id="dia-fase" class="text-xs text-tinta-tenue"></p>
       </div>
       <button id="dia-cerrar" type="button"
-        class="rounded-lg border border-borde px-2.5 py-1.5 text-xs text-tinta-suave transition hover:bg-superficie-alta">
+        class="rounded-lg border border-borde px-2.5 py-1.5 text-xs text-tinta-suave transition hover:bg-superficie-alt">
         Cerrar
       </button>
     </div>
@@ -117,8 +141,55 @@ import { DIAS_SEMANA } from '@shared/ciclo';
     </div>
   </section>
 
+  {/* ── Sobre las fases ──────────────────────────────────────────────
+      Texto explicativo generado desde EXPLICACION_FASES, que vive en
+      shared/ciclo.ts. Se escribe una vez y lo usan la pantalla y los tests. */}
+  <details id="sobre-fases" class="tarjeta overflow-hidden">
+    <summary class="cursor-pointer list-none px-4 py-3.5 text-sm font-semibold text-tinta select-none">
+      📖 Sobre las fases
+      <span class="ml-1 font-normal text-tinta-tenue">· qué es cada una</span>
+    </summary>
+
+    <div class="flex flex-col gap-4 border-t border-borde px-4 py-4">
+      <p class="text-xs leading-relaxed text-tinta-suave">
+        Un ciclo va del primer día de una regla al primer día de la siguiente.
+        Se divide en cuatro tramos y en cada uno el cuerpo hace cosas distintas.
+        Lo de abajo es lo que <strong>suele</strong> pasar: hay quien no nota nada
+        y está igual de sana, y hay quien lo nota todo.
+      </p>
+
+      {EXPLICACION_FASES.map((f) => (
+        <article class={`rounded-xl px-3.5 py-3 fase-${f.fase}`}>
+          <h3 class="text-sm font-semibold">{f.emoji} {f.titulo}</h3>
+          <p class="mt-0.5 text-[11px] font-medium opacity-80">{f.cuando}</p>
+          <p class="mt-2 text-xs leading-relaxed">{f.queEs}</p>
+
+          <p class="mt-2.5 text-[11px] font-semibold tracking-wide uppercase opacity-70">
+            Puede notarse
+          </p>
+          <p class="text-xs">{f.sintomas.join(' · ')}</p>
+
+          <p class="mt-2 text-[11px] font-semibold tracking-wide uppercase opacity-70">
+            Ánimo habitual
+          </p>
+          <p class="text-xs">{f.animo.join(' · ')}</p>
+
+          <p class="mt-2.5 border-t border-current/20 pt-2 text-xs leading-relaxed italic">
+            {f.consejo}
+          </p>
+        </article>
+      ))}
+
+      <p class="text-[11px] leading-relaxed text-tinta-tenue">
+        Esto es información general, no un diagnóstico. Si algo se sale de lo
+        habitual —dolor que no deja hacer vida normal, sangrados muy largos o
+        ciclos que se descuadran de golpe— eso lo mira un profesional, no una app.
+      </p>
+    </div>
+  </details>
+
   {/* ── Ajustes ────────────────────────────────────────────────────── */}
-  <details class="mt-6">
+  <details>
     <summary class="cursor-pointer text-sm font-medium text-tinta-suave">⚙️ Ajustes del ciclo</summary>
     <div class="tarjeta mt-3 flex flex-col gap-3 px-4 py-4">
       <div class="flex flex-col gap-1.5">
@@ -142,6 +213,9 @@ import { DIAS_SEMANA } from '@shared/ciclo';
     </div>
   </details>
 
+  </div>
+  </div>
+
   <p id="ciclo-aviso" role="status" class="mt-4 text-center text-xs text-acento"></p>
 </AppLayout>
 
@@ -156,8 +230,8 @@ import { DIAS_SEMANA } from '@shared/ciclo';
   import {
     SINTOMAS, GRUPOS_SINTOMA, NOMBRES_MES, ETIQUETA_FASE,
     rejillaMes, faseDe, calcularPromedios, proximaMenstruacion, iniciosDesdeDias,
-    type Fase,
   } from '@shared/ciclo';
+  import { CLASE_FASE, EMOJI_FASE } from '../domain/ciclo/estiloFase';
   import { hoyEnSantiago, fechaLarga } from '../domain/perfiles/tiempoJuntos';
   import { observarNombre } from '../domain/presencia/presenciaService';
   import { ENV } from '../config/env';
@@ -189,13 +263,6 @@ import { DIAS_SEMANA } from '@shared/ciclo';
   const inicios = () => iniciosDesdeDias(menstruaciones);
   const promedios = () => calcularPromedios(inicios(), config.duracionRegla);
 
-  const COLOR_FASE: Record<Fase, string> = {
-    menstruacion: 'bg-peligro/15 text-peligro',
-    ovulacion: 'bg-acento/20 text-acento',
-    folicular: 'bg-superficie-alt text-tinta-suave',
-    lutea: 'bg-salvia/15 text-salvia',
-    desconocida: 'bg-superficie-alt text-tinta-tenue',
-  };
 
   // ── Rejilla ───────────────────────────────────────────────────────────
 
@@ -221,11 +288,11 @@ import { DIAS_SEMANA } from '@shared/ciclo';
       btn.type = 'button';
       btn.dataset.fecha = celda.fecha;
       btn.className =
-        'relative flex aspect-square flex-col items-center justify-center rounded-lg text-sm transition ' +
-        COLOR_FASE[info.fase] +
-        (info.fertil && info.fase !== 'ovulacion' ? ' ring-1 ring-acento/40' : '') +
-        (celda.fecha === hoy ? ' font-bold ring-2 ring-tinta' : '') +
-        (celda.fecha === seleccionado ? ' outline-2 outline-offset-1 outline-acento' : '');
+        'relative flex aspect-square flex-col items-center justify-center rounded-lg text-sm font-medium transition ' +
+        CLASE_FASE[info.fase] +
+        (info.fertil && info.fase !== 'ovulacion' ? ' dia-fertil' : '') +
+        (celda.fecha === hoy ? ' dia-hoy' : '') +
+        (celda.fecha === seleccionado ? ' dia-elegido' : '');
 
       const n = document.createElement('span');
       n.textContent = String(celda.dia);
@@ -263,6 +330,10 @@ import { DIAS_SEMANA } from '@shared/ciclo';
     const p = promedios();
     const ini = inicios();
     const info = faseDe(hoy, ini, p, new Set(menstruaciones));
+
+    const chip = $('resumen-chip');
+    chip.className = `${CLASE_FASE[info.fase]} shrink-0 rounded-lg px-2.5 py-2 text-lg leading-none`;
+    chip.textContent = EMOJI_FASE[info.fase];
 
     if (info.fase === 'desconocida') {
       $('resumen-fase').textContent = 'Todavía sin datos suficientes.';

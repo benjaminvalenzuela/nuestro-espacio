@@ -221,6 +221,72 @@ describe('Historial y auditoría · append-only', () => {
   });
 });
 
+describe('Confirmar un panorama · "Evento realizado"', () => {
+  /**
+   * El camino de escritura que estrena el botón ✅ del banner. Antes lo
+   * recorría el sorteo con los mismos campos MENOS `confirmado`, así que esa
+   * bandera es exactamente lo que estas pruebas cubren: si un día alguien
+   * recorta el `soloCampos` de historialPanoramas, la app dejaría de poder
+   * cerrar eventos y el fallo aparecería en producción, no aquí.
+   */
+  it('archiva la salida con la bandera de confirmado', async () => {
+    await assertSucceeds(
+      setDoc(doc(como(UID_A1), `parejas/${PAREJA}/historialPanoramas/conf1`), {
+        panoramaId: 'pan1', nombreSnapshot: 'Ir al cerro', giroId: 'g1',
+        organizador: 'b', confirmado: true, ocurridoEn: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('suma uno al contador del panorama', async () => {
+    await assertSucceeds(
+      setDoc(doc(como(UID_A1), `parejas/${PAREJA}/panoramas/pan-conf`), {
+        nombre: 'Picnic', nombreNormalizado: 'picnic', creadoPor: 'a',
+        creadoEn: serverTimestamp(), activo: true, vecesRealizado: 0,
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(como(UID_B1), `parejas/${PAREJA}/panoramas/pan-conf`), {
+        vecesRealizado: increment(1), ultimaVezEn: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('RECHAZA sumar más de uno de golpe', async () => {
+    await assertSucceeds(
+      setDoc(doc(como(UID_A1), `parejas/${PAREJA}/panoramas/pan-trampa`), {
+        nombre: 'Cine', nombreNormalizado: 'cine', creadoPor: 'a',
+        creadoEn: serverTimestamp(), activo: true, vecesRealizado: 0,
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(como(UID_A1), `parejas/${PAREJA}/panoramas/pan-trampa`), {
+        vecesRealizado: increment(7), ultimaVezEn: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('el historial sigue siendo inmutable después de confirmar', async () => {
+    await setDoc(doc(como(UID_A1), `parejas/${PAREJA}/historialPanoramas/conf2`), {
+      panoramaId: 'pan1', nombreSnapshot: 'Ir al cerro', giroId: 'g1',
+      confirmado: true, ocurridoEn: serverTimestamp(),
+    });
+    await assertFails(
+      updateDoc(doc(como(UID_A1), `parejas/${PAREJA}/historialPanoramas/conf2`), {
+        confirmado: false,
+      }),
+    );
+  });
+
+  it('cancelar el evento lo borra, y eso sí está permitido', async () => {
+    await setDoc(doc(como(UID_A1), `parejas/${PAREJA}/eventos/actual`), {
+      panoramaId: 'pan1', nombre: 'Ir al cerro', organizador: 'b', fecha: null,
+      giroId: 'g1', creadoEn: serverTimestamp(), actualizadoEn: serverTimestamp(),
+    });
+    await assertSucceeds(deleteDoc(doc(como(UID_B1), `parejas/${PAREJA}/eventos/actual`)));
+  });
+});
+
 describe('Evento en curso · desde el banner solo se toca la fecha', () => {
   const crear = (uid: string) =>
     setDoc(doc(como(uid), `parejas/${PAREJA}/eventos/actual`), {

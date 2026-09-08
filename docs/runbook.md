@@ -270,7 +270,48 @@ app deje de funcionar.
 
 ---
 
-## 12 · Reglas que no se rompen nunca
+## 12 · Qué cuenta como panorama «realizado»
+
+El contador `vecesRealizado` de cada panorama, y la línea que se ve en la
+ruleta como «Realizado 3 veces», ya **no** los mueve el sorteo. Los mueve el
+botón **✅ Evento realizado** del banner del inicio.
+
+Antes se anotaba en el momento de girar, y por eso el número mentía: tres
+giros un viernes indeciso sumaban tres «realizados» sin que nadie hubiera
+salido de casa. Los dos botones del banner separan las dos cosas:
+
+| Botón | Historial | Contador | Evento |
+|---|---|---|---|
+| ✅ Evento realizado | añade una entrada con `confirmado: true` | +1 | se cierra |
+| ✖️ Cancelar evento | no toca nada | igual | se cierra |
+
+Cancelar pide confirmación y realizar no, a propósito: confirmar añade una
+línea que se puede volver a añadir, mientras que cancelar borra el panorama
+sorteado y recuperarlo obliga a girar otra vez.
+
+Consecuencia al leer datos antiguos: las entradas de `historialPanoramas`
+creadas antes de este cambio **no** llevan `confirmado`, y corresponden a
+sorteos, no necesariamente a salidas.
+
+## 13 · Contenido nuevo en el banco
+
+Los archivos viven en `backend/data/banco/`, uno por bloque temático, y la
+categoría y el nivel salen del **nombre del archivo** (ver `MAPA` en
+`seed-contenido.ts`). Para añadir contenido:
+
+1. Crear o ampliar un archivo con un prefijo que ya esté en el `MAPA`
+   —`dilemas-tono-4.json` entra como `subidas_de_tono` sin tocar el script—.
+2. `npm --workspace frontend run test` valida ids repetidos, longitudes,
+   niveles y textos duplicados **antes** de tocar Firebase.
+3. `npm --workspace backend run seed -- --entorno=qa`, comprobar, y luego
+   `--entorno=prod`.
+
+El seed es idempotente y no borra nada, así que reejecutarlo es seguro. Sube
+`versionBanco`, que es lo que invalida la caché de los dos teléfonos: sin ese
+salto, el contenido nuevo no aparecería hasta que alguien limpiara el
+almacenamiento del navegador.
+
+## 14 · Reglas que no se rompen nunca
 
 | Regla | Motivo |
 |---|---|

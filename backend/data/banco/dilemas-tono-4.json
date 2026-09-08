@@ -1,0 +1,368 @@
+[
+  {
+    "id": "dton-251",
+    "opcionA": "En la playa al atardecer",
+    "opcionB": "En el bosque a media tarde",
+    "nivel": 1
+  },
+  {
+    "id": "dton-252",
+    "opcionA": "Bajo la lluvia en la calle",
+    "opcionB": "Frente a la chimenea de una cabaña",
+    "nivel": 1
+  },
+  {
+    "id": "dton-253",
+    "opcionA": "En una carpa en el campo",
+    "opcionB": "En un hotel con vista al mar",
+    "nivel": 1
+  },
+  {
+    "id": "dton-254",
+    "opcionA": "En un mirador con la ciudad abajo",
+    "opcionB": "En un muelle de noche",
+    "nivel": 1
+  },
+  {
+    "id": "dton-255",
+    "opcionA": "En la terraza de un departamento alto",
+    "opcionB": "En el patio de una casa vieja",
+    "nivel": 1
+  },
+  {
+    "id": "dton-256",
+    "opcionA": "En el asiento de atrás del auto",
+    "opcionB": "En el sofá del living",
+    "nivel": 1
+  },
+  {
+    "id": "dton-257",
+    "opcionA": "En una piscina vacía a medianoche",
+    "opcionB": "En una tina llena de espuma",
+    "nivel": 1
+  },
+  {
+    "id": "dton-258",
+    "opcionA": "En un tren nocturno",
+    "opcionB": "En un barco pequeño",
+    "nivel": 1
+  },
+  {
+    "id": "dton-259",
+    "opcionA": "En una cabaña con nieve afuera",
+    "opcionB": "En una hamaca frente al lago",
+    "nivel": 1
+  },
+  {
+    "id": "dton-260",
+    "opcionA": "En el pasillo, sin llegar a la pieza",
+    "opcionB": "En la cocina, sin llegar al pasillo",
+    "nivel": 1
+  },
+  {
+    "id": "dton-261",
+    "opcionA": "En el baño de un avión",
+    "opcionB": "En el último asiento de un cine",
+    "nivel": 2
+  },
+  {
+    "id": "dton-262",
+    "opcionA": "En un callejón a la vuelta del bar",
+    "opcionB": "En el estacionamiento subterráneo",
+    "nivel": 2
+  },
+  {
+    "id": "dton-263",
+    "opcionA": "En un ascensor detenido",
+    "opcionB": "En una escalera de emergencia",
+    "nivel": 2
+  },
+  {
+    "id": "dton-264",
+    "opcionA": "En la playa de noche, sin nadie",
+    "opcionB": "En el bosque de día, con riesgo",
+    "nivel": 2
+  },
+  {
+    "id": "dton-265",
+    "opcionA": "En el auto en un camino de tierra",
+    "opcionB": "En el auto en pleno centro",
+    "nivel": 2
+  },
+  {
+    "id": "dton-266",
+    "opcionA": "En la oficina fuera de horario",
+    "opcionB": "En el baño de un restaurante",
+    "nivel": 2
+  },
+  {
+    "id": "dton-267",
+    "opcionA": "En la ducha con agua fría",
+    "opcionB": "En la cocina sobre el mesón",
+    "nivel": 2
+  },
+  {
+    "id": "dton-268",
+    "opcionA": "En el balcón a plena luz",
+    "opcionB": "En el living con las cortinas abiertas",
+    "nivel": 2
+  },
+  {
+    "id": "dton-269",
+    "opcionA": "En una tienda de campaña con gente cerca",
+    "opcionB": "En una cabaña totalmente aislada",
+    "nivel": 2
+  },
+  {
+    "id": "dton-270",
+    "opcionA": "En el probador de una tienda",
+    "opcionB": "En la bodega de un local",
+    "nivel": 2
+  },
+  {
+    "id": "dton-271",
+    "opcionA": "En un parque de madrugada",
+    "opcionB": "En una plaza vacía al amanecer",
+    "nivel": 2
+  },
+  {
+    "id": "dton-272",
+    "opcionA": "En la casa de tus papás cuando no están",
+    "opcionB": "En la casa de tus suegros cuando no están",
+    "nivel": 2
+  },
+  {
+    "id": "dton-273",
+    "opcionA": "En un hotel por horas",
+    "opcionB": "En un hotel de cinco estrellas",
+    "nivel": 2
+  },
+  {
+    "id": "dton-274",
+    "opcionA": "En la azotea de un edificio",
+    "opcionB": "En el subterráneo de uno",
+    "nivel": 2
+  },
+  {
+    "id": "dton-275",
+    "opcionA": "En un festival, dentro de la carpa",
+    "opcionB": "En un festival, detrás del escenario",
+    "nivel": 2
+  },
+  {
+    "id": "dton-276",
+    "opcionA": "En la piscina de un hotel a las tres",
+    "opcionB": "En el jacuzzi con gente a dos metros",
+    "nivel": 2
+  },
+  {
+    "id": "dton-277",
+    "opcionA": "En el campo, sobre el pasto",
+    "opcionB": "En la playa, sobre la arena",
+    "nivel": 2
+  },
+  {
+    "id": "dton-278",
+    "opcionA": "En un mirador de carretera",
+    "opcionB": "En un paradero de bus abandonado",
+    "nivel": 2
+  },
+  {
+    "id": "dton-279",
+    "opcionA": "En el baño de una fiesta",
+    "opcionB": "En la pieza de la fiesta, con abrigos encima",
+    "nivel": 2
+  },
+  {
+    "id": "dton-280",
+    "opcionA": "En una biblioteca vacía",
+    "opcionB": "En un museo antes de que abra",
+    "nivel": 2
+  },
+  {
+    "id": "dton-281",
+    "opcionA": "Con la ventana abierta y la luz prendida",
+    "opcionB": "Con todo cerrado y a oscuras",
+    "nivel": 2
+  },
+  {
+    "id": "dton-282",
+    "opcionA": "En un camarote de barco",
+    "opcionB": "En una carpa en la montaña",
+    "nivel": 2
+  },
+  {
+    "id": "dton-283",
+    "opcionA": "En el metro a última hora",
+    "opcionB": "En un taxi con el chofer adelante",
+    "nivel": 2
+  },
+  {
+    "id": "dton-284",
+    "opcionA": "Donde nos puedan escuchar",
+    "opcionB": "Donde nos puedan ver de lejos",
+    "nivel": 2
+  },
+  {
+    "id": "dton-285",
+    "opcionA": "En un lugar con eco",
+    "opcionB": "En un lugar donde hay que quedarse callado",
+    "nivel": 2
+  },
+  {
+    "id": "dton-286",
+    "opcionA": "En el avión, los dos en el mismo baño",
+    "opcionB": "En el avión, tapados con la manta",
+    "nivel": 3
+  },
+  {
+    "id": "dton-287",
+    "opcionA": "En el cine, en una función llena",
+    "opcionB": "En el cine, en una función vacía",
+    "nivel": 3
+  },
+  {
+    "id": "dton-288",
+    "opcionA": "En el callejón, apurados",
+    "opcionB": "En el auto, con calma",
+    "nivel": 3
+  },
+  {
+    "id": "dton-289",
+    "opcionA": "En el bosque, sin nada debajo",
+    "opcionB": "En la playa, con el mar tocando los pies",
+    "nivel": 3
+  },
+  {
+    "id": "dton-290",
+    "opcionA": "Al aire libre a plena luz del día",
+    "opcionB": "Al aire libre en plena noche",
+    "nivel": 3
+  },
+  {
+    "id": "dton-291",
+    "opcionA": "Que casi nos pillen",
+    "opcionB": "Que nos pillen de verdad",
+    "nivel": 3
+  },
+  {
+    "id": "dton-292",
+    "opcionA": "En un lugar público sin que nadie se dé cuenta",
+    "opcionB": "En un lugar privado sin ninguna regla",
+    "nivel": 3
+  },
+  {
+    "id": "dton-293",
+    "opcionA": "En el campo, sobre el capó del auto",
+    "opcionB": "En el campo, dentro del auto",
+    "nivel": 3
+  },
+  {
+    "id": "dton-294",
+    "opcionA": "En una playa nudista",
+    "opcionB": "En una playa normal, a escondidas",
+    "nivel": 3
+  },
+  {
+    "id": "dton-295",
+    "opcionA": "En el baño del trabajo",
+    "opcionB": "En el escritorio del trabajo",
+    "nivel": 3
+  },
+  {
+    "id": "dton-296",
+    "opcionA": "De pie contra una pared",
+    "opcionB": "En el suelo de donde sea",
+    "nivel": 3
+  },
+  {
+    "id": "dton-297",
+    "opcionA": "En la escalera del edificio",
+    "opcionB": "En el ascensor entre dos pisos",
+    "nivel": 3
+  },
+  {
+    "id": "dton-298",
+    "opcionA": "En un lugar donde hay que ser rápidos",
+    "opcionB": "En un lugar donde sobra el tiempo",
+    "nivel": 3
+  },
+  {
+    "id": "dton-299",
+    "opcionA": "En un sitio incómodo pero prohibido",
+    "opcionB": "En un sitio cómodo pero de siempre",
+    "nivel": 3
+  },
+  {
+    "id": "dton-300",
+    "opcionA": "En el mar, con el agua hasta el pecho",
+    "opcionB": "En la orilla, con las olas encima",
+    "nivel": 3
+  },
+  {
+    "id": "dton-301",
+    "opcionA": "En una fiesta, sin que nadie nos vea salir",
+    "opcionB": "En una fiesta, que todos nos vean salir",
+    "nivel": 3
+  },
+  {
+    "id": "dton-302",
+    "opcionA": "En un camino de tierra, con las luces apagadas",
+    "opcionB": "En una carretera, con los camiones pasando",
+    "nivel": 3
+  },
+  {
+    "id": "dton-303",
+    "opcionA": "En el baño de un bar lleno",
+    "opcionB": "En la terraza del mismo bar, vacía",
+    "nivel": 3
+  },
+  {
+    "id": "dton-304",
+    "opcionA": "En la pieza de un hostal con paredes finas",
+    "opcionB": "En una carpa con vecinos al lado",
+    "nivel": 3
+  },
+  {
+    "id": "dton-305",
+    "opcionA": "Grabándolo solo para nosotros",
+    "opcionB": "Sin grabar nada, solo recordarlo",
+    "nivel": 3
+  },
+  {
+    "id": "dton-306",
+    "opcionA": "Con espejo en frente",
+    "opcionB": "Con los ojos vendados",
+    "nivel": 3
+  },
+  {
+    "id": "dton-307",
+    "opcionA": "En un lugar nuevo cada vez",
+    "opcionB": "En el mismo lugar, cada vez mejor",
+    "nivel": 3
+  },
+  {
+    "id": "dton-308",
+    "opcionA": "Empezar en el auto y terminar en la casa",
+    "opcionB": "Empezar en la casa y terminar en el auto",
+    "nivel": 3
+  },
+  {
+    "id": "dton-309",
+    "opcionA": "En la cocina, sin llegar a la pieza",
+    "opcionB": "En la escalera, sin llegar a la cocina",
+    "nivel": 3
+  },
+  {
+    "id": "dton-310",
+    "opcionA": "Que decidas tú el lugar y yo no sepa",
+    "opcionB": "Que decida yo y tú no sepas",
+    "nivel": 3
+  },
+  {
+    "id": "dton-311",
+    "opcionA": "En un sitio donde haya que taparse la boca",
+    "opcionB": "En un sitio donde se pueda gritar",
+    "nivel": 3
+  }
+]

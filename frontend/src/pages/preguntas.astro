@@ -6,6 +6,7 @@ import AppLayout from '../layouts/AppLayout.astro';
   titulo="Preguntas · Nuestro Espacio"
   encabezado="Preguntas"
   bajada="La misma carta en las dos pantallas, sin repetir lo reciente."
+  ancho="lectura"
 >
   <div
     id="filtros"
@@ -52,7 +53,7 @@ import AppLayout from '../layouts/AppLayout.astro';
     <button
       id="btn-pasar"
       type="button"
-      class="rounded-xl border border-borde px-4 py-3 font-medium text-tinta-suave transition hover:bg-superficie-alta active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+      class="rounded-xl border border-borde px-4 py-3 font-medium text-tinta-suave transition hover:bg-superficie-alt active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
     >
       <span aria-hidden="true">⏭️</span> <span id="btn-pasar-texto">Pasar</span>
     </button>
@@ -68,7 +69,7 @@ import AppLayout from '../layouts/AppLayout.astro';
   <button
     id="btn-siguiente"
     type="button"
-    class="mt-2.5 w-full rounded-xl bg-acento px-4 py-3.5 font-medium text-white transition hover:bg-acento-fuerte active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+    class="mt-2.5 w-full rounded-xl boton-principal px-4 py-3.5 font-medium transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
   >
     <span id="btn-siguiente-texto">Empezar</span>
   </button>

@@ -39,6 +39,41 @@
     --rueda-4: #f2e6cf;
     --rueda-texto: #4a3a3c;
 
+
+    /* ── Botones de color ────────────────────────────────────────────────
+       Blanco sobre el rosa del acento da 4,3:1, por debajo del 4,5:1 que pide
+       WCAG AA, y en modo oscuro —donde el acento se aclara para verse sobre el
+       fondo— cae a 2,7:1: texto blanco sobre rosa claro, ilegible. Y eso
+       afectaba a TODOS los botones principales de la app, no a un rincón.
+
+       De ahí este par: el relleno se oscurece en tema claro y el texto se
+       oscurece en tema oscuro. Los dos casos superan 5:1. */
+    --boton-acento-fondo: #b4485c;
+    --boton-acento-hover: #98354a;
+    --sobre-acento:       #ffffff;
+    --boton-ok-fondo:     #5c7a61;
+    --boton-ok-hover:     #4b6650;
+    --sobre-ok:           #ffffff;
+
+    /* ── Fases del ciclo ──────────────────────────────────────────────────
+       Cuatro tonos con SU PROPIO color de texto, no opacidades sobre otro
+       color. Un `bg-peligro/15` se ve lavado sobre crema y casi invisible
+       sobre el fondo oscuro, que es exactamente lo que pasaba antes.
+
+       Los cuatro pares superan 5:1 de contraste (WCAG AA pide 4.5:1) en los
+       dos temas, comprobado par a par. Además cambian de LUMINOSIDAD entre
+       ellos, no solo de tono: así se distinguen aunque alguien no separe bien
+       el rojo del verde. */
+    --ciclo-menstruacion-fondo: #f8cdc4;
+    --ciclo-menstruacion-tinta: #8a2b16;
+    --ciclo-folicular-fondo:    #d8ecd9;
+    --ciclo-folicular-tinta:    #2f5c37;
+    --ciclo-ovulacion-fondo:    #fadfae;
+    --ciclo-ovulacion-tinta:    #7a4e0a;
+    --ciclo-lutea-fondo:        #e2dbf3;
+    --ciclo-lutea-tinta:        #4c3f7e;
+    --ciclo-fertil:             #b8455c;
+
     --sombra: 0 1px 2px rgb(46 36 38 / 0.04), 0 8px 24px -8px rgb(46 36 38 / 0.10);
     --radio: 1rem;
   }
@@ -81,6 +116,21 @@
     --rueda-3: #2f4238;
     --rueda-4: #4a3d2a;
     --rueda-texto: #f0e4e0;
+    --ciclo-menstruacion-fondo: #5a2620;
+    --ciclo-menstruacion-tinta: #f5b3a4;
+    --ciclo-folicular-fondo:    #24422c;
+    --ciclo-folicular-tinta:    #a8d5ae;
+    --ciclo-ovulacion-fondo:    #4d3813;
+    --ciclo-ovulacion-tinta:    #f0c979;
+    --ciclo-lutea-fondo:        #342c52;
+    --ciclo-lutea-tinta:        #c3b6ec;
+    --ciclo-fertil:             #f0a0b1;
+    --boton-acento-fondo: #e08195;
+    --boton-acento-hover: #f0a0b1;
+    --sobre-acento:       #2a1216;
+    --boton-ok-fondo:     #8fb695;
+    --boton-ok-hover:     #a6c9ab;
+    --sobre-ok:           #16251a;
     --sombra: 0 1px 2px rgb(0 0 0 / 0.30), 0 8px 24px -8px rgb(0 0 0 / 0.50);
   }
 
@@ -106,6 +156,21 @@
     --rueda-3: #2f4238;
     --rueda-4: #4a3d2a;
     --rueda-texto: #f0e4e0;
+    --ciclo-menstruacion-fondo: #5a2620;
+    --ciclo-menstruacion-tinta: #f5b3a4;
+    --ciclo-folicular-fondo:    #24422c;
+    --ciclo-folicular-tinta:    #a8d5ae;
+    --ciclo-ovulacion-fondo:    #4d3813;
+    --ciclo-ovulacion-tinta:    #f0c979;
+    --ciclo-lutea-fondo:        #342c52;
+    --ciclo-lutea-tinta:        #c3b6ec;
+    --ciclo-fertil:             #f0a0b1;
+    --boton-acento-fondo: #e08195;
+    --boton-acento-hover: #f0a0b1;
+    --sobre-acento:       #2a1216;
+    --boton-ok-fondo:     #8fb695;
+    --boton-ok-hover:     #a6c9ab;
+    --sobre-ok:           #16251a;
     --sombra: 0 1px 2px rgb(0 0 0 / 0.30), 0 8px 24px -8px rgb(0 0 0 / 0.50);
     }
   }
@@ -213,4 +278,74 @@
 }
 @utility destello {
   animation: destello 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+/* ── Fases del ciclo ─────────────────────────────────────────────────────
+
+   Utilidades y no clases sueltas por página: la LEYENDA y las CELDAS del
+   calendario usan exactamente las mismas, así que es imposible que el cuadrito
+   de la leyenda y el día que representa acaben de distinto color. Ese desajuste
+   es el fallo clásico de las leyendas, y aquí no puede ocurrir. */
+
+@utility fase-menstruacion {
+  background-color: var(--ciclo-menstruacion-fondo);
+  color: var(--ciclo-menstruacion-tinta);
+}
+@utility fase-folicular {
+  background-color: var(--ciclo-folicular-fondo);
+  color: var(--ciclo-folicular-tinta);
+}
+@utility fase-ovulacion {
+  background-color: var(--ciclo-ovulacion-fondo);
+  color: var(--ciclo-ovulacion-tinta);
+}
+@utility fase-lutea {
+  background-color: var(--ciclo-lutea-fondo);
+  color: var(--ciclo-lutea-tinta);
+}
+@utility fase-desconocida {
+  background-color: var(--superficie-alt);
+  color: var(--tinta-tenue);
+}
+
+/* Ventana fértil: un aro, no un relleno. Se superpone a la fase sin taparla,
+   que es justo lo que es — una estimación encima del ciclo, no otra fase. */
+@utility dia-fertil {
+  box-shadow: inset 0 0 0 2px var(--ciclo-fertil);
+}
+
+/* Hoy y el día elegido van POR FUERA de la celda y la ventana fértil por
+   dentro, a propósito: así los tres pueden coincidir en un mismo día sin que
+   uno tape a otro. Si los tres usaran `outline`, el último ganaría y el día
+   fértil de hoy dejaría de verse fértil.
+
+   Cuando hoy es además el día elegido, gana el aro del acento: lo acabas de
+   pulsar, así que ya sabes cuál es. */
+@utility dia-hoy {
+  outline: 2px solid var(--tinta);
+  outline-offset: 1px;
+  font-weight: 700;
+}
+@utility dia-elegido {
+  outline: 3px solid var(--acento);
+  outline-offset: 1px;
+}
+
+/* ── Botones de color ────────────────────────────────────────────────────
+
+   Utilidades y no clases sueltas por página, porque el fallo que arreglan era
+   exactamente ese: nueve botones repartidos por la app escribían a mano
+   `bg-acento text-white`, y arreglar el contraste de uno no arreglaba los
+   otros ocho. Ahora el color del texto va atado al del relleno. */
+
+@utility boton-principal {
+  background-color: var(--boton-acento-fondo);
+  color: var(--sobre-acento);
+  &:hover { background-color: var(--boton-acento-hover); }
+}
+
+@utility boton-ok {
+  background-color: var(--boton-ok-fondo);
+  color: var(--sobre-ok);
+  &:hover { background-color: var(--boton-ok-hover); }
 }
