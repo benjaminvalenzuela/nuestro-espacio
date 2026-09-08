@@ -1,1 +1,0 @@
-var e=[`a`,`b`],t=e=>e===`a`?`b`:`a`,n=[`profundas`,`subidas_de_tono`,`supuestos`],r=[`general`,`profundas`,`subidas_de_tono`,`absurdas`],i={profundas:`Profundas`,subidas_de_tono:`Subidas de tono`,supuestos:`Supuestos`,general:`General`,absurdas:`Absurdas`},a=`America/Santiago`,o=`es-CL`;export{e as a,o as i,n,a as o,i as r,t as s,r as t};
