@@ -1,0 +1,1 @@
+import{T as e,l as t,w as n}from"./identidad.ChRaX3lP.js";var r=0,i=!1;function a(){i||(i=!0,n(e(t(),`.info/serverTimeOffset`),e=>{let t=e.val();typeof t==`number`&&Number.isFinite(t)&&(r=t)}))}function o(){return Date.now()+r}export{a as n,o as t};
