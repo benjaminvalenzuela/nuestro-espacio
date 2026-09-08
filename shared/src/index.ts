@@ -14,3 +14,5 @@ export * from './schemas/codigo.js';
 export * from './panoramas.js';
 export * from './schemas/progreso.schema.js';
 export * from './zodiaco.js';
+export * from './ciclo.js';
+export * from './bachillerato.js';

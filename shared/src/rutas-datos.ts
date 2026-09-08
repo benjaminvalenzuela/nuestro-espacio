@@ -57,6 +57,26 @@ export const FS = {
   progresoPreguntas: (parejaId: string) => `parejas/${parejaId}/progreso/preguntas`,
   progresoDilemas: (parejaId: string) => `parejas/${parejaId}/progreso/dilemas`,
 
+  /**
+   * CICLO MENSTRUAL. Dato de salud: solo los dos dispositivos vinculados lo
+   * leen, y nunca sale del espacio de la pareja.
+   *
+   * Un documento por MES, con un mapa de días dentro. Igual que el progreso,
+   * la alternativa —un documento por día— costaría 365 lecturas para pintar un
+   * año. Así, abrir el calendario cuesta una lectura por mes visitado.
+   *
+   * `resumen` guarda aparte los días marcados como menstruación de TODOS los
+   * meses. Sin él, predecir la próxima regla obligaría a leer el año entero:
+   * las fases se calculan desde el último inicio, que puede estar en otro mes.
+   */
+  cicloMes: (parejaId: string, mes: string) => `parejas/${parejaId}/ciclo/mes-${mes}`,
+  cicloResumen: (parejaId: string) => `parejas/${parejaId}/ciclo/resumen`,
+  cicloConfig: (parejaId: string) => `parejas/${parejaId}/ciclo/config`,
+
+  /** Partida de bachillerato en curso y su historial. */
+  bachilleratoConfig: (parejaId: string) => `parejas/${parejaId}/bachillerato/config`,
+  bachilleratoHistorial: (parejaId: string) => `parejas/${parejaId}/historialBachillerato`,
+
   /** Evento en curso: panorama sorteado + quién organiza + fecha. Documento único. */
   eventoActual: (parejaId: string) => `parejas/${parejaId}/eventos/actual`,
   configPareja: (parejaId: string) => `parejas/${parejaId}/config/app`,
@@ -85,6 +105,15 @@ export const RTDB = {
     `salas/${parejaId}/presencia/${p}/conexiones/${sesionId}`,
 
   giro: (parejaId: string, ruleta: Ruleta) => `salas/${parejaId}/giro/${ruleta}`,
+
+  /**
+   * BACHILLERATO en vivo. Va en RTDB y no en Firestore porque aquí se escribe
+   * en cada tecla: Firestore cobra por escritura y su latencia se nota al
+   * teclear, mientras que RTDB está pensada exactamente para esto.
+   */
+  bachillerato: (parejaId: string) => `salas/${parejaId}/bachillerato`,
+  bachilleratoRespuestas: (parejaId: string, persona: Persona) =>
+    `salas/${parejaId}/bachillerato/respuestas/${persona}`,
 
   /** Una carta en curso POR CATEGORÍA: los filtros son independientes entre sí. */
   preguntaActiva: (parejaId: string, filtro: string) =>

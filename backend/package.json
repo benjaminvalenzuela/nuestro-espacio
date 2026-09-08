@@ -9,7 +9,8 @@
     "seed": "tsx scripts/seed-contenido.ts",
     "test:rules": "vitest run",
     "presencia": "tsx scripts/inspeccionar-presencia.ts",
-    "vinculos": "tsx scripts/diagnostico-vinculos.ts"
+    "vinculos": "tsx scripts/diagnostico-vinculos.ts",
+    "respaldo": "tsx scripts/respaldo.ts"
   },
   "dependencies": {
     "dotenv": "^17.2.3",

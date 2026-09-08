@@ -10,7 +10,16 @@ import { parsearCodigo, formatearCodigo, normalizarCodigo, generarCuerpo, ALFABE
 import { derivarPresencia } from '@shared/schemas/presencia.schema';
 import { normalizarNombre } from '@shared/panoramas';
 import { signoDe, signoLegible, edadDe } from '@shared/zodiaco';
+import {
+  faseDe, calcularPromedios, iniciosDesdeDias, proximaMenstruacion,
+  rejillaMes, sumarDias, diasEntre, CICLO_POR_DEFECTO,
+} from '@shared/ciclo';
+import {
+  puntuarRonda, ganadorDe, empiezaPorLetra, letraDeSemilla,
+  categoriaValida, LETRAS,
+} from '@shared/bachillerato';
 import { POLITICA_CSP } from '../src/config/csp';
+import { siguienteTema, etiquetaDe, type Tema } from '../src/domain/tema/tema';
 import type { Giro } from '@shared/schemas/giro.schema';
 
 /**
@@ -489,5 +498,275 @@ describe('Signo zodiacal · se deduce, no se elige', () => {
   it('la edad aguanta el 29 de febrero', () => {
     expect(edadDe('2000-02-29', '2026-02-28')).toBe(25);
     expect(edadDe('2000-02-29', '2026-03-01')).toBe(26);
+  });
+});
+
+describe('Ciclo menstrual · aritmética de días civiles', () => {
+  it('suma días cruzando meses y años', () => {
+    expect(sumarDias('2026-01-31', 1)).toBe('2026-02-01');
+    expect(sumarDias('2026-12-31', 1)).toBe('2027-01-01');
+    expect(sumarDias('2026-03-01', -1)).toBe('2026-02-28');
+  });
+
+  it('aguanta el año bisiesto', () => {
+    expect(sumarDias('2028-02-28', 1)).toBe('2028-02-29');
+    expect(diasEntre('2028-02-01', '2028-03-01')).toBe(29);
+    expect(diasEntre('2026-02-01', '2026-03-01')).toBe(28);
+  });
+
+  it('no se desplaza en el cambio de hora chileno', () => {
+    // Septiembre y abril son los meses del cambio: hay días de 23 y 25 horas.
+    // Restando milisegundos y dividiendo por 86.400.000, esto daría 30 o 32.
+    expect(diasEntre('2026-09-01', '2026-10-01')).toBe(30);
+    expect(diasEntre('2026-04-01', '2026-05-01')).toBe(30);
+  });
+});
+
+describe('Ciclo · inicios a partir de los días marcados', () => {
+  it('agrupa días seguidos en un solo inicio', () => {
+    const dias = ['2026-09-03', '2026-09-04', '2026-09-05', '2026-09-06'];
+    expect(iniciosDesdeDias(dias)).toEqual(['2026-09-03']);
+  });
+
+  it('un día suelto sin marcar no corta la racha', () => {
+    // Es normal que un día apenas manche y no se registre.
+    const dias = ['2026-09-03', '2026-09-04', '2026-09-06'];
+    expect(iniciosDesdeDias(dias)).toEqual(['2026-09-03']);
+  });
+
+  it('un hueco largo sí abre un ciclo nuevo', () => {
+    const dias = ['2026-08-05', '2026-08-06', '2026-09-02', '2026-09-03'];
+    expect(iniciosDesdeDias(dias)).toEqual(['2026-08-05', '2026-09-02']);
+  });
+
+  it('tolera días desordenados y repetidos', () => {
+    const dias = ['2026-09-04', '2026-09-03', '2026-09-03'];
+    expect(iniciosDesdeDias(dias)).toEqual(['2026-09-03']);
+  });
+});
+
+describe('Ciclo · promedios reales, no el 28 de manual', () => {
+  it('sin historial usa el valor por defecto y lo declara', () => {
+    const p = calcularPromedios([]);
+    expect(p.ciclo).toBe(CICLO_POR_DEFECTO);
+    expect(p.muestras).toBe(0);
+  });
+
+  it('promedia los intervalos reales', () => {
+    // 31 y 31 días de separación.
+    const p = calcularPromedios(['2026-07-01', '2026-08-01', '2026-09-01']);
+    expect(p.ciclo).toBe(31);
+    expect(p.muestras).toBe(2);
+  });
+
+  it('descarta intervalos absurdos que arruinarían la predicción', () => {
+    // El salto de dos años es un registro olvidado, no un ciclo.
+    const p = calcularPromedios(['2024-01-01', '2026-08-01', '2026-08-29']);
+    expect(p.ciclo).toBe(28);
+    expect(p.muestras).toBe(1);
+  });
+
+  it('predice la próxima regla desde el último inicio', () => {
+    const inicios = ['2026-07-01', '2026-08-01', '2026-09-01'];
+    const p = calcularPromedios(inicios);
+    expect(proximaMenstruacion(inicios, p)).toBe('2026-10-02');
+  });
+});
+
+describe('Ciclo · fases', () => {
+  const inicios = ['2026-09-01'];
+  const p = calcularPromedios(inicios, 5);   // 28 días por defecto, regla de 5
+
+  it('los primeros días son menstruación', () => {
+    expect(faseDe('2026-09-01', inicios, p).fase).toBe('menstruacion');
+    expect(faseDe('2026-09-05', inicios, p).fase).toBe('menstruacion');
+    expect(faseDe('2026-09-06', inicios, p).fase).toBe('folicular');
+  });
+
+  it('la ovulación cae 14 días antes del final del ciclo', () => {
+    // Ciclo de 28 → ovulación el día 14 → 13 días después del 1 de septiembre.
+    const info = faseDe('2026-09-14', inicios, p);
+    expect(info.fase).toBe('ovulacion');
+    expect(info.diaDelCiclo).toBe(14);
+    expect(info.fertil).toBe(true);
+  });
+
+  it('después de ovular viene la fase lútea', () => {
+    expect(faseDe('2026-09-20', inicios, p).fase).toBe('lutea');
+  });
+
+  it('la ventana fértil cubre los cinco días previos y el día después', () => {
+    expect(faseDe('2026-09-09', inicios, p).fertil).toBe(true);   // día 9
+    expect(faseDe('2026-09-15', inicios, p).fertil).toBe(true);   // día 15
+    expect(faseDe('2026-09-08', inicios, p).fertil).toBe(false);  // día 8
+    expect(faseDe('2026-09-16', inicios, p).fertil).toBe(false);  // día 16
+  });
+
+  it('UN DÍA REGISTRADO MANDA SOBRE LA PREDICCIÓN', () => {
+    // Si la regla se adelanta y ella lo marca, el calendario debe hacerle caso
+    // aunque su cálculo dijera "fase lútea". Un hecho anotado no se discute.
+    const registradas = new Set(['2026-09-25']);
+    const info = faseDe('2026-09-25', inicios, p, registradas);
+    expect(info.fase).toBe('menstruacion');
+    expect(info.confirmado).toBe(true);
+  });
+
+  it('sin ningún inicio previo no inventa una fase', () => {
+    expect(faseDe('2026-09-10', [], p).fase).toBe('desconocida');
+    expect(faseDe('2026-08-15', inicios, p).fase).toBe('desconocida');
+  });
+
+  it('deja de predecir tras dos ciclos sin registrar', () => {
+    // A los dos meses sin marcar nada, seguir dibujando fases sería inventar.
+    expect(faseDe('2026-11-15', inicios, p).fase).toBe('desconocida');
+  });
+
+  it('un ciclo largo mueve la ovulación', () => {
+    const largos = ['2026-06-01', '2026-07-04', '2026-08-06'];   // ~33 días
+    const pl = calcularPromedios(largos, 5);
+    expect(pl.ciclo).toBe(33);
+    // Ovulación en el día 19, no en el 14.
+    expect(faseDe('2026-08-24', largos, pl).fase).toBe('ovulacion');
+  });
+});
+
+describe('Ciclo · rejilla del mes', () => {
+  it('empieza en lunes y cuadra el primer día', () => {
+    // El 1 de septiembre de 2026 es martes: un hueco antes.
+    const celdas = rejillaMes(2026, 9);
+    expect(celdas[0]?.relleno).toBe(true);
+    expect(celdas[1]?.fecha).toBe('2026-09-01');
+    expect(celdas.filter((c) => !c.relleno)).toHaveLength(30);
+  });
+
+  it('un mes que empieza en lunes no lleva huecos', () => {
+    // 1 de junio de 2026 es lunes.
+    const celdas = rejillaMes(2026, 6);
+    expect(celdas[0]?.fecha).toBe('2026-06-01');
+  });
+
+  it('febrero bisiesto trae 29 días', () => {
+    expect(rejillaMes(2028, 2).filter((c) => !c.relleno)).toHaveLength(29);
+  });
+});
+
+describe('Bachillerato · puntuación', () => {
+  const cats = ['Nombre', 'Animal'];
+
+  it('0 si no escribiste nada', () => {
+    const r = puntuarRonda(cats, { a: {}, b: { Nombre: 'Ana' } }, 'A');
+    expect(r.puntajes.a).toBe(0);
+  });
+
+  it('50 si los dos escribieron lo mismo', () => {
+    const r = puntuarRonda(['Nombre'], { a: { Nombre: 'Ana' }, b: { Nombre: 'Ana' } }, 'A');
+    expect(r.puntajes.a).toBe(50);
+    expect(r.puntajes.b).toBe(50);
+  });
+
+  it('100 si escribiste algo distinto', () => {
+    const r = puntuarRonda(['Nombre'], { a: { Nombre: 'Ana' }, b: { Nombre: 'Alberto' } }, 'A');
+    expect(r.puntajes.a).toBe(100);
+    expect(r.puntajes.b).toBe(100);
+  });
+
+  it('"lo mismo" ignora tildes, mayúsculas y espacios', () => {
+    const r = puntuarRonda(['Color'], { a: { Color: 'Ámbar' }, b: { Color: '  ambar ' } }, 'A');
+    expect(r.puntajes.a).toBe(50);
+    expect(r.celdas.Color?.a?.motivo).toBe('repetida');
+  });
+
+  it('una palabra que no empieza por la letra vale 0', () => {
+    const r = puntuarRonda(['Animal'], { a: { Animal: 'Perro' }, b: {} }, 'A');
+    expect(r.puntajes.a).toBe(0);
+    expect(r.celdas.Animal?.a?.motivo).toBe('letra_incorrecta');
+  });
+
+  it('que el rival no conteste no te penaliza: son 100', () => {
+    const r = puntuarRonda(['Animal'], { a: { Animal: 'Araña' }, b: {} }, 'A');
+    expect(r.puntajes.a).toBe(100);
+    expect(r.puntajes.b).toBe(0);
+  });
+
+  it('una palabra inválida del rival no cuenta como coincidencia', () => {
+    // B escribió lo mismo pero con la letra equivocada: A no debe bajar a 50.
+    const r = puntuarRonda(['Animal'], { a: { Animal: 'Araña' }, b: { Animal: 'Araña' } }, 'B');
+    expect(r.puntajes.a).toBe(0);
+    expect(r.puntajes.b).toBe(0);
+  });
+
+  it('suma todas las categorías', () => {
+    const r = puntuarRonda(
+      ['Nombre', 'Animal', 'Comida'],
+      { a: { Nombre: 'Ana', Animal: 'Araña', Comida: 'Arroz' }, b: { Nombre: 'Ana' } },
+      'A',
+    );
+    expect(r.puntajes.a).toBe(50 + 100 + 100);
+    expect(r.puntajes.b).toBe(50);
+  });
+
+  it('la ñ no se confunde con la n', () => {
+    const r = puntuarRonda(['Cosa'], { a: { Cosa: 'Añil' }, b: { Cosa: 'Anil' } }, 'A');
+    expect(r.puntajes.a).toBe(100);
+  });
+
+  it('decide el ganador y detecta el empate', () => {
+    expect(ganadorDe({ a: 300, b: 150 })).toBe('a');
+    expect(ganadorDe({ a: 150, b: 300 })).toBe('b');
+    expect(ganadorDe({ a: 200, b: 200 })).toBe('empate');
+    expect(ganadorDe({ a: 0, b: 0 })).toBe('empate');
+  });
+
+  it('acepta la tilde inicial como la letra', () => {
+    expect(empiezaPorLetra('Ángel', 'A')).toBe(true);
+    expect(empiezaPorLetra('Ángel', 'E')).toBe(false);
+    expect(empiezaPorLetra('   ', 'A')).toBe(false);
+  });
+
+  it('la letra sale de la semilla y siempre está en el alfabeto', () => {
+    for (const semilla of [0, 1, 7, 12345, 999999, 2 ** 31]) {
+      expect(LETRAS).toContain(letraDeSemilla(semilla));
+    }
+    // Determinista: la misma semilla da la misma letra en las dos pantallas.
+    expect(letraDeSemilla(12345)).toBe(letraDeSemilla(12345));
+  });
+
+  it('valida los nombres de categoría', () => {
+    expect(categoriaValida('Animal')).toBe(true);
+    expect(categoriaValida('A')).toBe(false);
+    expect(categoriaValida('  ')).toBe(false);
+    expect(categoriaValida('<script>')).toBe(false);
+    expect(categoriaValida('x'.repeat(41))).toBe(false);
+  });
+});
+
+describe('Tema claro/oscuro', () => {
+  it('rota entre los tres estados y vuelve al principio', () => {
+    let t: Tema = 'claro';
+    t = siguienteTema(t); expect(t).toBe('oscuro');
+    t = siguienteTema(t); expect(t).toBe('sistema');
+    t = siguienteTema(t); expect(t).toBe('claro');
+  });
+
+  it('cada estado tiene etiqueta y emoji', () => {
+    for (const t of ['claro', 'oscuro', 'sistema'] as Tema[]) {
+      const e = etiquetaDe(t);
+      expect(e.etiqueta.length).toBeGreaterThan(0);
+      expect(e.emoji.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('el script del tema NO puede ser inline: la CSP lo bloquearía', () => {
+    // script-src no lleva 'unsafe-inline', así que el tema se carga desde un
+    // archivo propio. Si alguien lo devolviera al HTML, dejaría de aplicarse
+    // en producción sin ningún error visible en desarrollo.
+    const scriptSrc = POLITICA_CSP.split('; ').find((d) => d.startsWith('script-src')) ?? '';
+    expect(scriptSrc).not.toContain("'unsafe-inline'");
+    expect(scriptSrc).toContain("'self'");
+
+    // style-src SÍ lo lleva, y es correcto: Astro y Tailwind emiten estilos
+    // dentro del HTML. Un estilo inline no ejecuta código; un script sí.
+    const styleSrc = POLITICA_CSP.split('; ').find((d) => d.startsWith('style-src')) ?? '';
+    expect(styleSrc).toContain("'unsafe-inline'");
   });
 });

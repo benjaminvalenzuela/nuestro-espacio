@@ -33,6 +33,14 @@ const csp = POLITICA_CSP;
     <meta name="theme-color" content="#191416" media="(prefers-color-scheme: dark)" />
 
     <link rel="icon" href={`${import.meta.env.BASE_URL}favicon.svg`} type="image/svg+xml" />
+
+    {/*
+      Tema aplicado antes del primer pintado. Es un archivo de /public y no un
+      script inline a propósito: la CSP declara `script-src 'self'` sin
+      'unsafe-inline', así que un script escrito dentro del HTML quedaría
+      bloqueado en producción y el tema no se aplicaría. Ver public/tema.js.
+    */}
+    <script is:inline src={`${import.meta.env.BASE_URL}tema.js`}></script>
   </head>
 
   <body class="min-h-dvh antialiased">

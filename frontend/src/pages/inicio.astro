@@ -81,31 +81,30 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <div class="grid grid-cols-2 gap-3">
         {
           [
-            { n: 'Ruleta', d: 'Panorama + quién organiza', h: '/ruleta', listo: true },
-            { n: 'Marcador', d: 'Quién ha organizado más', h: '/marcador', listo: true },
-            { n: 'Preguntas', d: 'Para conocernos', h: '/preguntas', listo: true },
-            { n: 'Qué prefieres', d: 'Voto a ciegas', h: '/que-prefieres', listo: true },
-            { n: 'Perfiles', d: 'Quiénes somos', h: '/perfiles', listo: true },
-            { n: 'Administración', d: 'Contenido y datos', h: '/admin', listo: true },
-          ].map((t) =>
-            t.listo ? (
-              <a
-                href={`${base}${t.h}`}
-                class="tarjeta flex min-h-24 flex-col justify-end p-4 transition hover:border-acento active:scale-[0.98]"
-              >
-                <span class="text-sm font-medium text-tinta">{t.n}</span>
-                <span class="text-xs text-tinta-tenue">{t.d}</span>
-              </a>
-            ) : (
-              <div class="tarjeta flex min-h-24 flex-col justify-end p-4 opacity-45">
-                <span class="text-sm font-medium text-tinta-suave">{t.n}</span>
-                <span class="text-xs text-tinta-tenue">Próximamente</span>
-              </div>
-            ),
-          )
+            { e: '🎡', n: 'Ruleta', d: 'Panorama y quién organiza', h: '/ruleta' },
+            { e: '🏆', n: 'Marcador', d: 'Quién ha organizado más', h: '/marcador' },
+            { e: '💬', n: 'Preguntas', d: 'Para conocernos', h: '/preguntas' },
+            { e: '⚖️', n: 'Qué prefieres', d: 'Voto a ciegas', h: '/que-prefieres' },
+            { e: '🔤', n: 'Bachillerato', d: 'A ver quién es más rápido', h: '/bachillerato' },
+            { e: '🗓️', n: 'Calendario', d: 'Ciclo y días importantes', h: '/calendario' },
+            { e: '💛', n: 'Perfiles', d: 'Quiénes somos', h: '/perfiles' },
+            { e: '⚙️', n: 'Administración', d: 'Contenido y datos', h: '/admin' },
+          ].map((t) => (
+            <a
+              href={`${base}${t.h}`}
+              class="tarjeta group flex min-h-28 flex-col justify-between p-4 transition hover:border-acento hover:shadow-md active:scale-[0.98]"
+            >
+              <span class="text-2xl leading-none transition group-hover:scale-110" aria-hidden="true">{t.e}</span>
+              <span class="mt-2 block">
+                <span class="block text-sm font-medium text-tinta">{t.n}</span>
+                <span class="block text-xs text-tinta-tenue">{t.d}</span>
+              </span>
+            </a>
+          ))
         }
       </div>
     </section>
+
   </main>
 </BaseLayout>
 

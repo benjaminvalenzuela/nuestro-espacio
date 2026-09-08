@@ -1,0 +1,547 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+import { DIAS_SEMANA } from '@shared/ciclo';
+---
+
+<AppLayout
+  titulo="Calendario · Nuestro Espacio"
+  encabezado="Calendario"
+  bajada="El ciclo, los síntomas y lo que pasa entre medio."
+>
+  {/* ── Navegación del mes ─────────────────────────────────────────── */}
+  <div class="mb-4 flex items-center justify-between gap-2">
+    <button id="mes-anterior" type="button" aria-label="Mes anterior"
+      class="rounded-lg border border-borde px-3 py-2 text-tinta-suave transition hover:bg-superficie-alta">
+      ←
+    </button>
+    <div class="text-center">
+      <p id="mes-titulo" class="text-base font-semibold text-tinta"></p>
+      <button id="mes-hoy" type="button"
+        class="text-xs text-acento underline-offset-2 hover:underline">Ir a hoy</button>
+    </div>
+    <button id="mes-siguiente" type="button" aria-label="Mes siguiente"
+      class="rounded-lg border border-borde px-3 py-2 text-tinta-suave transition hover:bg-superficie-alta">
+      →
+    </button>
+  </div>
+
+  {/* ── Resumen ────────────────────────────────────────────────────── */}
+  <section id="resumen" class="tarjeta mb-4 px-4 py-3.5">
+    <p id="resumen-fase" class="text-sm font-medium text-tinta"></p>
+    <p id="resumen-prediccion" class="mt-0.5 text-xs text-tinta-tenue"></p>
+  </section>
+
+  {/* ── Rejilla ────────────────────────────────────────────────────── */}
+  <div class="mb-1 grid grid-cols-7 gap-1">
+    {DIAS_SEMANA.map((d) => (
+      <span class="py-1 text-center text-[11px] font-semibold text-tinta-tenue">{d}</span>
+    ))}
+  </div>
+  <div id="rejilla" class="grid grid-cols-7 gap-1"></div>
+
+  {/* ── Leyenda ────────────────────────────────────────────────────── */}
+  <div class="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-tinta-tenue">
+    <span class="flex items-center gap-1.5">
+      <span class="size-2.5 rounded-full" style="background:var(--color-peligro)"></span> Menstruación
+    </span>
+    <span class="flex items-center gap-1.5">
+      <span class="size-2.5 rounded-full" style="background:var(--color-acento)"></span> Ovulación
+    </span>
+    <span class="flex items-center gap-1.5">
+      <span class="size-2.5 rounded-full border border-acento"></span> Días fértiles (estimado)
+    </span>
+    <span class="flex items-center gap-1.5">
+      <span class="size-2.5 rounded-full" style="background:var(--color-salvia)"></span> Fase lútea
+    </span>
+    <span>❤️ Relaciones</span>
+    <span>• Síntomas</span>
+  </div>
+
+  <p class="mt-3 rounded-xl border border-borde bg-superficie-alt px-4 py-3 text-[11px] leading-relaxed text-tinta-tenue">
+    ⚠️ Las fases y los días fértiles son una <strong>estimación</strong> calculada
+    a partir de las fechas que registran aquí. No sirven como método
+    anticonceptivo ni sustituyen a un profesional de la salud.
+  </p>
+
+  {/* ── Detalle del día ────────────────────────────────────────────── */}
+  <section id="detalle-dia" hidden class="mt-5 flex flex-col gap-4">
+    <div class="flex items-center justify-between gap-2">
+      <div>
+        <p id="dia-titulo" class="text-base font-semibold text-tinta"></p>
+        <p id="dia-fase" class="text-xs text-tinta-tenue"></p>
+      </div>
+      <button id="dia-cerrar" type="button"
+        class="rounded-lg border border-borde px-2.5 py-1.5 text-xs text-tinta-suave transition hover:bg-superficie-alta">
+        Cerrar
+      </button>
+    </div>
+
+    <div class="tarjeta flex flex-col gap-3 px-4 py-4">
+      <button id="btn-menstruacion" type="button"
+        class="rounded-xl border border-peligro/40 px-4 py-3 text-sm font-medium text-peligro transition hover:bg-peligro/5">
+        🩸 Marcar menstruación
+      </button>
+
+      <div class="grid grid-cols-2 gap-2">
+        <button id="btn-rel-con" type="button"
+          class="rounded-xl border border-borde px-3 py-3 text-sm font-medium text-tinta-suave transition hover:border-acento hover:text-acento">
+          ❤️ Con preservativo
+        </button>
+        <button id="btn-rel-sin" type="button"
+          class="rounded-xl border border-borde px-3 py-3 text-sm font-medium text-tinta-suave transition hover:border-acento hover:text-acento">
+          ❤️ Sin preservativo
+        </button>
+      </div>
+      <ul id="lista-relaciones" class="flex flex-col gap-1.5"></ul>
+    </div>
+
+    <div class="tarjeta flex flex-col gap-3 px-4 py-4">
+      <p class="text-sm font-semibold text-tinta">Cómo te sentiste</p>
+      <div id="sintomas" class="flex flex-col gap-3"></div>
+    </div>
+
+    <div class="tarjeta flex flex-col gap-2 px-4 py-4">
+      <label for="dia-nota" class="text-sm font-semibold text-tinta">Nota del día</label>
+      <textarea id="dia-nota" rows="2" maxlength="200" placeholder="Lo que quieras recordar…"
+        class="w-full resize-none rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta placeholder:text-tinta-tenue focus:border-acento focus:outline-none"></textarea>
+      <div class="flex gap-2">
+        <button id="nota-guardar" type="button"
+          class="rounded-lg border border-acento px-3 py-2 text-sm font-medium text-acento transition hover:bg-acento-suave">
+          Guardar nota
+        </button>
+        <button id="dia-borrar" type="button"
+          class="ml-auto rounded-lg border border-peligro/40 px-3 py-2 text-sm font-medium text-peligro transition hover:bg-peligro/5">
+          Borrar el día
+        </button>
+      </div>
+    </div>
+  </section>
+
+  {/* ── Ajustes ────────────────────────────────────────────────────── */}
+  <details class="mt-6">
+    <summary class="cursor-pointer text-sm font-medium text-tinta-suave">⚙️ Ajustes del ciclo</summary>
+    <div class="tarjeta mt-3 flex flex-col gap-3 px-4 py-4">
+      <div class="flex flex-col gap-1.5">
+        <label for="cfg-titular" class="text-xs text-tinta-tenue">¿De quién es este ciclo?</label>
+        <select id="cfg-titular"
+          class="w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta focus:border-acento focus:outline-none">
+          <option value="a">Persona A</option>
+          <option value="b">Persona B</option>
+        </select>
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label for="cfg-regla" class="text-xs text-tinta-tenue">Días que suele durar la regla</label>
+        <input id="cfg-regla" type="number" min="1" max="15"
+          class="w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta focus:border-acento focus:outline-none" />
+      </div>
+      <button id="cfg-guardar" type="button"
+        class="rounded-lg border border-acento px-3 py-2.5 text-sm font-medium text-acento transition hover:bg-acento-suave">
+        Guardar ajustes
+      </button>
+      <p id="cfg-info" class="text-[11px] text-tinta-tenue"></p>
+    </div>
+  </details>
+
+  <p id="ciclo-aviso" role="status" class="mt-4 text-center text-xs text-acento"></p>
+</AppLayout>
+
+<script>
+  import { protegerPagina } from '../domain/identidad/guardia';
+  import {
+    observarMes, observarResumen, observarConfig, guardarConfig,
+    marcarMenstruacion, alternarSintoma, registrarRelacion, quitarRelacion,
+    guardarNota, borrarDia, DIA_VACIO, CONFIG_POR_DEFECTO,
+    type RegistroDia, type ConfigCiclo,
+  } from '../domain/ciclo/cicloService';
+  import {
+    SINTOMAS, GRUPOS_SINTOMA, NOMBRES_MES, ETIQUETA_FASE,
+    rejillaMes, faseDe, calcularPromedios, proximaMenstruacion, iniciosDesdeDias,
+    type Fase,
+  } from '@shared/ciclo';
+  import { hoyEnSantiago, fechaLarga } from '../domain/perfiles/tiempoJuntos';
+  import { observarNombre } from '../domain/presencia/presenciaService';
+  import { ENV } from '../config/env';
+
+  const $ = (id: string) => document.getElementById(id)!;
+  const parejaId = ENV.PUBLIC_PAREJA_ID;
+
+  const hoy = hoyEnSantiago();
+  let anio = Number(hoy.slice(0, 4));
+  let mes = Number(hoy.slice(5, 7));
+
+  let dias: Record<string, RegistroDia> = {};
+  let menstruaciones: string[] = [];
+  let config: ConfigCiclo = { ...CONFIG_POR_DEFECTO };
+  let seleccionado: string | null = null;
+  let cancelarMes: (() => void) | undefined;
+
+  const nombres: Record<'a' | 'b', string> = { a: 'Persona A', b: 'Persona B' };
+
+  const clave = () => `${anio}-${String(mes).padStart(2, '0')}`;
+  const registro = (fecha: string): RegistroDia => dias[fecha] ?? DIA_VACIO;
+
+  function avisar(texto: string) {
+    $('ciclo-aviso').textContent = texto;
+    if (texto) setTimeout(() => { $('ciclo-aviso').textContent = ''; }, 3500);
+  }
+
+  /** Los inicios de ciclo se derivan de los días marcados, no se guardan aparte. */
+  const inicios = () => iniciosDesdeDias(menstruaciones);
+  const promedios = () => calcularPromedios(inicios(), config.duracionRegla);
+
+  const COLOR_FASE: Record<Fase, string> = {
+    menstruacion: 'bg-peligro/15 text-peligro',
+    ovulacion: 'bg-acento/20 text-acento',
+    folicular: 'bg-superficie-alt text-tinta-suave',
+    lutea: 'bg-salvia/15 text-salvia',
+    desconocida: 'bg-superficie-alt text-tinta-tenue',
+  };
+
+  // ── Rejilla ───────────────────────────────────────────────────────────
+
+  function pintarRejilla() {
+    const cont = $('rejilla');
+    cont.replaceChildren();
+
+    const p = promedios();
+    const ini = inicios();
+    const marcadas = new Set(menstruaciones);
+
+    for (const celda of rejillaMes(anio, mes)) {
+      if (celda.relleno) {
+        const hueco = document.createElement('span');
+        cont.append(hueco);
+        continue;
+      }
+
+      const info = faseDe(celda.fecha, ini, p, marcadas);
+      const reg = registro(celda.fecha);
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.fecha = celda.fecha;
+      btn.className =
+        'relative flex aspect-square flex-col items-center justify-center rounded-lg text-sm transition ' +
+        COLOR_FASE[info.fase] +
+        (info.fertil && info.fase !== 'ovulacion' ? ' ring-1 ring-acento/40' : '') +
+        (celda.fecha === hoy ? ' font-bold ring-2 ring-tinta' : '') +
+        (celda.fecha === seleccionado ? ' outline-2 outline-offset-1 outline-acento' : '');
+
+      const n = document.createElement('span');
+      n.textContent = String(celda.dia);
+      btn.append(n);
+
+      // Marcas de lo anotado: corazón para relaciones, punto para síntomas.
+      const marcas = document.createElement('span');
+      marcas.className = 'absolute bottom-0.5 flex items-center gap-0.5 text-[8px] leading-none';
+      if (reg.r.length > 0) {
+        const c = document.createElement('span');
+        c.textContent = '❤️';
+        c.setAttribute('aria-hidden', 'true');
+        marcas.append(c);
+      }
+      if (reg.s.length > 0) {
+        const d = document.createElement('span');
+        d.className = 'size-1 rounded-full bg-current opacity-60';
+        marcas.append(d);
+      }
+      if (marcas.childElementCount > 0) btn.append(marcas);
+
+      const partes = [`${celda.dia} de ${NOMBRES_MES[mes - 1]}`, ETIQUETA_FASE[info.fase]];
+      if (reg.r.length > 0) partes.push(`${reg.r.length} relación(es)`);
+      if (reg.s.length > 0) partes.push(`${reg.s.length} síntoma(s)`);
+      btn.setAttribute('aria-label', partes.join(', '));
+
+      btn.addEventListener('click', () => abrirDia(celda.fecha));
+      cont.append(btn);
+    }
+  }
+
+  function pintarResumen() {
+    $('mes-titulo').textContent = `${NOMBRES_MES[mes - 1]} ${anio}`;
+
+    const p = promedios();
+    const ini = inicios();
+    const info = faseDe(hoy, ini, p, new Set(menstruaciones));
+
+    if (info.fase === 'desconocida') {
+      $('resumen-fase').textContent = 'Todavía sin datos suficientes.';
+      $('resumen-prediccion').textContent =
+        'Marca los días de menstruación y el calendario empezará a calcular las fases.';
+      return;
+    }
+
+    const titular = nombres[config.titular];
+    $('resumen-fase').textContent =
+      `Hoy · ${ETIQUETA_FASE[info.fase]}` +
+      (info.diaDelCiclo ? ` · día ${info.diaDelCiclo} del ciclo` : '');
+
+    const proxima = proximaMenstruacion(ini, p);
+    const trozos: string[] = [];
+    if (proxima) trozos.push(`Próxima regla estimada: ${fechaLarga(proxima)}`);
+    trozos.push(
+      p.muestras === 0
+        ? `ciclo de ${p.ciclo} días (valor por defecto)`
+        : `ciclo de ${p.ciclo} días (promedio de ${p.muestras})`,
+    );
+    if (info.fertil) trozos.push('día fértil estimado');
+    $('resumen-prediccion').textContent = `${titular} · ${trozos.join(' · ')}`;
+  }
+
+  // ── Detalle del día ───────────────────────────────────────────────────
+
+  function pintarSintomas() {
+    const cont = $('sintomas');
+    cont.replaceChildren();
+    if (!seleccionado) return;
+
+    const activos = new Set(registro(seleccionado).s);
+
+    for (const grupo of GRUPOS_SINTOMA) {
+      const bloque = document.createElement('div');
+
+      const t = document.createElement('p');
+      t.className = 'mb-1.5 text-[11px] font-semibold tracking-wide text-tinta-tenue uppercase';
+      t.textContent = `${grupo.emoji} ${grupo.titulo}`;
+      bloque.append(t);
+
+      const fila = document.createElement('div');
+      fila.className = 'flex flex-wrap gap-1.5';
+
+      for (const s of SINTOMAS.filter((x) => x.grupo === grupo.id)) {
+        const on = activos.has(s.id);
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className =
+          'rounded-full border px-2.5 py-1.5 text-xs transition ' +
+          (on
+            ? 'border-acento bg-acento-suave text-acento font-medium'
+            : 'border-borde text-tinta-suave hover:border-acento');
+        b.textContent = `${s.emoji} ${s.etiqueta}`;
+        b.setAttribute('aria-pressed', String(on));
+
+        b.addEventListener('click', async () => {
+          if (!seleccionado) return;
+          b.disabled = true;
+          try {
+            await alternarSintoma(parejaId, seleccionado, s.id, registro(seleccionado).s);
+          } catch {
+            avisar('No se pudo guardar el síntoma.');
+          } finally {
+            b.disabled = false;
+          }
+        });
+
+        fila.append(b);
+      }
+      bloque.append(fila);
+      cont.append(bloque);
+    }
+  }
+
+  function pintarRelaciones() {
+    const ul = $('lista-relaciones');
+    ul.replaceChildren();
+    if (!seleccionado) return;
+
+    const rel = registro(seleccionado).r;
+    rel.forEach((r, i) => {
+      const li = document.createElement('li');
+      li.className =
+        'flex items-center justify-between gap-2 rounded-lg bg-superficie-alt px-3 py-2 text-sm text-tinta-suave';
+
+      const t = document.createElement('span');
+      t.textContent = r.p ? '❤️ Con preservativo' : '❤️ Sin preservativo';
+      li.append(t);
+
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'text-xs text-tinta-tenue transition hover:text-peligro';
+      x.textContent = 'Quitar';
+      x.setAttribute('aria-label', 'Quitar este registro');
+      x.addEventListener('click', async () => {
+        if (!seleccionado) return;
+        try {
+          await quitarRelacion(parejaId, seleccionado, i, registro(seleccionado).r);
+        } catch {
+          avisar('No se pudo quitar.');
+        }
+      });
+      li.append(x);
+      ul.append(li);
+    });
+  }
+
+  function pintarDetalle() {
+    if (!seleccionado) { $('detalle-dia').hidden = true; return; }
+
+    const reg = registro(seleccionado);
+    const info = faseDe(seleccionado, inicios(), promedios(), new Set(menstruaciones));
+
+    $('detalle-dia').hidden = false;
+    $('dia-titulo').textContent = fechaLarga(seleccionado);
+    $('dia-fase').textContent =
+      ETIQUETA_FASE[info.fase] +
+      (info.diaDelCiclo ? ` · día ${info.diaDelCiclo}` : '') +
+      (info.fertil ? ' · fértil (estimado)' : '');
+
+    $('btn-menstruacion').textContent = reg.m ? '🩸 Quitar menstruación' : '🩸 Marcar menstruación';
+    ($('dia-nota') as HTMLTextAreaElement).value = reg.n ?? '';
+
+    pintarRelaciones();
+    pintarSintomas();
+  }
+
+  function abrirDia(fecha: string) {
+    seleccionado = fecha;
+    pintarRejilla();
+    pintarDetalle();
+    $('detalle-dia').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function todo() {
+    pintarResumen();
+    pintarRejilla();
+    pintarDetalle();
+  }
+
+  function escucharMes() {
+    cancelarMes?.();
+    const deEsteMes = clave();
+    cancelarMes = observarMes(parejaId, deEsteMes, (d) => {
+      if (deEsteMes !== clave()) return;   // llegó tarde tras cambiar de mes
+      dias = d;
+      todo();
+    });
+  }
+
+  function irA(nuevoAnio: number, nuevoMes: number) {
+    anio = nuevoAnio;
+    mes = nuevoMes;
+    seleccionado = null;
+    dias = {};
+    escucharMes();
+    todo();
+  }
+
+  protegerPagina(() => {
+    $('guardia').classList.add('hidden');
+    $('app').classList.remove('hidden');
+
+    for (const p of ['a', 'b'] as const) {
+      observarNombre(parejaId, p, (n) => {
+        if (n) { nombres[p] = n; pintarResumen(); actualizarSelectores(); }
+      });
+    }
+
+    observarResumen(parejaId, (m) => { menstruaciones = m; todo(); });
+    observarConfig(parejaId, (c) => {
+      config = c;
+      ($('cfg-titular') as HTMLSelectElement).value = c.titular;
+      ($('cfg-regla') as HTMLInputElement).value = String(c.duracionRegla);
+      const p = promedios();
+      $('cfg-info').textContent =
+        p.muestras === 0
+          ? 'Aún no hay ciclos completos registrados: se usa 28 días por defecto.'
+          : `Promedio calculado con ${p.muestras} ciclo(s): ${p.ciclo} días.`;
+      todo();
+    });
+
+    escucharMes();
+    todo();
+
+    $('mes-anterior').addEventListener('click', () =>
+      mes === 1 ? irA(anio - 1, 12) : irA(anio, mes - 1));
+    $('mes-siguiente').addEventListener('click', () =>
+      mes === 12 ? irA(anio + 1, 1) : irA(anio, mes + 1));
+    $('mes-hoy').addEventListener('click', () => {
+      irA(Number(hoy.slice(0, 4)), Number(hoy.slice(5, 7)));
+      abrirDia(hoy);
+    });
+
+    $('dia-cerrar').addEventListener('click', () => {
+      seleccionado = null;
+      $('detalle-dia').hidden = true;
+      pintarRejilla();
+    });
+
+    $('btn-menstruacion').addEventListener('click', async () => {
+      if (!seleccionado) return;
+      const b = $('btn-menstruacion') as HTMLButtonElement;
+      b.disabled = true;
+      try {
+        const activa = !registro(seleccionado).m;
+        menstruaciones = await marcarMenstruacion(parejaId, seleccionado, activa, menstruaciones);
+        avisar(activa ? 'Menstruación registrada.' : 'Registro quitado.');
+        todo();
+      } catch {
+        avisar('No se pudo guardar.');
+      } finally {
+        b.disabled = false;
+      }
+    });
+
+    for (const [id, conPreservativo] of [['btn-rel-con', true], ['btn-rel-sin', false]] as const) {
+      $(id).addEventListener('click', async () => {
+        if (!seleccionado) return;
+        try {
+          await registrarRelacion(parejaId, seleccionado, conPreservativo, registro(seleccionado).r);
+          avisar('Registrado.');
+        } catch {
+          avisar('No se pudo registrar.');
+        }
+      });
+    }
+
+    $('nota-guardar').addEventListener('click', async () => {
+      if (!seleccionado) return;
+      try {
+        await guardarNota(parejaId, seleccionado, ($('dia-nota') as HTMLTextAreaElement).value);
+        avisar('Nota guardada.');
+      } catch (e) {
+        avisar((e as Error)?.message ?? 'No se pudo guardar la nota.');
+      }
+    });
+
+    $('dia-borrar').addEventListener('click', async () => {
+      if (!seleccionado) return;
+      const b = $('dia-borrar') as HTMLButtonElement;
+      // Doble confirmación: borra todo lo anotado ese día.
+      if (b.dataset.armado !== 'si') {
+        b.dataset.armado = 'si';
+        b.textContent = '¿Seguro? Pulsa otra vez';
+        setTimeout(() => { b.dataset.armado = ''; b.textContent = 'Borrar el día'; }, 4000);
+        return;
+      }
+      b.dataset.armado = '';
+      b.textContent = 'Borrar el día';
+      try {
+        menstruaciones = await borrarDia(parejaId, seleccionado, menstruaciones);
+        avisar('Día borrado.');
+        todo();
+      } catch {
+        avisar('No se pudo borrar.');
+      }
+    });
+
+    $('cfg-guardar').addEventListener('click', async () => {
+      try {
+        await guardarConfig(parejaId, {
+          titular: ($('cfg-titular') as HTMLSelectElement).value === 'a' ? 'a' : 'b',
+          duracionRegla: Number(($('cfg-regla') as HTMLInputElement).value) || 5,
+        });
+        avisar('Ajustes guardados.');
+      } catch {
+        avisar('No se pudieron guardar.');
+      }
+    });
+
+    function actualizarSelectores() {
+      const sel = $('cfg-titular') as HTMLSelectElement;
+      const opciones = sel.querySelectorAll('option');
+      if (opciones[0]) opciones[0].textContent = nombres.a;
+      if (opciones[1]) opciones[1].textContent = nombres.b;
+    }
+    actualizarSelectores();
+  });
+</script>

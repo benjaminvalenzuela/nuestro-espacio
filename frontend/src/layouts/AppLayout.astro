@@ -30,10 +30,28 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         </svg>
         Inicio
       </a>
-      <h1 class="mt-2 text-2xl font-semibold text-tinta">{encabezado}</h1>
-      {bajada && <p class="mt-1 text-sm text-tinta-suave">{bajada}</p>}
+      <div class="mt-2 flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-semibold text-tinta">{encabezado}</h1>
+          {bajada && <p class="mt-1 text-sm text-tinta-suave">{bajada}</p>}
+        </div>
+        <button
+          id="btn-tema"
+          type="button"
+          class="shrink-0 rounded-xl border border-borde px-3 py-2 text-lg leading-none transition hover:bg-superficie-alta"
+        >🌗</button>
+      </div>
     </header>
 
     <slot />
   </div>
 </BaseLayout>
+
+<script>
+  import { montarBotonTema } from '../domain/tema/tema';
+
+  // El botón vive en el layout, así que está en todas las pantallas sin que
+  // cada una tenga que acordarse de ponerlo.
+  const boton = document.getElementById('btn-tema');
+  if (boton) montarBotonTema(boton);
+</script>
