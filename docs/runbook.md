@@ -230,7 +230,47 @@ cuando la rama acumule demasiada basura, y relanza los dos despliegues después.
 
 ---
 
-## 11 · Reglas que no se rompen nunca
+## 11 · Cuánta cuota gasta la app de verdad
+
+El plan Spark da **50.000 lecturas de Firestore al día**. Esto es lo que cuesta
+cada cosa, medido y no estimado a ojo:
+
+| Acción | Lecturas |
+|---|---|
+| Abrir el juego de preguntas por primera vez en un aparato | ~1.020 |
+| Abrirlo cualquier otra vez | **1** (solo pregunta si cambió el banco) |
+| Sacar la siguiente pregunta | **0** — se elige en memoria |
+| Cambiar de categoría | **0** |
+| Marcar hecha o pasar | 0 lecturas, 1 escritura |
+| Abrir «Ya respondidas» | hasta 300 |
+
+El catálogo se guarda en el navegador (**214 KB** de los ~5.000 disponibles) y
+solo se vuelve a descargar cuando cambia `versionBanco`, es decir, cuando
+alguien toca el banco desde el panel o se ejecuta el seed.
+
+### Lo que sí puede disparar la cuota
+
+1. **Cargar contenido nuevo muchas veces en un día.** Cada cambio del banco
+   obliga a los cuatro aparatos a redescargar ~2.000 documentos: unas 8.000
+   lecturas por cambio. Cinco cambios en un día son 40.000, y quedan 10.000
+   para todo lo demás. Si vas a agregar preguntas, hazlo de una vez.
+
+2. **Recargar listas dentro de un bucle de juego.** Pasó de verdad: el
+   historial de «qué prefieres» se recargaba entero tras cada ronda revelada,
+   así que el coste crecía con el uso —cuanto más jugaban, más caro les salía
+   jugar—. Se corrigió añadiendo la partida en memoria. Si añades una pantalla
+   nueva, comprueba que no lee una colección completa dentro de una acción que
+   se repite.
+
+### Cómo ver el consumo real
+
+Consola de Firebase → **Firestore Database → Uso**. Muestra lecturas,
+escrituras y borrados del día. Si algo se dispara, ahí se ve antes de que la
+app deje de funcionar.
+
+---
+
+## 12 · Reglas que no se rompen nunca
 
 | Regla | Motivo |
 |---|---|
