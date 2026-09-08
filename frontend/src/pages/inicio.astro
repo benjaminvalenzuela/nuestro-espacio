@@ -95,7 +95,8 @@ const ATAJOS = [
         <div class="px-4 py-4">
           <p id="evento-nombre" class="text-lg leading-snug font-semibold text-balance text-tinta"></p>
           <p class="mt-1 text-sm text-tinta-suave">
-            Organiza <span id="evento-organiza" class="font-medium text-tinta"></span>
+            <span id="evento-organiza-etiqueta">Organiza</span>
+            <span id="evento-organiza" class="font-medium text-tinta"></span>
           </p>
 
           <p id="evento-cuando" class="mt-3 text-sm font-medium text-salvia"></p>
@@ -314,6 +315,7 @@ const ATAJOS = [
     if (!evento) {
       $('evento-nombre').textContent = 'A la espera de nuevo panorama';
       $('evento-nombre').className = 'text-lg leading-snug font-semibold text-balance text-tinta-suave';
+      $('evento-organiza-etiqueta').textContent = 'Organizador:';
       $('evento-organiza').textContent = 'por definir';
       $('evento-cuando').textContent = 'Fecha: pendiente';
       $('evento-cuando').className = 'mt-3 text-sm font-medium text-tinta-tenue';
@@ -322,6 +324,7 @@ const ATAJOS = [
 
     $('evento-nombre').textContent = evento.nombre;
     $('evento-nombre').className = 'text-lg leading-snug font-semibold text-balance text-tinta';
+    $('evento-organiza-etiqueta').textContent = 'Organiza';
     $('evento-organiza').textContent = nombres[evento.organizador];
 
     const input = $('evento-fecha') as HTMLInputElement;
