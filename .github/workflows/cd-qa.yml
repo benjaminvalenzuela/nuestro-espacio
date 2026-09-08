@@ -64,8 +64,25 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./frontend/dist
           destination_dir: qa
-          # Solo se limpia /qa: la raíz, que es producción, no se toca.
-          keep_files: false
+          # ═══════════════════════════════════════════════════════════════
+          #  keep_files: true — y NO es por comodidad.
+          #
+          #  Con false, cada despliegue BORRA los assets del anterior. Los
+          #  nombres llevan hash, así que los nuevos son otros archivos. El
+          #  problema es que GitHub Pages cachea el HTML unos minutos en su
+          #  borde, y el navegador otro tanto: durante esa ventana, quien
+          #  recibe el HTML viejo pide unos assets que ya no existen y la
+          #  aplicación se rompe con una pantalla de "Cargando" eterna y
+          #  cuatro 404 en la consola.
+          #
+          #  Se comprobó en QA: el HTML servido pedía identidad.CEQZ9Tyn.js
+          #  mientras el despliegue había dejado identidad.CI6SA5UM.js.
+          #
+          #  Conservando los archivos, las dos versiones conviven y la
+          #  transición es invisible. La basura acumulada se limpia cuando
+          #  haga falta con el workflow "Reconstruir gh-pages".
+          # ═══════════════════════════════════════════════════════════════
+          keep_files: true
           commit_message: "qa: ${{ github.event.head_commit.message }}"
 
       - name: Resumen

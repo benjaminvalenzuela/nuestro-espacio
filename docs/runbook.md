@@ -207,7 +207,30 @@ La carpeta está en `.gitignore`: el repositorio es público.
 
 ---
 
-## 10 · Reglas que no se rompen nunca
+## 10 · «Cargando» eterno con 404 en la consola
+
+**Síntoma:** tras un despliegue, la app se queda cargando y la consola muestra
+varios 404 de archivos `_astro/*.js`.
+
+**Causa:** el HTML que sirve GitHub Pages es de una versión y los assets que
+pide ya no existen. Los nombres llevan hash, así que cada build genera otros
+archivos distintos; si el despliegue borró los anteriores, quien tenga el HTML
+cacheado —en el borde de Pages o en su navegador— pide fantasmas.
+
+**Ya no debería pasar:** los dos entornos publican con `keep_files: true`, así
+que las versiones conviven y la transición es invisible. Si vuelve a ocurrir,
+lo primero es comprobar que ese flag sigue puesto en `cd-qa.yml` y
+`cd-prod.yml`.
+
+**Mientras dure**, se arregla solo en unos minutos, cuando expira el caché del
+HTML. Para forzarlo: recargar con un `?v=` distinto.
+
+⚠️ El workflow **Reconstruir gh-pages** sí borra todo a propósito: úsalo solo
+cuando la rama acumule demasiada basura, y relanza los dos despliegues después.
+
+---
+
+## 11 · Reglas que no se rompen nunca
 
 | Regla | Motivo |
 |---|---|
