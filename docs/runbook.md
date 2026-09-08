@@ -311,7 +311,27 @@ El seed es idempotente y no borra nada, así que reejecutarlo es seguro. Sube
 salto, el contenido nuevo no aparecería hasta que alguien limpiara el
 almacenamiento del navegador.
 
-## 14 · Reglas que no se rompen nunca
+## 14 · Correr los tests de Security Rules en Windows
+
+Los emuladores de Firestore y Realtime Database son procesos Java. Sin Java en
+el PATH, `firebase emulators:exec` falla con un mensaje que no menciona Java
+para nada —`"C:\Program" no se reconoce como un comando`— y es fácil concluir
+que el problema es el espacio en la ruta del proyecto. No lo es.
+
+En esta máquina el JDK ya está instalado, solo fuera del PATH. Desde
+PowerShell, y sin tocar nada del sistema:
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-21.0.12.101-hotspot"
+$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+npx firebase emulators:exec --project demo-nuestro-espacio --only auth,firestore,database "npm run test:reglas"
+```
+
+El `--project demo-nuestro-espacio` no es decorativo: el prefijo `demo-` es lo
+que fuerza el modo emulador. Sin él, el SDK intentaría hablar con un proyecto
+real.
+
+## 15 · Reglas que no se rompen nunca
 
 | Regla | Motivo |
 |---|---|
