@@ -1,1 +1,0 @@
-import{h as e,v as t,x as n}from"./index.esm.Cu1YOjGS.js";import{d as r,p as i,u as a}from"./identidad.BnUTx3e0.js";var o=n({obtenerFirestore:()=>c}),s;function c(){return s||(s=t(a()),i&&e(s,r.host,r.firestore),s)}export{c as n,o as t};

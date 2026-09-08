@@ -1,1 +1,0 @@
-import{C as e,l as t,w as n}from"./identidad.BnUTx3e0.js";var r=0,i=!1;function a(){i||(i=!0,e(n(t(),`.info/serverTimeOffset`),e=>{let t=e.val();typeof t==`number`&&Number.isFinite(t)&&(r=t)}))}function o(){return Date.now()+r}export{a as n,o as t};
