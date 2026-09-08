@@ -2,12 +2,25 @@ import { describe, it, expect } from 'vitest';
 import {
   crearRng, elegirIndice, anguloFinal, suavizado, estadoEn,
 } from '../src/domain/ruleta/animacionGiro';
-import { elegirPregunta, type Pregunta } from '../src/domain/preguntas/preguntasService';
+import { recientesDe } from '../src/domain/preguntas/preguntasService';
+import { elegirCarta, contarPendientes } from '../src/domain/banco/seleccion';
+import { estaDescartada, PASES_PARA_DESCARTAR, type EntradaProgreso } from '@shared/schemas/progreso.schema';
 import { formatearUltimaConexion, formatearCompleto } from '../src/domain/presencia/formatoFecha';
 import { parsearCodigo, formatearCodigo, normalizarCodigo, generarCuerpo, ALFABETO_CODIGO, LARGO_CUERPO } from '@shared/schemas/codigo';
 import { derivarPresencia } from '@shared/schemas/presencia.schema';
 import { normalizarNombre } from '@shared/panoramas';
+import { signoDe, signoLegible, edadDe } from '@shared/zodiaco';
+import {
+  faseDe, calcularPromedios, iniciosDesdeDias, proximaMenstruacion,
+  rejillaMes, sumarDias, diasEntre, CICLO_POR_DEFECTO,
+} from '@shared/ciclo';
+import {
+  puntuarRonda, ganadorDe, empiezaPorLetra, letraDeSemilla,
+  categoriaValida, LETRAS,
+} from '@shared/bachillerato';
 import { POLITICA_CSP } from '../src/config/csp';
+import { siguienteTema, etiquetaDe, type Tema } from '../src/domain/tema/tema';
+import { RUTA_LIMPIABLE } from '../src/domain/admin/adminService';
 import type { Giro } from '@shared/schemas/giro.schema';
 
 /**
@@ -144,21 +157,23 @@ describe('Pesos de la ruleta', () => {
   });
 });
 
-describe('Anti-repetición de preguntas', () => {
-  const banco = (n: number): Pregunta[] =>
-    Array.from({ length: n }, (_, i) => ({
-      id: `p${i}`, texto: `Pregunta ${i}`, categoria: 'profundas' as const,
-    }));
+describe('Elección de carta · anti-repetición, descartes y niveles', () => {
+  const banco = (n: number, nivel: 1 | 2 | 3 = 1) =>
+    Array.from({ length: n }, (_, i) => ({ id: `p${i}`, nivel }));
 
-  it('no repite mientras queden preguntas frescas', () => {
+  const entrada = (o: Partial<EntradaProgreso> = {}): EntradaProgreso =>
+    ({ h: false, p: 0, t: 0, q: null, ...o });
+
+  it('no repite mientras queden cartas sin estrenar', () => {
     const catalogo = banco(20);
-    const servidas = new Map<string, number>();
+    const progreso: Record<string, EntradaProgreso> = {};
     const vistas: string[] = [];
 
     for (let i = 0; i < 14; i++) {
-      const p = elegirPregunta(catalogo, servidas, 25, vistas.at(-1) ?? null)!;
-      vistas.push(p.id);
-      servidas.set(p.id, Date.now() + i);
+      const recientes = recientesDe(progreso, 25);
+      const c = elegirCarta({ candidatas: catalogo, progreso, recientes, excluir: vistas.at(-1) })!;
+      vistas.push(c.id);
+      progreso[c.id] = entrada({ t: Date.now() + i });
     }
 
     expect(new Set(vistas).size).toBe(vistas.length);
@@ -166,19 +181,104 @@ describe('Anti-repetición de preguntas', () => {
 
   it('con catálogo pequeño no se queda sin candidatas', () => {
     const catalogo = banco(3);
-    const servidas = new Map(catalogo.map((p, i) => [p.id, Date.now() + i]));
-    expect(elegirPregunta(catalogo, servidas, 25, null)).not.toBeNull();
+    const progreso = Object.fromEntries(
+      catalogo.map((c, i) => [c.id, entrada({ t: Date.now() + i })]),
+    );
+    expect(elegirCarta({ candidatas: catalogo, progreso })).not.toBeNull();
   });
 
-  it('nunca devuelve la que ya está en pantalla si hay alternativa', () => {
+  it('nunca devuelve la que está en pantalla si hay alternativa', () => {
     const catalogo = banco(6);
     for (let i = 0; i < 50; i++) {
-      expect(elegirPregunta(catalogo, new Map(), 25, 'p0')!.id).not.toBe('p0');
+      expect(elegirCarta({ candidatas: catalogo, progreso: {}, excluir: 'p0' })!.id).not.toBe('p0');
     }
   });
 
   it('con catálogo vacío devuelve null en vez de reventar', () => {
-    expect(elegirPregunta([], new Map(), 25, null)).toBeNull();
+    expect(elegirCarta({ candidatas: [], progreso: {} })).toBeNull();
+  });
+
+  it('una carta pasada tres veces no vuelve a salir', () => {
+    const catalogo = banco(4);
+    const progreso = { p0: entrada({ p: PASES_PARA_DESCARTAR }) };
+
+    for (let i = 0; i < 80; i++) {
+      expect(elegirCarta({ candidatas: catalogo, progreso })!.id).not.toBe('p0');
+    }
+    expect(estaDescartada(progreso.p0)).toBe(true);
+  });
+
+  it('si TODAS están descartadas devuelve null, no una descartada', () => {
+    const catalogo = banco(3);
+    const progreso = Object.fromEntries(
+      catalogo.map((c) => [c.id, entrada({ p: PASES_PARA_DESCARTAR })]),
+    );
+    expect(elegirCarta({ candidatas: catalogo, progreso })).toBeNull();
+  });
+
+  it('prefiere las no hechas antes que las hechas', () => {
+    const catalogo = banco(5);
+    const progreso = {
+      p0: entrada({ h: true }), p1: entrada({ h: true }),
+      p2: entrada({ h: true }), p3: entrada({ h: true }),
+    };
+    // Solo p4 está sin hacer: debe salir siempre mientras exista.
+    for (let i = 0; i < 40; i++) {
+      expect(elegirCarta({ candidatas: catalogo, progreso })!.id).toBe('p4');
+    }
+  });
+
+  it('las hechas vuelven a salir cuando ya no quedan nuevas', () => {
+    const catalogo = banco(3);
+    const progreso = Object.fromEntries(catalogo.map((c) => [c.id, entrada({ h: true })]));
+    expect(elegirCarta({ candidatas: catalogo, progreso })).not.toBeNull();
+  });
+
+  it('respeta el reparto de niveles pedido: 55 % para 1 y 2, 45 % para el 3', () => {
+    // Mismo número de cartas por nivel, para que la única diferencia sea el peso.
+    const catalogo = [
+      ...Array.from({ length: 100 }, (_, i) => ({ id: `a${i}`, nivel: 1 as const })),
+      ...Array.from({ length: 100 }, (_, i) => ({ id: `b${i}`, nivel: 2 as const })),
+      ...Array.from({ length: 100 }, (_, i) => ({ id: `c${i}`, nivel: 3 as const })),
+    ];
+
+    // Azar determinista: recorre la cuerda de pesos de forma uniforme, así el
+    // test mide el reparto real y no la suerte de una tirada.
+    let paso = 0;
+    const azar = () => ((paso++ * 0.0007) % 1);
+
+    const cuenta = { 1: 0, 2: 0, 3: 0 };
+    for (let i = 0; i < 6000; i++) {
+      const c = elegirCarta({ candidatas: catalogo, progreso: {}, azar })!;
+      cuenta[c.nivel]++;
+    }
+
+    const total = cuenta[1] + cuenta[2] + cuenta[3];
+    const pct = (n: number) => (n / total) * 100;
+
+    expect(pct(cuenta[1]) + pct(cuenta[2])).toBeGreaterThan(50);
+    expect(pct(cuenta[1]) + pct(cuenta[2])).toBeLessThan(60);
+    expect(pct(cuenta[3])).toBeGreaterThan(40);
+    expect(pct(cuenta[3])).toBeLessThan(50);
+  });
+
+  it('cuenta pendientes, hechas y descartadas por separado', () => {
+    const catalogo = banco(10);
+    const progreso = {
+      p0: entrada({ h: true }),
+      p1: entrada({ h: true }),
+      p2: entrada({ p: PASES_PARA_DESCARTAR }),
+    };
+    const c = contarPendientes(catalogo, progreso);
+    expect(c).toEqual({ total: 10, hechas: 2, descartadas: 1, pendientes: 7 });
+  });
+
+  it('una carta descartada no cuenta además como hecha', () => {
+    // Se puede marcar hecha y luego pasarla tres veces. No debe contarse dos veces.
+    const catalogo = banco(3);
+    const progreso = { p0: entrada({ h: true, p: PASES_PARA_DESCARTAR }) };
+    const c = contarPendientes(catalogo, progreso);
+    expect(c.hechas + c.descartadas + c.pendientes).toBe(c.total);
   });
 });
 
@@ -341,5 +441,366 @@ describe('Content Security Policy', () => {
 
   it('parte de default-src propio', () => {
     expect(POLITICA_CSP.startsWith("default-src 'self'")).toBe(true);
+  });
+});
+
+describe('Signo zodiacal · se deduce, no se elige', () => {
+  it('acierta en el centro de cada signo', () => {
+    const casos: [string, string][] = [
+      ['1996-01-05', 'Capricornio'], ['1996-02-05', 'Acuario'],
+      ['1996-03-05', 'Piscis'], ['1996-04-05', 'Aries'],
+      ['1996-05-05', 'Tauro'], ['1996-06-05', 'Géminis'],
+      ['1996-07-05', 'Cáncer'], ['1996-08-05', 'Leo'],
+      ['1996-09-05', 'Virgo'], ['1996-10-05', 'Libra'],
+      ['1996-11-05', 'Escorpio'], ['1996-12-05', 'Sagitario'],
+    ];
+    for (const [fecha, esperado] of casos) {
+      expect(signoDe(fecha)?.nombre, fecha).toBe(esperado);
+    }
+  });
+
+  it('acierta justo en los bordes, que es donde se falla', () => {
+    expect(signoDe('1996-01-19')?.nombre).toBe('Capricornio');
+    expect(signoDe('1996-01-20')?.nombre).toBe('Acuario');
+    expect(signoDe('1996-12-21')?.nombre).toBe('Sagitario');
+    expect(signoDe('1996-12-22')?.nombre).toBe('Capricornio');
+  });
+
+  it('el 31 de diciembre y el 1 de enero son ambos Capricornio', () => {
+    // El único signo que cruza el cambio de año. Un bucle mal cerrado lo parte.
+    expect(signoDe('1996-12-31')?.nombre).toBe('Capricornio');
+    expect(signoDe('1997-01-01')?.nombre).toBe('Capricornio');
+  });
+
+  it('no se desplaza un día por interpretar la fecha en UTC', () => {
+    // new Date('1996-01-01') es medianoche UTC, que en Chile es el 31 de
+    // diciembre. Si el cálculo pasara por ahí, esto daría Sagitario.
+    expect(signoDe('1996-01-01')?.nombre).toBe('Capricornio');
+    expect(signoDe('1996-07-23')?.nombre).toBe('Leo');
+  });
+
+  it('devuelve null con una fecha ausente o mal formada', () => {
+    for (const malo of ['', '  ', 'ayer', '1996-13-01', '96-01-01', null, undefined]) {
+      expect(signoDe(malo)).toBeNull();
+    }
+  });
+
+  it('la versión legible trae emoji y elemento', () => {
+    expect(signoLegible('1996-08-05')).toBe('♌ Leo · Fuego');
+    expect(signoLegible(undefined)).toBe('');
+  });
+
+  it('la edad no cuenta el cumpleaños hasta que llega', () => {
+    expect(edadDe('1996-07-10', '2026-07-09')).toBe(29);
+    expect(edadDe('1996-07-10', '2026-07-10')).toBe(30);
+    expect(edadDe('1996-07-10', '2026-07-11')).toBe(30);
+  });
+
+  it('la edad aguanta el 29 de febrero', () => {
+    expect(edadDe('2000-02-29', '2026-02-28')).toBe(25);
+    expect(edadDe('2000-02-29', '2026-03-01')).toBe(26);
+  });
+});
+
+describe('Ciclo menstrual · aritmética de días civiles', () => {
+  it('suma días cruzando meses y años', () => {
+    expect(sumarDias('2026-01-31', 1)).toBe('2026-02-01');
+    expect(sumarDias('2026-12-31', 1)).toBe('2027-01-01');
+    expect(sumarDias('2026-03-01', -1)).toBe('2026-02-28');
+  });
+
+  it('aguanta el año bisiesto', () => {
+    expect(sumarDias('2028-02-28', 1)).toBe('2028-02-29');
+    expect(diasEntre('2028-02-01', '2028-03-01')).toBe(29);
+    expect(diasEntre('2026-02-01', '2026-03-01')).toBe(28);
+  });
+
+  it('no se desplaza en el cambio de hora chileno', () => {
+    // Septiembre y abril son los meses del cambio: hay días de 23 y 25 horas.
+    // Restando milisegundos y dividiendo por 86.400.000, esto daría 30 o 32.
+    expect(diasEntre('2026-09-01', '2026-10-01')).toBe(30);
+    expect(diasEntre('2026-04-01', '2026-05-01')).toBe(30);
+  });
+});
+
+describe('Ciclo · inicios a partir de los días marcados', () => {
+  it('agrupa días seguidos en un solo inicio', () => {
+    const dias = ['2026-09-03', '2026-09-04', '2026-09-05', '2026-09-06'];
+    expect(iniciosDesdeDias(dias)).toEqual(['2026-09-03']);
+  });
+
+  it('un día suelto sin marcar no corta la racha', () => {
+    // Es normal que un día apenas manche y no se registre.
+    const dias = ['2026-09-03', '2026-09-04', '2026-09-06'];
+    expect(iniciosDesdeDias(dias)).toEqual(['2026-09-03']);
+  });
+
+  it('un hueco largo sí abre un ciclo nuevo', () => {
+    const dias = ['2026-08-05', '2026-08-06', '2026-09-02', '2026-09-03'];
+    expect(iniciosDesdeDias(dias)).toEqual(['2026-08-05', '2026-09-02']);
+  });
+
+  it('tolera días desordenados y repetidos', () => {
+    const dias = ['2026-09-04', '2026-09-03', '2026-09-03'];
+    expect(iniciosDesdeDias(dias)).toEqual(['2026-09-03']);
+  });
+});
+
+describe('Ciclo · promedios reales, no el 28 de manual', () => {
+  it('sin historial usa el valor por defecto y lo declara', () => {
+    const p = calcularPromedios([]);
+    expect(p.ciclo).toBe(CICLO_POR_DEFECTO);
+    expect(p.muestras).toBe(0);
+  });
+
+  it('promedia los intervalos reales', () => {
+    // 31 y 31 días de separación.
+    const p = calcularPromedios(['2026-07-01', '2026-08-01', '2026-09-01']);
+    expect(p.ciclo).toBe(31);
+    expect(p.muestras).toBe(2);
+  });
+
+  it('descarta intervalos absurdos que arruinarían la predicción', () => {
+    // El salto de dos años es un registro olvidado, no un ciclo.
+    const p = calcularPromedios(['2024-01-01', '2026-08-01', '2026-08-29']);
+    expect(p.ciclo).toBe(28);
+    expect(p.muestras).toBe(1);
+  });
+
+  it('predice la próxima regla desde el último inicio', () => {
+    const inicios = ['2026-07-01', '2026-08-01', '2026-09-01'];
+    const p = calcularPromedios(inicios);
+    expect(proximaMenstruacion(inicios, p)).toBe('2026-10-02');
+  });
+});
+
+describe('Ciclo · fases', () => {
+  const inicios = ['2026-09-01'];
+  const p = calcularPromedios(inicios, 5);   // 28 días por defecto, regla de 5
+
+  it('los primeros días son menstruación', () => {
+    expect(faseDe('2026-09-01', inicios, p).fase).toBe('menstruacion');
+    expect(faseDe('2026-09-05', inicios, p).fase).toBe('menstruacion');
+    expect(faseDe('2026-09-06', inicios, p).fase).toBe('folicular');
+  });
+
+  it('la ovulación cae 14 días antes del final del ciclo', () => {
+    // Ciclo de 28 → ovulación el día 14 → 13 días después del 1 de septiembre.
+    const info = faseDe('2026-09-14', inicios, p);
+    expect(info.fase).toBe('ovulacion');
+    expect(info.diaDelCiclo).toBe(14);
+    expect(info.fertil).toBe(true);
+  });
+
+  it('después de ovular viene la fase lútea', () => {
+    expect(faseDe('2026-09-20', inicios, p).fase).toBe('lutea');
+  });
+
+  it('la ventana fértil cubre los cinco días previos y el día después', () => {
+    expect(faseDe('2026-09-09', inicios, p).fertil).toBe(true);   // día 9
+    expect(faseDe('2026-09-15', inicios, p).fertil).toBe(true);   // día 15
+    expect(faseDe('2026-09-08', inicios, p).fertil).toBe(false);  // día 8
+    expect(faseDe('2026-09-16', inicios, p).fertil).toBe(false);  // día 16
+  });
+
+  it('UN DÍA REGISTRADO MANDA SOBRE LA PREDICCIÓN', () => {
+    // Si la regla se adelanta y ella lo marca, el calendario debe hacerle caso
+    // aunque su cálculo dijera "fase lútea". Un hecho anotado no se discute.
+    const registradas = new Set(['2026-09-25']);
+    const info = faseDe('2026-09-25', inicios, p, registradas);
+    expect(info.fase).toBe('menstruacion');
+    expect(info.confirmado).toBe(true);
+  });
+
+  it('sin ningún inicio previo no inventa una fase', () => {
+    expect(faseDe('2026-09-10', [], p).fase).toBe('desconocida');
+    expect(faseDe('2026-08-15', inicios, p).fase).toBe('desconocida');
+  });
+
+  it('deja de predecir tras dos ciclos sin registrar', () => {
+    // A los dos meses sin marcar nada, seguir dibujando fases sería inventar.
+    expect(faseDe('2026-11-15', inicios, p).fase).toBe('desconocida');
+  });
+
+  it('un ciclo largo mueve la ovulación', () => {
+    const largos = ['2026-06-01', '2026-07-04', '2026-08-06'];   // ~33 días
+    const pl = calcularPromedios(largos, 5);
+    expect(pl.ciclo).toBe(33);
+    // Ovulación en el día 19, no en el 14.
+    expect(faseDe('2026-08-24', largos, pl).fase).toBe('ovulacion');
+  });
+});
+
+describe('Ciclo · rejilla del mes', () => {
+  it('empieza en lunes y cuadra el primer día', () => {
+    // El 1 de septiembre de 2026 es martes: un hueco antes.
+    const celdas = rejillaMes(2026, 9);
+    expect(celdas[0]?.relleno).toBe(true);
+    expect(celdas[1]?.fecha).toBe('2026-09-01');
+    expect(celdas.filter((c) => !c.relleno)).toHaveLength(30);
+  });
+
+  it('un mes que empieza en lunes no lleva huecos', () => {
+    // 1 de junio de 2026 es lunes.
+    const celdas = rejillaMes(2026, 6);
+    expect(celdas[0]?.fecha).toBe('2026-06-01');
+  });
+
+  it('febrero bisiesto trae 29 días', () => {
+    expect(rejillaMes(2028, 2).filter((c) => !c.relleno)).toHaveLength(29);
+  });
+});
+
+describe('Bachillerato · puntuación', () => {
+  const cats = ['Nombre', 'Animal'];
+
+  it('0 si no escribiste nada', () => {
+    const r = puntuarRonda(cats, { a: {}, b: { Nombre: 'Ana' } }, 'A');
+    expect(r.puntajes.a).toBe(0);
+  });
+
+  it('50 si los dos escribieron lo mismo', () => {
+    const r = puntuarRonda(['Nombre'], { a: { Nombre: 'Ana' }, b: { Nombre: 'Ana' } }, 'A');
+    expect(r.puntajes.a).toBe(50);
+    expect(r.puntajes.b).toBe(50);
+  });
+
+  it('100 si escribiste algo distinto', () => {
+    const r = puntuarRonda(['Nombre'], { a: { Nombre: 'Ana' }, b: { Nombre: 'Alberto' } }, 'A');
+    expect(r.puntajes.a).toBe(100);
+    expect(r.puntajes.b).toBe(100);
+  });
+
+  it('"lo mismo" ignora tildes, mayúsculas y espacios', () => {
+    const r = puntuarRonda(['Color'], { a: { Color: 'Ámbar' }, b: { Color: '  ambar ' } }, 'A');
+    expect(r.puntajes.a).toBe(50);
+    expect(r.celdas.Color?.a?.motivo).toBe('repetida');
+  });
+
+  it('una palabra que no empieza por la letra vale 0', () => {
+    const r = puntuarRonda(['Animal'], { a: { Animal: 'Perro' }, b: {} }, 'A');
+    expect(r.puntajes.a).toBe(0);
+    expect(r.celdas.Animal?.a?.motivo).toBe('letra_incorrecta');
+  });
+
+  it('que el rival no conteste no te penaliza: son 100', () => {
+    const r = puntuarRonda(['Animal'], { a: { Animal: 'Araña' }, b: {} }, 'A');
+    expect(r.puntajes.a).toBe(100);
+    expect(r.puntajes.b).toBe(0);
+  });
+
+  it('una palabra inválida del rival no cuenta como coincidencia', () => {
+    // B escribió lo mismo pero con la letra equivocada: A no debe bajar a 50.
+    const r = puntuarRonda(['Animal'], { a: { Animal: 'Araña' }, b: { Animal: 'Araña' } }, 'B');
+    expect(r.puntajes.a).toBe(0);
+    expect(r.puntajes.b).toBe(0);
+  });
+
+  it('suma todas las categorías', () => {
+    const r = puntuarRonda(
+      ['Nombre', 'Animal', 'Comida'],
+      { a: { Nombre: 'Ana', Animal: 'Araña', Comida: 'Arroz' }, b: { Nombre: 'Ana' } },
+      'A',
+    );
+    expect(r.puntajes.a).toBe(50 + 100 + 100);
+    expect(r.puntajes.b).toBe(50);
+  });
+
+  it('la ñ no se confunde con la n', () => {
+    const r = puntuarRonda(['Cosa'], { a: { Cosa: 'Añil' }, b: { Cosa: 'Anil' } }, 'A');
+    expect(r.puntajes.a).toBe(100);
+  });
+
+  it('decide el ganador y detecta el empate', () => {
+    expect(ganadorDe({ a: 300, b: 150 })).toBe('a');
+    expect(ganadorDe({ a: 150, b: 300 })).toBe('b');
+    expect(ganadorDe({ a: 200, b: 200 })).toBe('empate');
+    expect(ganadorDe({ a: 0, b: 0 })).toBe('empate');
+  });
+
+  it('acepta la tilde inicial como la letra', () => {
+    expect(empiezaPorLetra('Ángel', 'A')).toBe(true);
+    expect(empiezaPorLetra('Ángel', 'E')).toBe(false);
+    expect(empiezaPorLetra('   ', 'A')).toBe(false);
+  });
+
+  it('la letra sale de la semilla y siempre está en el alfabeto', () => {
+    for (const semilla of [0, 1, 7, 12345, 999999, 2 ** 31]) {
+      expect(LETRAS).toContain(letraDeSemilla(semilla));
+    }
+    // Determinista: la misma semilla da la misma letra en las dos pantallas.
+    expect(letraDeSemilla(12345)).toBe(letraDeSemilla(12345));
+  });
+
+  it('valida los nombres de categoría', () => {
+    expect(categoriaValida('Animal')).toBe(true);
+    expect(categoriaValida('A')).toBe(false);
+    expect(categoriaValida('  ')).toBe(false);
+    expect(categoriaValida('<script>')).toBe(false);
+    expect(categoriaValida('x'.repeat(41))).toBe(false);
+  });
+});
+
+describe('Tema claro/oscuro', () => {
+  it('rota entre los tres estados y vuelve al principio', () => {
+    let t: Tema = 'claro';
+    t = siguienteTema(t); expect(t).toBe('oscuro');
+    t = siguienteTema(t); expect(t).toBe('sistema');
+    t = siguienteTema(t); expect(t).toBe('claro');
+  });
+
+  it('cada estado tiene etiqueta y emoji', () => {
+    for (const t of ['claro', 'oscuro', 'sistema'] as Tema[]) {
+      const e = etiquetaDe(t);
+      expect(e.etiqueta.length).toBeGreaterThan(0);
+      expect(e.emoji.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('el script del tema NO puede ser inline: la CSP lo bloquearía', () => {
+    // script-src no lleva 'unsafe-inline', así que el tema se carga desde un
+    // archivo propio. Si alguien lo devolviera al HTML, dejaría de aplicarse
+    // en producción sin ningún error visible en desarrollo.
+    const scriptSrc = POLITICA_CSP.split('; ').find((d) => d.startsWith('script-src')) ?? '';
+    expect(scriptSrc).not.toContain("'unsafe-inline'");
+    expect(scriptSrc).toContain("'self'");
+
+    // style-src SÍ lo lleva, y es correcto: Astro y Tailwind emiten estilos
+    // dentro del HTML. Un estilo inline no ejecuta código; un script sí.
+    const styleSrc = POLITICA_CSP.split('; ').find((d) => d.startsWith('style-src')) ?? '';
+    expect(styleSrc).toContain("'unsafe-inline'");
+  });
+});
+
+describe('El botón de limpieza solo alcanza los historiales', () => {
+  /**
+   * Este test existe por una preocupación concreta: que un cambio en la app no
+   * borre lo que ustedes escribieron. La limpieza del panel es la única ruta a
+   * un borrado masivo, y aquí se fija exactamente hasta dónde llega.
+   *
+   * Si alguien agrega una colección a RUTA_LIMPIABLE, este test falla y le
+   * obliga a justificarlo. Es más difícil ignorar un test rojo que un
+   * comentario.
+   */
+  it('la lista blanca contiene los tres historiales y nada más', () => {
+    expect(Object.keys(RUTA_LIMPIABLE).sort()).toEqual([
+      'historialOrganizacion', 'historialPanoramas', 'partidasDilemas',
+    ]);
+  });
+
+  it('ninguna ruta limpiable toca perfiles, banco, progreso ni ciclo', () => {
+    const prohibidos = [
+      'perfiles', 'perfilConjunto', 'panoramas', 'preguntas', 'dilemas',
+      'progreso', 'ciclo', 'dispositivos', 'secretos', 'auditoria',
+    ];
+
+    for (const [nombre, ruta] of Object.entries(RUTA_LIMPIABLE)) {
+      const generada = ruta('pareja_test');
+      for (const prohibido of prohibidos) {
+        // Se compara por segmento: "historialPanoramas" contiene "panoramas"
+        // como subcadena, pero no es la colección de panoramas.
+        expect(generada.split('/'), `${nombre} → ${generada}`).not.toContain(prohibido);
+      }
+    }
   });
 });

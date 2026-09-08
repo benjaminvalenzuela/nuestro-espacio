@@ -21,6 +21,37 @@ export type Rol = (typeof ROLES)[number];
 export const CATEGORIAS_PREGUNTA = ['profundas', 'subidas_de_tono', 'supuestos'] as const;
 export type CategoriaPregunta = (typeof CATEGORIAS_PREGUNTA)[number];
 
+/**
+ * NIVEL DE INTENSIDAD — solo tiene sentido en 'subidas_de_tono'.
+ *
+ *   1 · sugerente   2 · directo   3 · explícito
+ *
+ * El resto de categorías lo llevan implícito en 1: el campo es opcional en el
+ * banco y se normaliza al leer, para no tener que tocar mil documentos.
+ *
+ * No es una etiqueta decorativa: gobierna la probabilidad de que una carta
+ * salga (ver PESO_NIVEL). Sin esto, con 300 preguntas subidas de tono repartidas
+ * a partes iguales, una noche tranquila tendría la misma probabilidad de sacar
+ * la pregunta más fuerte del banco que la más suave.
+ */
+export const NIVELES = [1, 2, 3] as const;
+export type Nivel = (typeof NIVELES)[number];
+
+/**
+ * Reparto pedido: niveles 1 y 2 suman el 55 % de las apariciones, el nivel 3
+ * se queda con el 45 %. Dentro del 55 %, mitad y mitad.
+ *
+ * Son pesos RELATIVOS por carta, no cuotas: si una noche solo quedan cartas de
+ * nivel 3 sin hacer, saldrán igualmente. El peso inclina la moneda, no la fija.
+ */
+export const PESO_NIVEL: Record<Nivel, number> = { 1: 27.5, 2: 27.5, 3: 45 };
+
+export const ETIQUETA_NIVEL: Record<Nivel, string> = {
+  1: 'Suave',
+  2: 'Directa',
+  3: 'Explícita',
+};
+
 export const CATEGORIAS_DILEMA = ['general', 'profundas', 'subidas_de_tono', 'absurdas'] as const;
 export type CategoriaDilema = (typeof CATEGORIAS_DILEMA)[number];
 

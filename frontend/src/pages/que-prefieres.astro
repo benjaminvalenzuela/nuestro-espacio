@@ -51,6 +51,28 @@ import AppLayout from '../layouts/AppLayout.astro';
   >
     <span id="btn-nuevo-texto">Nuevo dilema</span>
   </button>
+
+  <p id="contador-dilemas" class="mt-4 text-center text-xs text-tinta-tenue"></p>
+
+  <section class="mt-6">
+    <button
+      id="btn-respondidas"
+      type="button"
+      aria-expanded="false"
+      aria-controls="panel-respondidas"
+      class="flex w-full items-center justify-between rounded-xl border border-borde px-4 py-3 text-sm font-medium text-tinta-suave transition hover:bg-superficie-alta"
+    >
+      <span><span aria-hidden="true">📜</span> Ya respondidas</span>
+      <span id="respondidas-total" class="text-xs text-tinta-tenue"></span>
+    </button>
+
+    <div id="panel-respondidas" hidden class="mt-3 flex flex-col gap-2">
+      <p id="respondidas-vacio" class="hidden py-4 text-center text-sm text-tinta-tenue">
+        Todavía no han respondido ninguno.
+      </p>
+      <ul id="lista-respondidas" class="flex flex-col gap-2"></ul>
+    </div>
+  </section>
 </AppLayout>
 
 <script>
@@ -58,9 +80,14 @@ import AppLayout from '../layouts/AppLayout.astro';
   import { iniciarRelojServidor } from '../domain/tiempo/relojServidor';
   import {
     cargarDilemas, abrirRonda, observarRondaActual, observarMeta, votar,
-    observarVotos, archivarPartida, ErrorVoto,
-    type Dilema, type Opcion, type Votos,
+    observarVotos, archivarPartida, ErrorVoto, elegirSiguienteDilema, cargarPartidas,
+    type Dilema, type Opcion, type Votos, type PartidaJugada,
   } from '../domain/dilemas/dilemasService';
+  import {
+    observarProgreso, marcarHecha, type Progreso,
+  } from '../domain/progreso/progresoService';
+  import { recientesDe } from '../domain/preguntas/preguntasService';
+  import { contarPendientes } from '../domain/banco/seleccion';
   import { otraPersona, type Persona } from '@shared/enums';
   import { ENV } from '../config/env';
 
@@ -73,6 +100,9 @@ import AppLayout from '../layouts/AppLayout.astro';
   let miVoto: Opcion | null = null;
   let cancelarMeta: (() => void) | undefined;
   let cancelarVotos: (() => void) | undefined;
+  let progreso: Progreso = { items: {}, hechas: 0, descartadas: 0 };
+  let partidas: PartidaJugada[] = [];
+  let indice = new Map<string, Dilema>();
   let revelado = false;
 
   const botones = () => ['A', 'B'].map((o) => $(`opcion-${o}`) as HTMLButtonElement);
@@ -140,9 +170,17 @@ import AppLayout from '../layouts/AppLayout.astro';
     bloquear(true);
 
     if (dilemaActual) {
-      void archivarPartida(parejaId, rondaId!, dilemaActual.id, {
+      const id = dilemaActual.id;
+      void archivarPartida(parejaId, rondaId!, id, {
         [yo]: mio, [otraPersona(yo)]: suyo,
-      } as Required<Votos>);
+      } as Required<Votos>).then(async () => {
+        // Un dilema revelado ES un dilema respondido: se marca hecho para que
+        // no vuelva a salir antes que los que faltan, y para que el contador
+        // del panel cuadre con la lista de respondidas.
+        await marcarHecha(parejaId, 'dilemas', id, yo).catch(() => {});
+        partidas = await cargarPartidas(parejaId);
+        pintarRespondidas(yo);
+      });
     }
   }
 
@@ -180,6 +218,78 @@ import AppLayout from '../layouts/AppLayout.astro';
     });
   }
 
+  function pintarContador() {
+    if (dilemas.length === 0) return;
+    const c = contarPendientes(dilemas, progreso.items);
+    const partes = [`${c.pendientes} sin responder de ${c.total}`];
+    if (c.descartadas > 0) partes.push(`${c.descartadas} descartados`);
+    $('contador-dilemas').textContent = partes.join(' · ');
+  }
+
+  /**
+   * Lista de dilemas ya respondidos, con lo que eligió cada uno.
+   *
+   * Se pinta con createElement y textContent, nunca con innerHTML: el texto
+   * viene del banco, que es editable desde el panel, y esa es exactamente la
+   * ruta por la que entraría un script si se construyera el HTML como cadena.
+   */
+  function pintarRespondidas(yo: Persona) {
+    const lista = $('lista-respondidas');
+    lista.replaceChildren();
+
+    const conTexto = partidas.filter((p) => indice.has(p.dilemaId));
+    $('respondidas-total').textContent = conTexto.length ? String(conTexto.length) : '';
+    $('respondidas-vacio').classList.toggle('hidden', conTexto.length > 0);
+
+    for (const p of conTexto) {
+      const d = indice.get(p.dilemaId)!;
+      const mio = yo === 'a' ? p.votoA : p.votoB;
+      const suyo = yo === 'a' ? p.votoB : p.votoA;
+
+      const item = document.createElement('li');
+      item.className =
+        'rounded-xl border border-borde bg-superficie px-4 py-3 ' +
+        (p.coincidieron ? 'border-salvia/40 bg-salvia-suave/40' : '');
+
+      const cabecera = document.createElement('p');
+      cabecera.className = 'mb-2 text-xs font-medium text-tinta-tenue';
+      cabecera.textContent = p.coincidieron ? '💚 Coincidieron' : '↔️ Eligieron distinto';
+      item.append(cabecera);
+
+      for (const [letra, texto] of [['A', d.opcionA], ['B', d.opcionB]] as const) {
+        const fila = document.createElement('p');
+        const elegidaPorMi = mio === letra;
+        const elegidaPorElla = suyo === letra;
+        fila.className =
+          'flex items-start justify-between gap-2 py-0.5 text-sm ' +
+          (elegidaPorMi || elegidaPorElla ? 'text-tinta font-medium' : 'text-tinta-tenue');
+
+        const t = document.createElement('span');
+        t.textContent = texto;
+        fila.append(t);
+
+        const marcas = document.createElement('span');
+        marcas.className = 'shrink-0 text-xs';
+        marcas.textContent =
+          (elegidaPorMi ? 'tú ' : '') + (elegidaPorElla ? 'ella/él' : '');
+        fila.append(marcas);
+
+        item.append(fila);
+      }
+
+      if (p.cerradaEn > 0) {
+        const fecha = document.createElement('p');
+        fecha.className = 'mt-1.5 text-[11px] text-tinta-tenue';
+        fecha.textContent = new Date(p.cerradaEn).toLocaleDateString('es-CL', {
+          day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Santiago',
+        });
+        item.append(fecha);
+      }
+
+      lista.append(item);
+    }
+  }
+
   protegerPagina((sesion) => {
     iniciarRelojServidor();
     $('guardia').classList.add('hidden');
@@ -188,11 +298,35 @@ import AppLayout from '../layouts/AppLayout.astro';
 
     void (async () => {
       dilemas = await cargarDilemas();
+      indice = new Map(dilemas.map((d) => [d.id, d]));
       $('estado').textContent = dilemas.length
         ? 'Pulsa "Nuevo dilema" para empezar.'
         : 'No hay dilemas activos en el banco.';
       ($('btn-nuevo') as HTMLButtonElement).disabled = dilemas.length === 0;
+      pintarContador();
+
+      partidas = await cargarPartidas(parejaId);
+      pintarRespondidas(sesion.persona);
     })();
+
+    observarProgreso(parejaId, 'dilemas', (p) => {
+      progreso = p;
+      pintarContador();
+    });
+
+    $('btn-respondidas').addEventListener('click', async () => {
+      const panel = $('panel-respondidas');
+      const abierto = !panel.hidden;
+      panel.hidden = abierto;
+      $('btn-respondidas').setAttribute('aria-expanded', String(!abierto));
+
+      // Al abrir se recarga: puede haber partidas nuevas jugadas en el otro
+      // dispositivo desde que se montó la página.
+      if (!abierto) {
+        partidas = await cargarPartidas(parejaId);
+        pintarRespondidas(sesion.persona);
+      }
+    });
 
     observarRondaActual(parejaId, (id) => {
       if (!id || id === rondaId) return;
@@ -222,7 +356,15 @@ import AppLayout from '../layouts/AppLayout.astro';
       ($('btn-nuevo') as HTMLButtonElement).disabled = true;
       $('btn-nuevo-texto').textContent = 'Abriendo…';
       try {
-        const d = dilemas[Math.floor(Math.random() * dilemas.length)]!;
+        // Mismas reglas que en preguntas: nada de azar puro. Se descartan los
+        // pasados tres veces, van primero los que nunca se han respondido y el
+        // nivel inclina la moneda.
+        const recientes = recientesDe(progreso.items, 25);
+        const d = elegirSiguienteDilema(dilemas, progreso.items, recientes, dilemaActual?.id);
+        if (!d) {
+          $('estado').textContent = 'No quedan dilemas disponibles.';
+          return;
+        }
         pintarDilema(d);
         await abrirRonda(parejaId, d.id);
       } finally {

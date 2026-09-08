@@ -133,6 +133,55 @@
         //  GIRO DE RULETAS · ADR-003
         //  Determinista y sincronizado: ambos animan desde la misma semilla.
         // ═════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════
+        //  BACHILLERATO · partida en vivo
+        //
+        //  Aqui se escribe en cada tecla, por eso vive en RTDB y no en
+        //  Firestore. La letra NO se guarda: se deriva de la semilla, igual
+        //  que en la ruleta de panoramas, asi que las dos pantallas la
+        //  calculan solas y no hay forma de que discrepen.
+        //
+        //  POR QUE ESTA PARTIDO EN DOS NODOS
+        //
+        //  "control" y "respuestas" son hermanos y no un solo objeto, y eso
+        //  no es cosmetico. En RTDB el permiso de escritura CASCADEA: conceder
+        //  .write en un nodo lo concede en todo su subarbol. Si el control y
+        //  las respuestas colgaran del mismo nodo escribible, cualquiera de
+        //  los dos podria reescribir las palabras del otro despues de ver las
+        //  suyas, y el juego dejaria de tener sentido.
+        //
+        //  Separados, "control" admite transacciones sobre el objeto entero
+        //  —que es lo que hace falta para que dos STOP simultaneos no sumen
+        //  los puntos dos veces— y "respuestas" mantiene a cada uno en su fila.
+        // ═══════════════════════════════════════════════════════════════
+        "bachillerato": {
+          ".read": "auth != null && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).exists()",
+
+          "control": {
+            ".write": "auth != null && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).exists()",
+
+            "estado":     { ".validate": "newData.val().matches(/^(esperando|girando|jugando|revisando)$/)" },
+            "semilla":    { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "rondaId":    { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "iniciadoEn": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "stopPor":    { ".validate": "newData.val() === null || newData.val().matches(/^(a|b)$/)" },
+
+            "acumulado": {
+              "$persona": { ".validate": "$persona.matches(/^(a|b)$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000" }
+            },
+
+            "$otro": { ".validate": false }
+          },
+
+          "respuestas": {
+            "$persona": {
+              // El vinculo dice quien eres; solo escribes tu propia fila.
+              ".write": "auth != null && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).child('persona').val() === $persona",
+              "$categoria": { ".validate": "newData.isString() && newData.val().length <= 40 && !newData.val().matches(/[<>]/)" }
+            }
+          }
+        },
+
         "giro": {
           ".read": "auth != null && root.child('salas').child($parejaId).child('dispositivos').child(auth.uid).exists()",
 

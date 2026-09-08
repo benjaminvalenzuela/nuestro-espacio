@@ -46,3 +46,6 @@ desktop.ini
 !.vscode/extensions.json
 !.vscode/settings.recommended.json
 .idea/
+
+# Respaldos de datos reales: el repositorio es público.
+backend/respaldos/

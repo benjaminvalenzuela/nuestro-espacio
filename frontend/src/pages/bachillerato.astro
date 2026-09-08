@@ -1,0 +1,482 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+
+<AppLayout
+  titulo="Bachillerato · Nuestro Espacio"
+  encabezado="Bachillerato"
+  bajada="Sale una letra, escriben los dos, alguien grita basta."
+>
+  {/* ── Marcador ───────────────────────────────────────────────────── */}
+  <div class="mb-4 grid grid-cols-2 gap-2.5">
+    <div class="tarjeta px-4 py-3">
+      <p id="nombre-a" class="text-xs text-tinta-tenue">Persona A</p>
+      <p id="puntos-a" class="text-2xl font-semibold text-tinta">0</p>
+    </div>
+    <div class="tarjeta px-4 py-3">
+      <p id="nombre-b" class="text-xs text-tinta-tenue">Persona B</p>
+      <p id="puntos-b" class="text-2xl font-semibold text-tinta">0</p>
+    </div>
+  </div>
+
+  {/* ── Banner del ganador ─────────────────────────────────────────── */}
+  <div id="banner-ganador" hidden
+    class="mb-4 rounded-2xl border border-acento/40 bg-acento-suave px-5 py-5 text-center destello">
+    <p class="text-xs font-medium tracking-wide text-acento uppercase">Partida terminada</p>
+    <p id="ganador-texto" class="mt-1 text-xl font-semibold text-tinta"></p>
+    <p id="ganador-marcador" class="mt-0.5 text-sm text-tinta-suave"></p>
+    <button id="banner-cerrar" type="button"
+      class="mt-3 rounded-lg border border-acento px-3 py-1.5 text-xs font-medium text-acento transition hover:bg-acento/10">
+      Empezar de nuevo
+    </button>
+  </div>
+
+  {/* ── Ruleta de la letra ─────────────────────────────────────────── */}
+  <section class="tarjeta mb-4 flex flex-col items-center gap-3 px-5 py-6">
+    <div id="ruleta-letra"
+      class="flex size-28 items-center justify-center rounded-full border-4 border-acento/30 bg-superficie-alt">
+      <span id="letra" class="text-5xl font-bold text-acento">?</span>
+    </div>
+    <p id="estado-juego" class="text-center text-sm text-tinta-suave">
+      Pulsa para sacar una letra.
+    </p>
+  </section>
+
+  {/* ── Acciones ───────────────────────────────────────────────────── */}
+  <div class="mb-5 grid grid-cols-2 gap-2.5">
+    <button id="btn-girar" type="button"
+      class="rounded-xl bg-acento px-4 py-3.5 font-medium text-white transition hover:bg-acento-fuerte active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40">
+      🎡 <span id="btn-girar-texto">Sacar letra</span>
+    </button>
+    <button id="btn-stop" type="button" disabled
+      class="rounded-xl border-2 border-peligro px-4 py-3.5 font-semibold text-peligro transition hover:bg-peligro/5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40">
+      ✋ ¡Basta!
+    </button>
+  </div>
+
+  {/* ── Tablero ────────────────────────────────────────────────────── */}
+  <div id="tablero" class="flex flex-col gap-2.5"></div>
+
+  <button id="btn-reiniciar" type="button"
+    class="mt-6 w-full rounded-xl border border-peligro/40 px-4 py-3 text-sm font-medium text-peligro transition hover:bg-peligro/5">
+    🔄 Reiniciar juego desde cero
+  </button>
+
+  {/* ── Categorías ─────────────────────────────────────────────────── */}
+  <details class="mt-6">
+    <summary class="cursor-pointer text-sm font-medium text-tinta-suave">⚙️ Categorías</summary>
+    <div class="tarjeta mt-3 flex flex-col gap-3 px-4 py-4">
+      <ul id="lista-categorias" class="flex flex-col gap-2"></ul>
+      <div class="flex gap-2">
+        <input id="cat-nueva" type="text" maxlength="40" placeholder="Nueva categoría…"
+          class="min-w-0 flex-1 rounded-lg border border-borde bg-superficie-alt px-3 py-2 text-sm text-tinta placeholder:text-tinta-tenue focus:border-acento focus:outline-none" />
+        <button id="cat-agregar" type="button"
+          class="shrink-0 rounded-lg border border-acento px-3 py-2 text-sm font-medium text-acento transition hover:bg-acento-suave">
+          Añadir
+        </button>
+      </div>
+      <p class="text-[11px] text-tinta-tenue">
+        Los cambios se aplican en la próxima ronda, no en la que están jugando.
+      </p>
+    </div>
+  </details>
+
+  <p id="bach-aviso" role="status" class="mt-4 text-center text-xs text-acento"></p>
+</AppLayout>
+
+<script>
+  import { protegerPagina } from '../domain/identidad/guardia';
+  import { iniciarRelojServidor, ahoraServidor } from '../domain/tiempo/relojServidor';
+  import {
+    observarCategorias, guardarCategorias, observarPartida, girarLetra,
+    empezarRonda, escribirRespuesta, pararRonda, reiniciarPartida,
+    limpiarMisRespuestas, fijarPersona, letraDeSemilla, puntuarRonda,
+    DURACION_RULETA_MS, PARTIDA_VACIA, ErrorBachillerato,
+    type Partida,
+  } from '../domain/bachillerato/bachilleratoService';
+  import { LETRAS, MAX_CATEGORIAS, type ResultadoCelda } from '@shared/bachillerato';
+  import { observarNombre } from '../domain/presencia/presenciaService';
+  import { prefiereMenosMovimiento } from '../domain/ruleta/animacionGiro';
+  import { otraPersona, type Persona } from '@shared/enums';
+  import { ENV } from '../config/env';
+
+  const $ = (id: string) => document.getElementById(id)!;
+  const btn = (id: string) => $(id) as HTMLButtonElement;
+  const parejaId = ENV.PUBLIC_PAREJA_ID;
+
+  let yo: Persona = 'a';
+  let categorias: string[] = [];
+  let partida: Partida = { ...PARTIDA_VACIA };
+  let rondaPintada = '';
+  let animando = false;
+  const nombres: Record<Persona, string> = { a: 'Persona A', b: 'Persona B' };
+
+  /** Las claves de RTDB no admiten . # $ / [ ]; se sanean igual al leer y al escribir. */
+  const claveDe = (categoria: string) => categoria.replace(/[.#$/[\]]/g, '_');
+
+  function avisar(texto: string) {
+    $('bach-aviso').textContent = texto;
+    if (texto) setTimeout(() => { $('bach-aviso').textContent = ''; }, 3500);
+  }
+
+  const letraActual = () =>
+    partida.semilla > 0 ? letraDeSemilla(partida.semilla) : '?';
+
+  // ── Ruleta de la letra ────────────────────────────────────────────────
+
+  /**
+   * Animación de la letra.
+   *
+   * No hay una rueda dibujada: se van mostrando letras cada vez más despacio
+   * hasta parar en la que tocó. El resultado NO depende de la animación —sale
+   * de la semilla del servidor— así que las dos pantallas terminan en la misma
+   * letra aunque una entre a mitad del giro o tenga el móvil trabado.
+   */
+  function animarLetra(destino: string, restanteMs: number) {
+    if (animando) return;
+    animando = true;
+
+    if (prefiereMenosMovimiento() || restanteMs <= 0) {
+      $('letra').textContent = destino;
+      animando = false;
+      void terminarGiro();
+      return;
+    }
+
+    const fin = performance.now() + restanteMs;
+    let siguiente = 0;
+    let intervalo = 60;
+
+    const paso = (ahora: number) => {
+      if (ahora >= fin) {
+        $('letra').textContent = destino;
+        $('ruleta-letra').classList.remove('animate-pulse');
+        animando = false;
+        void terminarGiro();
+        return;
+      }
+      if (ahora >= siguiente) {
+        $('letra').textContent = LETRAS[Math.floor(Math.random() * LETRAS.length)]!;
+        // El intervalo crece: la ruleta "frena" al acercarse al final.
+        intervalo = 60 + (1 - (fin - ahora) / restanteMs) ** 2 * 260;
+        siguiente = ahora + intervalo;
+      }
+      requestAnimationFrame(paso);
+    };
+
+    $('ruleta-letra').classList.add('animate-pulse');
+    requestAnimationFrame(paso);
+  }
+
+  /** Solo una pantalla necesita mover el estado; la otra lo recibe por RTDB. */
+  async function terminarGiro() {
+    if (partida.estado !== 'girando') return;
+    await empezarRonda(parejaId).catch(() => {});
+  }
+
+  // ── Tablero ───────────────────────────────────────────────────────────
+
+  function pintarTablero() {
+    const cont = $('tablero');
+    const revisando = partida.estado === 'revisando';
+    const jugando = partida.estado === 'jugando';
+
+    // Se repinta entero solo al cambiar de ronda o de fase: hacerlo en cada
+    // pulsación de tecla arrancaría el foco del campo que se está escribiendo.
+    const firma = `${partida.rondaId}|${partida.estado}|${categorias.join(',')}`;
+    if (cont.dataset.firma === firma) {
+      if (revisando) pintarResultados();
+      return;
+    }
+    cont.dataset.firma = firma;
+    cont.replaceChildren();
+
+    for (const categoria of categorias) {
+      const caja = document.createElement('div');
+      caja.className = 'tarjeta px-4 py-3';
+
+      const t = document.createElement('label');
+      t.className = 'mb-1.5 block text-xs font-semibold tracking-wide text-tinta-tenue uppercase';
+      t.textContent = categoria;
+      t.htmlFor = `campo-${claveDe(categoria)}`;
+      caja.append(t);
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.id = `campo-${claveDe(categoria)}`;
+      input.maxLength = 40;
+      input.autocomplete = 'off';
+      input.disabled = !jugando;
+      input.placeholder = jugando ? `Algo con ${letraActual()}…` : '—';
+      input.value = partida.respuestas[yo]?.[claveDe(categoria)] ?? '';
+      input.className =
+        'w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta placeholder:text-tinta-tenue focus:border-acento focus:outline-none disabled:opacity-60';
+
+      // Se escribe con retardo: mandar a la red en cada tecla es ruido, y con
+      // 400 ms el otro lo ve igual de "en vivo".
+      let temporizador: number | undefined;
+      input.addEventListener('input', () => {
+        window.clearTimeout(temporizador);
+        temporizador = window.setTimeout(() => {
+          void escribirRespuesta(parejaId, yo, categoria, input.value)
+            .catch((e) => avisar(e instanceof ErrorBachillerato ? e.message : 'No se pudo guardar.'));
+        }, 400);
+      });
+
+      caja.append(input);
+
+      const resultado = document.createElement('div');
+      resultado.className = 'mt-2 hidden flex-col gap-1 text-xs';
+      resultado.dataset.resultado = claveDe(categoria);
+      caja.append(resultado);
+
+      cont.append(caja);
+    }
+
+    if (revisando) pintarResultados();
+  }
+
+  const ETIQUETA_MOTIVO: Record<ResultadoCelda['motivo'], string> = {
+    vacia: 'sin respuesta',
+    letra_incorrecta: 'no empieza por la letra',
+    repetida: 'repetida',
+    unica: 'única',
+  };
+
+  /** Al revelar, cada celda muestra qué puso cada uno y por qué sumó lo que sumó. */
+  function pintarResultados() {
+    const letra = letraActual();
+    const { celdas } = puntuarRonda(categorias, partida.respuestas, letra);
+
+    for (const categoria of categorias) {
+      const caja = document.querySelector<HTMLElement>(
+        `[data-resultado="${CSS.escape(claveDe(categoria))}"]`,
+      );
+      if (!caja) continue;
+
+      caja.replaceChildren();
+      caja.classList.remove('hidden');
+      caja.classList.add('flex');
+
+      for (const persona of ['a', 'b'] as Persona[]) {
+        const celda = celdas[categoria]?.[persona];
+        if (!celda) continue;
+
+        const fila = document.createElement('p');
+        fila.className =
+          'flex items-center justify-between gap-2 ' +
+          (celda.puntos === 100 ? 'text-salvia' : celda.puntos === 50 ? 'text-tinta-suave' : 'text-tinta-tenue');
+
+        const izq = document.createElement('span');
+        izq.textContent = `${nombres[persona]}: ${celda.respuesta || '—'}`;
+        const der = document.createElement('span');
+        der.className = 'shrink-0 font-semibold';
+        der.textContent = `${celda.puntos} · ${ETIQUETA_MOTIVO[celda.motivo]}`;
+
+        fila.append(izq, der);
+        caja.append(fila);
+      }
+    }
+  }
+
+  function pintarEstado() {
+    $('puntos-a').textContent = String(partida.acumulado.a);
+    $('puntos-b').textContent = String(partida.acumulado.b);
+    $('letra').textContent = partida.estado === 'girando' ? $('letra').textContent : letraActual();
+
+    const textos: Record<Partida['estado'], string> = {
+      esperando: 'Pulsa para sacar una letra.',
+      girando: 'Girando…',
+      jugando: `¡Escriban! Todo con ${letraActual()}.`,
+      revisando: partida.stopPor
+        ? `${nombres[partida.stopPor]} dijo basta. Puntos de la ronda abajo.`
+        : 'Ronda cerrada.',
+    };
+    $('estado-juego').textContent = textos[partida.estado];
+
+    btn('btn-girar').disabled = partida.estado === 'girando' || partida.estado === 'jugando';
+    $('btn-girar-texto').textContent =
+      partida.estado === 'revisando' ? 'Siguiente letra' : 'Sacar letra';
+    btn('btn-stop').disabled = partida.estado !== 'jugando';
+
+    pintarTablero();
+  }
+
+  // ── Categorías ────────────────────────────────────────────────────────
+
+  function pintarCategorias() {
+    const ul = $('lista-categorias');
+    ul.replaceChildren();
+
+    categorias.forEach((c, i) => {
+      const li = document.createElement('li');
+      li.className = 'flex items-center gap-2';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = c;
+      input.maxLength = 40;
+      input.className =
+        'min-w-0 flex-1 rounded-lg border border-borde bg-superficie-alt px-3 py-2 text-sm text-tinta focus:border-acento focus:outline-none';
+      input.addEventListener('change', async () => {
+        const copia = [...categorias];
+        copia[i] = input.value;
+        try {
+          await guardarCategorias(parejaId, copia);
+          avisar('Categoría actualizada.');
+        } catch (e) {
+          input.value = c;
+          avisar(e instanceof ErrorBachillerato ? e.message : 'No se pudo guardar.');
+        }
+      });
+
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'shrink-0 rounded-lg border border-borde px-2.5 py-2 text-xs text-tinta-tenue transition hover:border-peligro hover:text-peligro';
+      x.textContent = 'Quitar';
+      x.setAttribute('aria-label', `Quitar ${c}`);
+      x.addEventListener('click', async () => {
+        try {
+          await guardarCategorias(parejaId, categorias.filter((_, j) => j !== i));
+          avisar('Categoría quitada.');
+        } catch (e) {
+          avisar(e instanceof ErrorBachillerato ? e.message : 'No se pudo quitar.');
+        }
+      });
+
+      li.append(input, x);
+      ul.append(li);
+    });
+  }
+
+  // ── Arranque ──────────────────────────────────────────────────────────
+
+  protegerPagina((sesion) => {
+    yo = sesion.persona;
+    // Limpiar el tablero es una operación por persona —nadie puede tocar la
+    // fila del otro—, así que el servicio necesita saber quién es esta pantalla.
+    fijarPersona(yo);
+    iniciarRelojServidor();
+    $('guardia').classList.add('hidden');
+    $('app').classList.remove('hidden');
+
+    for (const p of ['a', 'b'] as const) {
+      observarNombre(parejaId, p, (n) => {
+        if (!n) return;
+        nombres[p] = n;
+        $(`nombre-${p}`).textContent = n;
+        pintarEstado();
+      });
+    }
+
+    observarCategorias(parejaId, (c) => {
+      categorias = c;
+      pintarCategorias();
+      pintarEstado();
+    });
+
+    observarPartida(parejaId, (p) => {
+      const anterior = partida;
+      partida = p;
+
+      // Giro nuevo: se anima una sola vez por ronda, y se entra en el punto
+      // correcto si esta pantalla llega tarde — igual que la ruleta de
+      // panoramas. El reloj del servidor evita que un móvil desfasado se
+      // quede animando eternamente.
+      if (p.estado === 'girando' && p.rondaId !== rondaPintada) {
+        rondaPintada = p.rondaId;
+        const transcurrido = Math.max(0, ahoraServidor() - p.iniciadoEn);
+        animarLetra(letraDeSemilla(p.semilla), DURACION_RULETA_MS - transcurrido);
+      }
+
+      // Marcador: al reiniciar, el acumulado vuelve a cero.
+      if (anterior.rondaId !== p.rondaId && p.estado === 'jugando') {
+        document.querySelector<HTMLInputElement>('#tablero input')?.focus();
+      }
+
+      pintarEstado();
+    });
+
+    $('btn-girar').addEventListener('click', async () => {
+      btn('btn-girar').disabled = true;
+      try {
+        if (partida.estado === 'revisando') await limpiarMisRespuestas(parejaId);
+        const giro = await girarLetra(parejaId);
+        if (!giro) avisar('Tu pareja ya estaba girando.');
+      } catch {
+        avisar('No se pudo girar.');
+        btn('btn-girar').disabled = false;
+      }
+    });
+
+    $('btn-stop').addEventListener('click', async () => {
+      btn('btn-stop').disabled = true;
+      try {
+        const r = await pararRonda(parejaId, yo, categorias);
+        if (r.cerro) {
+          avisar(`Ronda cerrada · ${nombres[yo]} ${r.puntajes[yo]} · ${nombres[otraPersona(yo)]} ${r.puntajes[otraPersona(yo)]}`);
+        }
+      } catch {
+        avisar('No se pudo cerrar la ronda.');
+      }
+    });
+
+    $('btn-reiniciar').addEventListener('click', async () => {
+      const b = btn('btn-reiniciar');
+      // Doble confirmación: borra el marcador acumulado.
+      if (b.dataset.armado !== 'si') {
+        b.dataset.armado = 'si';
+        b.textContent = '¿Seguro? Pulsa otra vez';
+        setTimeout(() => {
+          b.dataset.armado = '';
+          b.textContent = '🔄 Reiniciar juego desde cero';
+        }, 4000);
+        return;
+      }
+      b.dataset.armado = '';
+      b.textContent = '🔄 Reiniciar juego desde cero';
+
+      try {
+        const r = await reiniciarPartida(parejaId, categorias);
+        rondaPintada = '';
+
+        // El banner del ganador se muestra AL REINICIAR, que es lo pedido: el
+        // marcador se borra, así que si no se anunciara aquí, el resultado de
+        // la partida se perdería sin que nadie lo viera.
+        if (r.hubo) {
+          $('ganador-texto').textContent =
+            r.ganador === 'empate' ? '🤝 Empate' : `🏆 Ganó ${nombres[r.ganador]}`;
+          $('ganador-marcador').textContent =
+            `${nombres.a} ${r.puntajes.a} · ${nombres.b} ${r.puntajes.b}`;
+          $('banner-ganador').hidden = false;
+          $('banner-ganador').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+          avisar('Juego reiniciado.');
+        }
+      } catch {
+        avisar('No se pudo reiniciar.');
+      }
+    });
+
+    $('banner-cerrar').addEventListener('click', () => { $('banner-ganador').hidden = true; });
+
+    $('cat-agregar').addEventListener('click', async () => {
+      const input = $('cat-nueva') as HTMLInputElement;
+      if (categorias.length >= MAX_CATEGORIAS) {
+        avisar(`Como mucho ${MAX_CATEGORIAS} categorías.`);
+        return;
+      }
+      try {
+        await guardarCategorias(parejaId, [...categorias, input.value]);
+        input.value = '';
+        avisar('Categoría añadida.');
+      } catch (e) {
+        avisar(e instanceof ErrorBachillerato ? e.message : 'No se pudo añadir.');
+      }
+    });
+
+    $('cat-nueva').addEventListener('keydown', (e) => {
+      if ((e as KeyboardEvent).key === 'Enter') { e.preventDefault(); $('cat-agregar').click(); }
+    });
+  });
+</script>

@@ -1,5 +1,5 @@
 import {
-  collection, getDocs, addDoc, query, where, serverTimestamp, type Unsubscribe,
+  collection, getDocs, addDoc, query, orderBy, limit, serverTimestamp, type Unsubscribe,
 } from 'firebase/firestore';
 import {
   ref, onValue, set, update, runTransaction, serverTimestamp as tsRtdb,
@@ -7,6 +7,10 @@ import {
 import { obtenerFirestore } from '../../infra/firebase/firestore';
 import { obtenerRtdb } from '../../infra/firebase/rtdb';
 import { FS, RTDB } from '@shared/rutas-datos';
+import type { Nivel } from '@shared/enums';
+import { cargarDilemas as cargarBanco } from '../banco/cacheBanco';
+import { elegirCarta } from '../banco/seleccion';
+import type { EntradaProgreso } from '@shared/schemas/progreso.schema';
 import type { Persona } from '@shared/enums';
 
 /**
@@ -40,6 +44,8 @@ export interface Dilema {
   opcionA: string;
   opcionB: string;
   categoria: string;
+  /** Intensidad 1-3; solo significa algo en 'subidas_de_tono'. */
+  nivel: Nivel;
 }
 
 export interface MetaRonda {
@@ -51,21 +57,74 @@ export interface MetaRonda {
 export type Opcion = 'A' | 'B';
 export type Votos = Partial<Record<Persona, { opcion: Opcion; emitidoEn: number }>>;
 
+/**
+ * Trae el banco de dilemas desde la caché local.
+ *
+ * Mismo motivo que en preguntas: mil dilemas son mil lecturas por visita y el
+ * plan gratuito da cincuenta mil al día. Se descarga una vez por dispositivo y
+ * se invalida solo cuando el panel toca el banco.
+ */
 export async function cargarDilemas(): Promise<Dilema[]> {
-  const snap = await getDocs(
-    query(collection(obtenerFirestore(), FS.dilemas), where('activo', '==', true)),
-  );
-  return snap.docs
-    .map((d) => {
+  return (await cargarBanco()).map((d) => ({
+    id: d.id,
+    opcionA: d.opcionA,
+    opcionB: d.opcionB,
+    categoria: d.categoria,
+    nivel: d.nivel,
+  }));
+}
+
+/** Elige el siguiente dilema con las mismas reglas que las preguntas. */
+export function elegirSiguienteDilema(
+  candidatos: Dilema[],
+  progreso: Record<string, EntradaProgreso>,
+  recientes: Set<string>,
+  excluir?: string | null,
+): Dilema | null {
+  return elegirCarta({ candidatas: candidatos, progreso, recientes, excluir });
+}
+
+/**
+ * Historial de partidas jugadas: qué eligió cada uno y si coincidieron.
+ *
+ * Es lo que alimenta la lista de "ya respondidas". Se ordena por fecha
+ * descendente y se limita, porque con el tiempo esta colección crece sin techo
+ * y no tiene sentido traerla entera para mostrar las últimas.
+ */
+export interface PartidaJugada {
+  id: string;
+  dilemaId: string;
+  votoA: Opcion | null;
+  votoB: Opcion | null;
+  coincidieron: boolean;
+  cerradaEn: number;
+}
+
+export async function cargarPartidas(parejaId: string, tope = 300): Promise<PartidaJugada[]> {
+  try {
+    const snap = await getDocs(
+      query(
+        collection(obtenerFirestore(), FS.partidasDilemas(parejaId)),
+        orderBy('cerradaEn', 'desc'),
+        limit(tope),
+      ),
+    );
+    return snap.docs.map((d) => {
       const x = d.data();
+      const v = (x.votos ?? {}) as Record<string, string>;
       return {
         id: d.id,
-        opcionA: String(x.opcionA ?? ''),
-        opcionB: String(x.opcionB ?? ''),
-        categoria: String(x.categoria ?? 'general'),
+        dilemaId: String(x.dilemaId ?? ''),
+        votoA: v.a === 'A' || v.a === 'B' ? (v.a as Opcion) : null,
+        votoB: v.b === 'A' || v.b === 'B' ? (v.b as Opcion) : null,
+        coincidieron: Boolean(x.coincidieron),
+        cerradaEn: x.cerradaEn?.toMillis?.() ?? 0,
       };
-    })
-    .filter((d) => d.opcionA && d.opcionB);
+    });
+  } catch (e) {
+    console.warn('[dilemas] no se pudo leer el historial:', (e as Error)?.message);
+    return [];
+  }
 }
 
 /** Puntero a la ronda en curso: lo que sincroniza a las dos pantallas. */

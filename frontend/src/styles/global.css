@@ -43,36 +43,70 @@
     --radio: 1rem;
   }
 
+  /*
+     MODO OSCURO EN DOS SELECTORES, no en uno.
+
+     El sistema operativo manda mientras nadie diga lo contrario, y el botón de
+     la app puede imponerse en los dos sentidos:
+
+       · :root[data-tema="dark"]              lo eligió la persona
+       · media + :root:not([data-tema="light"])  lo pide el sistema y nadie lo
+         ha contradicho
+
+     Ese :not() es la pieza clave. Sin él, alguien con el teléfono en modo
+     oscuro no podría forzar el modo claro en la app: la media query ganaría
+     siempre y el botón solo funcionaría en una dirección.
+
+     El atributo se escribe en el <head> antes de pintar nada, para que no haya
+     un fogonazo blanco al abrir la app de noche.
+  */
+  :root[data-tema='dark'] {
+    color-scheme: dark;
+    --fondo:          #191416;
+    --superficie:     #221b1e;
+    --superficie-alt: #2c2327;
+    --borde:          #3b2f34;
+    --tinta:          #f4e9e4;
+    --tinta-suave:    #b9a7a3;
+    --tinta-tenue:    #8a7873;
+    --acento:         #e08195;
+    --acento-fuerte:  #f0a0b1;
+    --acento-suave:   #3a2429;
+    --salvia:         #8fb695;
+    --salvia-suave:   #253026;
+    --ambar:          #e0aa5a;
+    --peligro:        #e07a62;
+    --rueda-1: #4a3239;
+    --rueda-2: #443045;
+    --rueda-3: #2f4238;
+    --rueda-4: #4a3d2a;
+    --rueda-texto: #f0e4e0;
+    --sombra: 0 1px 2px rgb(0 0 0 / 0.30), 0 8px 24px -8px rgb(0 0 0 / 0.50);
+  }
+
   @media (prefers-color-scheme: dark) {
-    :root {
-      color-scheme: dark;
-
-      --fondo:          #191416;
-      --superficie:     #221b1e;
-      --superficie-alt: #2c2327;
-      --borde:          #3b2f34;
-
-      --tinta:          #f4e9e4;
-      --tinta-suave:    #b9a7a3;
-      --tinta-tenue:    #8a7873;
-
-      --acento:         #e08195;
-      --acento-fuerte:  #f0a0b1;
-      --acento-suave:   #3a2429;
-
-      --salvia:         #8fb695;
-      --salvia-suave:   #253026;
-
-      --ambar:          #e0aa5a;
-      --peligro:        #e07a62;
-
-      --rueda-1: #4a3239;
-      --rueda-2: #443045;
-      --rueda-3: #2f4238;
-      --rueda-4: #4a3d2a;
-      --rueda-texto: #f0e4e0;
-
-      --sombra: 0 1px 2px rgb(0 0 0 / 0.30), 0 8px 24px -8px rgb(0 0 0 / 0.50);
+    :root:not([data-tema='light']) {
+    color-scheme: dark;
+    --fondo:          #191416;
+    --superficie:     #221b1e;
+    --superficie-alt: #2c2327;
+    --borde:          #3b2f34;
+    --tinta:          #f4e9e4;
+    --tinta-suave:    #b9a7a3;
+    --tinta-tenue:    #8a7873;
+    --acento:         #e08195;
+    --acento-fuerte:  #f0a0b1;
+    --acento-suave:   #3a2429;
+    --salvia:         #8fb695;
+    --salvia-suave:   #253026;
+    --ambar:          #e0aa5a;
+    --peligro:        #e07a62;
+    --rueda-1: #4a3239;
+    --rueda-2: #443045;
+    --rueda-3: #2f4238;
+    --rueda-4: #4a3d2a;
+    --rueda-texto: #f0e4e0;
+    --sombra: 0 1px 2px rgb(0 0 0 / 0.30), 0 8px 24px -8px rgb(0 0 0 / 0.50);
     }
   }
 

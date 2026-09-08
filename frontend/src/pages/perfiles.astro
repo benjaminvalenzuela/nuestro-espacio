@@ -32,6 +32,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         <label for="yo-nacimiento" class="mb-1.5 block text-sm font-medium text-tinta">Fecha de nacimiento</label>
         <input id="yo-nacimiento" type="date"
           class="w-full rounded-xl border border-borde bg-superficie-alt px-4 py-2.5 text-tinta focus:border-acento focus:outline-none" />
+        <p id="yo-signo" class="mt-1.5 text-sm text-tinta-suave"></p>
       </div>
     </div>
 
@@ -117,10 +118,11 @@ import AppLayout from '../layouts/AppLayout.astro';
   import { protegerPagina } from '../domain/identidad/guardia';
   import {
     observarPerfil, guardarPerfil, observarPerfilConjunto, guardarPerfilConjunto,
-    interesesComunes, validarEntradaLista, LISTAS, PERFIL_VACIO, CONJUNTO_VACIO,
-    ErrorPerfil, type Perfil, type PerfilConjunto, type ClaveLista, type Hito,
+    interesesComunes, validarEntradaLista, SECCIONES_PERFIL, PERFIL_VACIO, CONJUNTO_VACIO,
+    ErrorPerfil, type Perfil, type PerfilConjunto, type Hito,
   } from '../domain/perfiles/perfilesService';
-  import { calcularTiempoJuntos, fechaLarga } from '../domain/perfiles/tiempoJuntos';
+  import { calcularTiempoJuntos, fechaLarga, hoyEnSantiago } from '../domain/perfiles/tiempoJuntos';
+  import { signoLegible, edadDe } from '@shared/zodiaco';
   import { otraPersona, type Persona } from '@shared/enums';
   import { ENV } from '../config/env';
 
@@ -171,11 +173,48 @@ import AppLayout from '../layouts/AppLayout.astro';
     return el;
   }
 
+  /**
+   * Título de sección. Existe porque veintitrés campos en una lista plana son
+   * ilegibles en un teléfono: agrupados por tema, cada bloque cabe de una
+   * mirada y se puede saltar el que no interesa.
+   */
+  /**
+   * "Nació el 3 de julio de 1996 · 30 años · ♋ Cáncer · Agua".
+   *
+   * El signo y la edad se derivan de la fecha; no son campos guardados. Así no
+   * pueden contradecirla, que es lo que pasa siempre que se deja elegir el
+   * signo en un desplegable aparte.
+   */
+  function descripcionNacimiento(fecha: string | undefined): string {
+    if (!fecha) return '';
+    const partes = [`Nació el ${fechaLarga(fecha)}`];
+    const edad = edadDe(fecha, hoyEnSantiago());
+    if (edad !== null) partes.push(`${edad} años`);
+    const signo = signoLegible(fecha);
+    if (signo) partes.push(signo);
+    return partes.join(' · ');
+  }
+
+  function encabezado(emoji: string, titulo: string): HTMLElement {
+    const h = document.createElement('h3');
+    h.className =
+      'mt-5 mb-1 flex items-center gap-2 text-xs font-semibold tracking-wide text-tinta-tenue uppercase first:mt-0';
+    const e = document.createElement('span');
+    e.setAttribute('aria-hidden', 'true');
+    e.textContent = emoji;
+    const t = document.createElement('span');
+    t.textContent = titulo;
+    h.append(e, t);
+    return h;
+  }
+
   function pintarListasEditables() {
     const cont = $('yo-listas');
     cont.replaceChildren();
 
-    for (const { clave, etiqueta, ayuda } of LISTAS) {
+    for (const seccion of SECCIONES_PERFIL) {
+    cont.appendChild(encabezado(seccion.emoji, seccion.titulo));
+    for (const { campo: clave, etiqueta, ejemplo: ayuda } of seccion.campos) {
       const caja = document.createElement('div');
       caja.className = 'tarjeta px-4 py-4';
 
@@ -193,10 +232,10 @@ import AppLayout from '../layouts/AppLayout.astro';
 
       const chips = document.createElement('div');
       chips.className = 'mb-2 flex flex-wrap gap-2';
-      const valores = borrador[clave as ClaveLista] ?? [];
+      const valores: string[] = borrador[clave] ?? [];
       for (const v of valores) {
         chips.appendChild(chip(v, () => {
-          borrador[clave as ClaveLista] = valores.filter((x) => x !== v);
+          borrador[clave] = valores.filter((x: string) => x !== v);
           editando = true;
           pintarListasEditables();
         }));
@@ -221,9 +260,9 @@ import AppLayout from '../layouts/AppLayout.astro';
       const agregar = () => {
         try {
           const v = validarEntradaLista(input.value);
-          const actuales = borrador[clave as ClaveLista] ?? [];
-          if (!actuales.some((x) => x.toLowerCase() === v.toLowerCase())) {
-            borrador[clave as ClaveLista] = [...actuales, v];
+          const actuales: string[] = borrador[clave] ?? [];
+          if (!actuales.some((x: string) => x.toLowerCase() === v.toLowerCase())) {
+            borrador[clave] = [...actuales, v];
           }
           input.value = '';
           editando = true;
@@ -248,18 +287,25 @@ import AppLayout from '../layouts/AppLayout.astro';
       caja.appendChild(fila);
       cont.appendChild(caja);
     }
+    }
   }
 
   function pintarPerfilPareja() {
     $('pareja-nombre').textContent = suPerfil.nombre || 'Todavía no ha completado su perfil';
-    $('pareja-nacimiento').textContent = suPerfil.fechaNacimiento
-      ? `Nació el ${fechaLarga(suPerfil.fechaNacimiento)}`
-      : '';
+    $('pareja-nacimiento').textContent = descripcionNacimiento(suPerfil.fechaNacimiento);
 
     const cont = $('pareja-listas');
     cont.replaceChildren();
-    for (const { clave, etiqueta } of LISTAS) {
-      const valores = suPerfil[clave as ClaveLista] ?? [];
+
+    for (const seccion of SECCIONES_PERFIL) {
+    // Una sección entera sin nada escrito no se pinta: en el perfil ajeno,
+    // seis encabezados con "Nada todavía" debajo no informan de nada.
+    if (!seccion.campos.some((c) => (suPerfil[c.campo] ?? []).length > 0)) continue;
+    cont.appendChild(encabezado(seccion.emoji, seccion.titulo));
+
+    for (const { campo: clave, etiqueta } of seccion.campos) {
+      const valores: string[] = suPerfil[clave] ?? [];
+      if (valores.length === 0) continue;
       const caja = document.createElement('div');
       caja.className = 'tarjeta px-4 py-4';
       const t = document.createElement('p');
@@ -283,6 +329,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       }
       caja.appendChild(chips);
       cont.appendChild(caja);
+    }
     }
   }
 
@@ -375,6 +422,7 @@ import AppLayout from '../layouts/AppLayout.astro';
         borrador = structuredClone(p);
         ($('yo-nombre') as HTMLInputElement).value = p.nombre;
         ($('yo-nacimiento') as HTMLInputElement).value = p.fechaNacimiento ?? '';
+        $('yo-signo').textContent = descripcionNacimiento(p.fechaNacimiento);
         pintarListasEditables();
       }
       pintarComunes();
@@ -397,6 +445,14 @@ import AppLayout from '../layouts/AppLayout.astro';
     for (const id of ['yo-nombre', 'yo-nacimiento']) {
       $(id).addEventListener('input', () => { editando = true; });
     }
+
+    // El signo se recalcula mientras se escribe la fecha: es una consecuencia
+    // de ella, y verlo cambiar deja claro que no hay nada que elegir aparte.
+    $('yo-nacimiento').addEventListener('change', () => {
+      const v = ($('yo-nacimiento') as HTMLInputElement).value;
+      $('yo-signo').textContent = descripcionNacimiento(v || undefined);
+      editando = true;
+    });
 
     $('yo-guardar').addEventListener('click', async () => {
       error('yo', null);

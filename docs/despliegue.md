@@ -90,14 +90,46 @@ databaseURL   →  PUBLIC_FIREBASE_DATABASE_URL   (la del paso 15)
 > apps nuevas se registran con **reCAPTCHA Enterprise**. Sigue siendo gratis
 > —10.000 evaluaciones al mes, sin tarjeta— y el proyecto no sale de Spark.
 
-19. Firebase → **Compilación → App Check → Apps** → tu app web.
-20. Proveedor **reCAPTCHA Enterprise** → Firebase crea la clave y la registra.
-21. Copia la **clave de sitio** que queda a la vista. Es pública: viaja en el
-    HTML. Con Enterprise **no hay clave secreta** que guardar.
-22. Deja el **TTL del token** en 7 días. Menos llamadas a reCAPTCHA, menos
-    cuota consumida; con dos usuarios el riesgo de un token robado es teórico.
-23. En **APIs**, deja **Firestore**, **Realtime Database** y **Authentication**
+**Firebase NO crea la clave por ti**: te pide pegar una que ya exista. Y la
+clave no se puede crear hasta habilitar la API. El orden es este y no otro:
+
+19. **Habilitar la API** (una vez por proyecto):
+    `console.cloud.google.com/apis/library/recaptchaenterprise.googleapis.com`
+    → **Habilitar**. Implica aceptar los Términos del Servicio de Google Cloud.
+    Si te saltas este paso, el formulario de creación de clave falla y te
+    redirige aquí sin explicar por qué.
+
+20. **Crear la clave**: Cloud Console → **Seguridad → Fraud Defense → Claves**
+    → **Crear clave**. Nombre `Nuestro-Espacio-<ENTORNO>`, tipo **Web**,
+    dominio `benjaminvalenzuela.github.io` (el origen, sin ruta).
+
+21. Copia el **ID de la clave** (`6L...`). Es público: viaja en el HTML. Con
+    Enterprise **no hay clave secreta** que guardar en ningún sitio.
+
+22. Firebase → **App Check → Apps** → tu app web → **Registrar** →
+    **reCAPTCHA Enterprise** → pega el ID → **TTL 7 días** → Guardar.
+
+    > El TTL largo consume menos cuota de reCAPTCHA. Con dos usuarios, el
+    > riesgo de un token robado durante esa ventana es teórico.
+
+23. Pon el ID en la variable `RECAPTCHA_SITE_KEY` del environment
+    correspondiente y **vuelve a desplegar**: sin ese despliegue, el bundle
+    sigue sin clave y App Check no se activa.
+
+24. En **APIs**, deja **Firestore**, **Realtime Database** y **Authentication**
     en **`Sin aplicar`** por ahora.
+
+### Cómo saber cuándo se puede activar el enforcement
+
+Tras desplegar, abre la app y mira la **consola del navegador**: no debe haber
+ni una violación de CSP ni el aviso `AppCheck credentials are invalid`.
+
+Después, en **App Check → APIs**, espera a que la columna **solicitudes
+verificadas** llegue a ~100 %. Ese porcentaje arrastra el historial: si App
+Check estuvo mal configurado unos días, tardará en limpiarse. En un entorno
+recién creado que nunca corrió sin App Check, sube enseguida.
+
+**Solo entonces** `Aplicado`, primero en QA. Si algo se cae: runbook §8.
 
 > ⚠️ El SDK tiene **dos providers distintos y no intercambiables**:
 > `ReCaptchaV3Provider` y `ReCaptchaEnterpriseProvider`. Usar el que no
