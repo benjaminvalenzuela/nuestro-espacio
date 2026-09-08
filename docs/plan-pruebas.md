@@ -125,6 +125,29 @@ queda en «Cargando», mirar la consola: si hay violaciones de CSP contra
 Merece un caso propio porque es un fallo **intermitente por red**: en una
 conexión doméstica normal el WebSocket funciona y todo parece correcto.
 
+### C10 · Calendario del ciclo
+1. Marcar varios días seguidos de menstruación → se agrupan en **un** inicio de
+   ciclo, no en cuatro.
+2. Registrar dos meses seguidos → el ciclo promedio se ajusta al intervalo real.
+3. Adelantar la regla y marcarla → la fase pasa a «menstruación» aunque la
+   predicción dijera otra cosa. **Un hecho anotado gana a una estimación.**
+4. Anotar una relación → aparece el corazón en la rejilla del mes.
+5. Cambiar de mes y volver → los datos siguen ahí (documento por mes).
+
+### C11 · Bachillerato
+1. Girar la letra en dos dispositivos → **la misma letra en ambos**, porque se
+   deriva de la semilla y no se transmite.
+2. Escribir lo mismo los dos → 50 puntos cada uno.
+3. Escribir algo que no empieza por la letra → 0.
+4. Pulsar STOP los dos a la vez → los puntos se suman **una sola vez**.
+5. Reiniciar → banner con el ganador y el marcador a cero.
+
+### C12 · Tema claro/oscuro
+1. Con el teléfono en modo oscuro, forzar **claro** en la app → se aplica.
+   Es el caso que el `:not([data-tema='light'])` hace posible.
+2. Recargar → el tema elegido se mantiene y **no hay fogonazo blanco**.
+3. Volver a «Automático» → la app sigue otra vez al sistema.
+
 ---
 
 ## 4 · Lo que todavía NO está cubierto
@@ -138,7 +161,9 @@ Se dice explícitamente en lugar de dar una falsa sensación de cobertura:
 | **Rendimiento con catálogos grandes** | Bajo | Con 20 planes y 20 preguntas no aplica |
 | **Accesibilidad automatizada** (axe) | Medio | Hoy solo hay revisión manual: foco visible, `aria-live`, `prefers-reduced-motion` |
 | **Perfiles y Panel de Admin** | Medio | Construidos y probados a mano; sin cobertura automática todavía |
-| **La CSP contra el navegador real** | Bajo | Los tests comprueban la cadena de la política, no que el navegador la acepte. Un origen que falte solo se ve desplegado (ver C9) |
+| **La CSP contra el navegador real** | Bajo | Los tests comprueban la cadena de la política y que el HTML compilado no incruste scripts, pero no que el navegador la acepte. Un origen que falte solo se ve desplegado (ver C9) |
+| **Contenido de los mapas de progreso y ciclo** | Bajo | Las reglas no recorren mapas: validan la forma del documento y la pertenencia, no cada entrada. Solo los dos miembros escriben ahí, y todo se pinta con `textContent` |
+| **Predicción del ciclo** | Informativo | Es aritmética sobre las fechas anotadas, igual que cualquier app comercial. La pantalla avisa de que no es un método anticonceptivo |
 
 ---
 

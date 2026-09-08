@@ -179,7 +179,35 @@ que no hay avisos → y solo entonces `Aplicado`, primero en QA.
 
 ---
 
-## 9 · Reglas que no se rompen nunca
+## 9 · Respaldo de los datos
+
+```
+npm --workspace backend run respaldo -- --entorno=prod
+```
+
+Deja un JSON en `backend/respaldos/` con perfiles, panoramas y sus contadores,
+banco completo, historiales, progreso, ciclo y partidas. Se puede abrir y leer
+a ojo: las fechas van en texto, no en formato de Firebase.
+
+**No incluye los códigos de vinculación, a propósito.** Un respaldo acaba en la
+carpeta de Descargas o adjunto en un correo, y los códigos no pueden acabar
+ahí. Si hicieran falta, se regeneran con `provisionar`.
+
+La carpeta está en `.gitignore`: el repositorio es público.
+
+### Qué puede y qué no puede borrar datos
+
+| Acción | ¿Se pierde algo? |
+|---|---|
+| Desplegar una versión nueva | **No.** Solo cambia el HTML y el JS; la base ni se toca |
+| `npm run seed` | **No.** Todo es `merge` y no hay un solo `delete` |
+| Cambiar Security Rules | **No.** Pueden bloquear una escritura, nunca borrar |
+| Quitar un campo del esquema | **Sí, en la práctica.** El dato sobrevive pero deja de verse, que para quien lo escribió es lo mismo. **Es el único que hay que vigilar** |
+| Botón de limpieza del panel | **Sí**, y solo los tres historiales: la lista blanca está en `adminService.ts` y hay un test que la fija |
+
+---
+
+## 10 · Reglas que no se rompen nunca
 
 | Regla | Motivo |
 |---|---|
