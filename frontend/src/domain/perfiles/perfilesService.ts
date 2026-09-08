@@ -1,7 +1,10 @@
 import { doc, setDoc, onSnapshot, serverTimestamp, type Unsubscribe } from 'firebase/firestore';
 import { obtenerFirestore } from '../../infra/firebase/firestore';
 import { FS } from '@shared/rutas-datos';
-import { PerfilSchema, PerfilConjuntoSchema, textoSeguro, type Perfil, type Hito } from '@shared/schemas/perfil.schema';
+import {
+  PerfilSchema, PerfilConjuntoSchema, textoSeguro, CAMPOS_LISTA,
+  type Perfil, type Hito, type CampoLista,
+} from '@shared/schemas/perfil.schema';
 import type { Persona } from '@shared/enums';
 
 /**
@@ -24,9 +27,16 @@ export interface PerfilConjunto {
   hitos: Hito[];
 }
 
+/**
+ * Perfil en blanco con TODAS las listas presentes.
+ *
+ * Se construye recorriendo CAMPOS_LISTA en vez de escribir los veintitantos
+ * campos a mano: así, agregar una sección nueva al esquema no obliga a acordarse
+ * de tocar este objeto —y olvidarlo daría un `undefined.map` en la pantalla.
+ */
 export const PERFIL_VACIO: Perfil = {
   nombre: '',
-  gustos: [], hobbies: [], disgustos: [], alimentosPreferidos: [], alergias: [],
+  ...(Object.fromEntries(CAMPOS_LISTA.map((c) => [c, [] as string[]])) as unknown as Record<CampoLista, string[]>),
 };
 
 export const CONJUNTO_VACIO: PerfilConjunto = {
@@ -35,16 +45,13 @@ export const CONJUNTO_VACIO: PerfilConjunto = {
 
 export class ErrorPerfil extends Error {}
 
-/** Campos de lista que la UI edita como "chips". */
-export const LISTAS = [
-  { clave: 'gustos', etiqueta: 'Gustos', ayuda: 'Lo que te encanta' },
-  { clave: 'hobbies', etiqueta: 'Hobbies', ayuda: 'A qué dedicas tu tiempo' },
-  { clave: 'disgustos', etiqueta: 'Disgustos', ayuda: 'Lo que no soportas' },
-  { clave: 'alimentosPreferidos', etiqueta: 'Comidas favoritas', ayuda: '' },
-  { clave: 'alergias', etiqueta: 'Alergias', ayuda: 'Importante: lo ve tu pareja' },
-] as const;
-
-export type ClaveLista = (typeof LISTAS)[number]['clave'];
+/**
+ * Las secciones y sus campos viven en `shared/schemas/perfil.schema.ts`, junto
+ * al esquema que los valida. Tenerlos en dos sitios garantizaba que un día
+ * alguien agregara un campo al esquema y la pantalla no se enterase.
+ */
+export { SECCIONES_PERFIL, CAMPOS_LISTA } from '@shared/schemas/perfil.schema';
+export type { CampoLista };
 
 export function observarPerfil(
   parejaId: string,
@@ -55,19 +62,21 @@ export function observarPerfil(
     doc(obtenerFirestore(), FS.perfil(parejaId, persona)),
     (snap) => {
       const x = snap.data() ?? {};
+      const listas = Object.fromEntries(
+        CAMPOS_LISTA.map((c) => [c, Array.isArray(x[c]) ? (x[c] as unknown[]).map(String) : []]),
+      ) as unknown as Record<CampoLista, string[]>;
+
       alCambiar({
         nombre: String(x.nombre ?? ''),
         fechaNacimiento: typeof x.fechaNacimiento === 'string' ? x.fechaNacimiento : undefined,
-        gustos: Array.isArray(x.gustos) ? x.gustos.map(String) : [],
-        hobbies: Array.isArray(x.hobbies) ? x.hobbies.map(String) : [],
-        disgustos: Array.isArray(x.disgustos) ? x.disgustos.map(String) : [],
-        alimentosPreferidos: Array.isArray(x.alimentosPreferidos) ? x.alimentosPreferidos.map(String) : [],
-        alergias: Array.isArray(x.alergias) ? x.alergias.map(String) : [],
+        ...listas,
       });
     },
     (e) => {
-      console.warn('[perfiles] lectura rechazada:', e.message);
-      alCambiar({ ...PERFIL_VACIO });
+      // No se vacía el perfil ante un rechazo: durante el arranque puede llegar
+      // uno antes de que el token esté listo, y borrar la pantalla haría creer
+      // que los datos se perdieron.
+      console.info('[perfiles] lectura reintentándose:', e.message);
     },
   );
 }
@@ -96,11 +105,7 @@ export async function guardarPerfil(
     {
       nombre: limpio.nombre,
       ...(limpio.fechaNacimiento ? { fechaNacimiento: limpio.fechaNacimiento } : {}),
-      gustos: limpio.gustos,
-      hobbies: limpio.hobbies,
-      disgustos: limpio.disgustos,
-      alimentosPreferidos: limpio.alimentosPreferidos,
-      alergias: limpio.alergias,
+      ...Object.fromEntries(CAMPOS_LISTA.map((c) => [c, limpio[c]])),
       actualizadoEn: serverTimestamp(),
     },
     { merge: true },

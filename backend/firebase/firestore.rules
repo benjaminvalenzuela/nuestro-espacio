@@ -98,6 +98,47 @@ service cloud.firestore {
               && request.resource.data.nivel <= 3);
     }
 
+    /**
+     * Comprueba las listas del perfil que vengan en la escritura.
+     *
+     * Las reglas no tienen bucles ni pueden recorrer una lista de nombres de
+     * campo, así que hay que enumerarlos. El tope de cada uno replica el del
+     * esquema Zod del cliente: si los dos se separan, el cliente aceptaría algo
+     * que el servidor rechaza y el error saldría como un permission-denied
+     * opaco en vez de un mensaje entendible.
+     */
+    function listaOpcional(campo, tope) {
+      return !request.resource.data.keys().hasAny([campo])
+          || lista(request.resource.data[campo], tope);
+    }
+
+    function listasDePerfilValidas() {
+      return listaOpcional('peliculasFavoritas', 30)
+          && listaOpcional('seriesFavoritas', 30)
+          && listaOpcional('cancionesFavoritas', 30)
+          && listaOpcional('librosFavoritos', 30)
+          && listaOpcional('coloresFavoritos', 10)
+          && listaOpcional('comidasFavoritas', 30)
+          && listaOpcional('comidasQueNoGustan', 30)
+          && listaOpcional('dulcesFavoritos', 30)
+          && listaOpcional('frutasFavoritas', 30)
+          && listaOpcional('alergias', 20)
+          && listaOpcional('deportesFavoritos', 30)
+          && listaOpcional('hobbies', 30)
+          && listaOpcional('lugaresFavoritos', 30)
+          && listaOpcional('floresFavoritas', 10)
+          && listaOpcional('animalesFavoritos', 30)
+          && listaOpcional('nombresMascotas', 10)
+          && listaOpcional('miedos', 30)
+          && listaOpcional('disgustos', 30)
+          && listaOpcional('suenos', 30)
+          && listaOpcional('nombresPapas', 6)
+          && listaOpcional('nombresHermanos', 15)
+          && listaOpcional('nombresSobrinos', 20)
+          && listaOpcional('gustos', 30)
+          && listaOpcional('alimentosPreferidos', 30);
+    }
+
     function texto(v, min, max) {
       return v is string && v.size() >= min && v.size() <= max
           && v.trim() == v && sinHtml(v);
@@ -238,17 +279,31 @@ service cloud.firestore {
       match /perfiles/{persona} {
         allow read: if esMiembro(parejaId);
 
+        /**
+         * El signo zodiacal NO está en esta lista a propósito: se calcula desde
+         * fechaNacimiento en el cliente. Guardarlo permitiría que alguien
+         * enviara "Leo" con una fecha de febrero y el perfil se contradiría a
+         * sí mismo sin que ninguna regla pudiera detectarlo.
+         *
+         * Los campos viejos —gustos, alimentosPreferidos— siguen admitidos
+         * porque hay perfiles guardados que los tienen. Sacarlos de aquí haría
+         * que el primer guardado de esos perfiles fuera rechazado entero.
+         */
         allow create, update: if esPersona(parejaId, persona)
-          && soloCampos(['nombre', 'fechaNacimiento', 'gustos', 'hobbies', 'disgustos',
-                         'alimentosPreferidos', 'alergias', 'colorTema', 'actualizadoEn'])
+          && soloCampos(['nombre', 'fechaNacimiento', 'colorTema', 'actualizadoEn',
+                         'peliculasFavoritas', 'seriesFavoritas', 'cancionesFavoritas',
+                         'librosFavoritos', 'coloresFavoritos',
+                         'comidasFavoritas', 'comidasQueNoGustan', 'dulcesFavoritos',
+                         'frutasFavoritas', 'alergias',
+                         'deportesFavoritos', 'hobbies', 'lugaresFavoritos',
+                         'floresFavoritas', 'animalesFavoritos', 'nombresMascotas',
+                         'miedos', 'disgustos', 'suenos',
+                         'nombresPapas', 'nombresHermanos', 'nombresSobrinos',
+                         'gustos', 'alimentosPreferidos'])
           && exigeCampos(['nombre', 'actualizadoEn'])
           && texto(request.resource.data.nombre, 1, 40)
           && (!tiene('fechaNacimiento') || fechaISO(request.resource.data.fechaNacimiento))
-          && (!tiene('gustos') || lista(request.resource.data.gustos, 30))
-          && (!tiene('hobbies') || lista(request.resource.data.hobbies, 30))
-          && (!tiene('disgustos') || lista(request.resource.data.disgustos, 30))
-          && (!tiene('alimentosPreferidos') || lista(request.resource.data.alimentosPreferidos, 30))
-          && (!tiene('alergias') || lista(request.resource.data.alergias, 20))
+          && listasDePerfilValidas()
           && tsServidor('actualizadoEn');
 
         allow delete: if false;

@@ -9,6 +9,7 @@ import { formatearUltimaConexion, formatearCompleto } from '../src/domain/presen
 import { parsearCodigo, formatearCodigo, normalizarCodigo, generarCuerpo, ALFABETO_CODIGO, LARGO_CUERPO } from '@shared/schemas/codigo';
 import { derivarPresencia } from '@shared/schemas/presencia.schema';
 import { normalizarNombre } from '@shared/panoramas';
+import { signoDe, signoLegible, edadDe } from '@shared/zodiaco';
 import { POLITICA_CSP } from '../src/config/csp';
 import type { Giro } from '@shared/schemas/giro.schema';
 
@@ -430,5 +431,63 @@ describe('Content Security Policy', () => {
 
   it('parte de default-src propio', () => {
     expect(POLITICA_CSP.startsWith("default-src 'self'")).toBe(true);
+  });
+});
+
+describe('Signo zodiacal · se deduce, no se elige', () => {
+  it('acierta en el centro de cada signo', () => {
+    const casos: [string, string][] = [
+      ['1996-01-05', 'Capricornio'], ['1996-02-05', 'Acuario'],
+      ['1996-03-05', 'Piscis'], ['1996-04-05', 'Aries'],
+      ['1996-05-05', 'Tauro'], ['1996-06-05', 'Géminis'],
+      ['1996-07-05', 'Cáncer'], ['1996-08-05', 'Leo'],
+      ['1996-09-05', 'Virgo'], ['1996-10-05', 'Libra'],
+      ['1996-11-05', 'Escorpio'], ['1996-12-05', 'Sagitario'],
+    ];
+    for (const [fecha, esperado] of casos) {
+      expect(signoDe(fecha)?.nombre, fecha).toBe(esperado);
+    }
+  });
+
+  it('acierta justo en los bordes, que es donde se falla', () => {
+    expect(signoDe('1996-01-19')?.nombre).toBe('Capricornio');
+    expect(signoDe('1996-01-20')?.nombre).toBe('Acuario');
+    expect(signoDe('1996-12-21')?.nombre).toBe('Sagitario');
+    expect(signoDe('1996-12-22')?.nombre).toBe('Capricornio');
+  });
+
+  it('el 31 de diciembre y el 1 de enero son ambos Capricornio', () => {
+    // El único signo que cruza el cambio de año. Un bucle mal cerrado lo parte.
+    expect(signoDe('1996-12-31')?.nombre).toBe('Capricornio');
+    expect(signoDe('1997-01-01')?.nombre).toBe('Capricornio');
+  });
+
+  it('no se desplaza un día por interpretar la fecha en UTC', () => {
+    // new Date('1996-01-01') es medianoche UTC, que en Chile es el 31 de
+    // diciembre. Si el cálculo pasara por ahí, esto daría Sagitario.
+    expect(signoDe('1996-01-01')?.nombre).toBe('Capricornio');
+    expect(signoDe('1996-07-23')?.nombre).toBe('Leo');
+  });
+
+  it('devuelve null con una fecha ausente o mal formada', () => {
+    for (const malo of ['', '  ', 'ayer', '1996-13-01', '96-01-01', null, undefined]) {
+      expect(signoDe(malo)).toBeNull();
+    }
+  });
+
+  it('la versión legible trae emoji y elemento', () => {
+    expect(signoLegible('1996-08-05')).toBe('♌ Leo · Fuego');
+    expect(signoLegible(undefined)).toBe('');
+  });
+
+  it('la edad no cuenta el cumpleaños hasta que llega', () => {
+    expect(edadDe('1996-07-10', '2026-07-09')).toBe(29);
+    expect(edadDe('1996-07-10', '2026-07-10')).toBe(30);
+    expect(edadDe('1996-07-10', '2026-07-11')).toBe(30);
+  });
+
+  it('la edad aguanta el 29 de febrero', () => {
+    expect(edadDe('2000-02-29', '2026-02-28')).toBe(25);
+    expect(edadDe('2000-02-29', '2026-03-01')).toBe(26);
   });
 });

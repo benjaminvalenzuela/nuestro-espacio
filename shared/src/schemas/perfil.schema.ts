@@ -80,8 +80,11 @@ export const PerfilSchema = z.object({
   nombresSobrinos: lista(20),
 
   // Campos de la versión anterior. Se conservan porque los perfiles ya
-  // guardados los tienen, y borrarlos del esquema borraría datos reales.
+  // guardados los tienen: quitarlos del esquema no los borra de la base, pero
+  // sí haría que la app dejara de mostrarlos, que para quien los escribió es
+  // exactamente lo mismo que perderlos.
   gustos: lista(),
+  alimentosPreferidos: lista(),
 });
 export type Perfil = z.infer<typeof PerfilSchema>;
 
@@ -91,7 +94,8 @@ export const CAMPOS_LISTA = [
   'coloresFavoritos', 'comidasFavoritas', 'comidasQueNoGustan', 'dulcesFavoritos',
   'frutasFavoritas', 'alergias', 'deportesFavoritos', 'hobbies', 'lugaresFavoritos',
   'floresFavoritas', 'animalesFavoritos', 'nombresMascotas', 'miedos', 'disgustos',
-  'suenos', 'nombresPapas', 'nombresHermanos', 'nombresSobrinos', 'gustos',
+  'suenos', 'nombresPapas', 'nombresHermanos', 'nombresSobrinos',
+  'gustos', 'alimentosPreferidos',
 ] as const;
 export type CampoLista = (typeof CAMPOS_LISTA)[number];
 

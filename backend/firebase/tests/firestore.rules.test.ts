@@ -343,3 +343,73 @@ describe('Progreso del banco · un documento con mapa, no mil documentos', () =>
     await assertFails(setDoc(doc(como(UID_A1), ruta('preguntas')), { items: 'texto' }));
   });
 });
+
+describe('Perfil ampliado · secciones nuevas y campos heredados', () => {
+  const base = { nombre: 'Ana', actualizadoEn: serverTimestamp() };
+  const perfilA = () => doc(como(UID_A1), `parejas/${PAREJA}/perfiles/a`);
+
+  it('acepta las listas nuevas de gustos, comida y familia', async () => {
+    await assertSucceeds(
+      setDoc(perfilA(), {
+        ...base,
+        peliculasFavoritas: ['Amélie'],
+        dulcesFavoritos: ['Helado de pistacho'],
+        floresFavoritas: ['Girasol'],
+        nombresPapas: ['María', 'Jorge'],
+        nombresSobrinos: ['Emilia'],
+        miedos: ['Las alturas'],
+      }),
+    );
+  });
+
+  it('sigue aceptando los campos de la versión anterior', async () => {
+    await assertSucceeds(
+      setDoc(perfilA(), { ...base, gustos: ['Café'], alimentosPreferidos: ['Lasaña'] }),
+    );
+  });
+
+  it('RECHAZA guardar el signo zodiacal: se calcula, no se envía', async () => {
+    await assertFails(setDoc(perfilA(), { ...base, signo: 'Leo' }));
+  });
+
+  /**
+   * LÍMITE REAL DEL MOTOR DE REGLAS, fijado aquí para que nadie lo confunda con
+   * una protección que no existe.
+   *
+   * `lista()` comprueba que sea una lista y cuántos elementos tiene, y ahí se
+   * acaba: el lenguaje de las reglas no tiene bucles y no puede inspeccionar el
+   * contenido de un array. Un texto con HTML DENTRO de una lista se guarda.
+   *
+   * Por qué es asumible: el ataque necesitaría que uno de los dos se lo hiciera
+   * a sí mismo o a su pareja, y al pintarlo la app usa textContent, así que se
+   * vería el literal "<script>…" y no se ejecutaría nada. Los campos sueltos
+   * —nombre, por ejemplo— sí se validan uno a uno, como muestra el test de
+   * abajo. Riesgo documentado en docs/plan-pruebas.md.
+   */
+  it('el HTML dentro de una lista SÍ se guarda: las reglas no iteran arrays', async () => {
+    await assertSucceeds(
+      setDoc(perfilA(), { ...base, seriesFavoritas: ['<script>alert(1)</script>'] }),
+    );
+  });
+
+  it('en cambio, el HTML en un campo suelto sí se rechaza', async () => {
+    await assertFails(setDoc(perfilA(), { ...base, nombre: '<b>Ana</b>' }));
+  });
+
+  it('RECHAZA pasarse del tope de una lista corta', async () => {
+    await assertFails(
+      setDoc(perfilA(), {
+        ...base,
+        nombresPapas: ['a', 'b', 'c', 'd', 'e', 'f', 'g'],   // el tope son 6
+      }),
+    );
+  });
+
+  it('B no puede escribir las listas nuevas del perfil de A', async () => {
+    await assertFails(
+      setDoc(doc(como(UID_B1), `parejas/${PAREJA}/perfiles/a`), {
+        ...base, hobbies: ['Suplantar'],
+      }),
+    );
+  });
+});
