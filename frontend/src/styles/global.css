@@ -21,11 +21,23 @@
     --tinta-suave:    #7a6a66;
     --tinta-tenue:    #a89791;
 
-    --acento:         #c4586b;   /* rosa terracota — acción principal */
-    --acento-fuerte:  #a63f52;
+    /*
+       Los dos colores de estado se usan casi siempre como TEXTO —"En línea",
+       "Ya la hicieron", las etiquetas del banner— sobre blanco o sobre su
+       propio tinte claro. Con los tonos originales eso daba entre 3,1:1 y
+       3,7:1, por debajo del 4,5:1 que pide WCAG AA para texto normal: legible
+       con buena luz, y borroso con el teléfono al sol.
+
+       Están oscurecidos lo justo para pasar de 4,6:1 en el peor par
+       (texto sobre su tinte) sin cambiar el color que uno reconoce. En tema
+       oscuro no hacía falta tocar nada: ahí ya son tintes claros sobre fondo
+       oscuro y rondan 5,3:1 y 6:1.
+    */
+    --acento:         #b0475c;   /* rosa terracota — acción principal */
+    --acento-fuerte:  #92364a;
     --acento-suave:   #fbe9ec;
 
-    --salvia:         #6f8f74;   /* verde salvia — estado positivo/conectado */
+    --salvia:         #4f7256;   /* verde salvia — estado positivo/conectado */
     --salvia-suave:   #e6f0e7;
 
     --ambar:          #c98a2e;   /* avisos */
