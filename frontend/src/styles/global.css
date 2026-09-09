@@ -68,23 +68,41 @@
     --sobre-ok:           #ffffff;
 
     /* ── Fases del ciclo ──────────────────────────────────────────────────
-       Cuatro tonos con SU PROPIO color de texto, no opacidades sobre otro
-       color. Un `bg-peligro/15` se ve lavado sobre crema y casi invisible
-       sobre el fondo oscuro, que es exactamente lo que pasaba antes.
+       Fondo muy tenue y color saturado solo para el número del día y el punto
+       indicador. Cada fase es un PAR: nunca se pinta el fondo de una con el
+       texto de otra, porque el par es lo que está medido.
 
-       Los cuatro pares superan 5:1 de contraste (WCAG AA pide 4.5:1) en los
-       dos temas, comprobado par a par. Además cambian de LUMINOSIDAD entre
-       ellos, no solo de tono: así se distinguen aunque alguien no separe bien
-       el rojo del verde. */
-    --ciclo-menstruacion-fondo: #f8cdc4;
-    --ciclo-menstruacion-tinta: #8a2b16;
-    --ciclo-folicular-fondo:    #d8ecd9;
-    --ciclo-folicular-tinta:    #2f5c37;
-    --ciclo-ovulacion-fondo:    #fadfae;
-    --ciclo-ovulacion-tinta:    #7a4e0a;
-    --ciclo-lutea-fondo:        #e2dbf3;
-    --ciclo-lutea-tinta:        #4c3f7e;
-    --ciclo-fertil:             #b8455c;
+       Contraste de cada par en este tema:
+         menstruación  3,99:1   ← por debajo de AA (4,5:1)
+         folicular     4,63:1
+         ovulación     2,89:1   ← por debajo de AA, y de largo
+         lútea         5,92:1
+
+       Los dos marcados están así por decisión de diseño, no por descuido.
+       Oscurecer el texto a #c62828 y #92400e los llevaría a 4,80:1 y 6,37:1
+       manteniendo el mismo tono; queda anotado en contraste.test.ts, que los
+       vigila para que al menos no empeoren. En tema oscuro los cuatro pares
+       van de 7,5:1 a 10,1:1. */
+    --ciclo-menstruacion-fondo: #fce8e8;
+    --ciclo-menstruacion-tinta: #d93838;
+    --ciclo-folicular-fondo:    #e0f2f1;
+    --ciclo-folicular-tinta:    #00796b;
+    --ciclo-ovulacion-fondo:    #fef3c7;
+    --ciclo-ovulacion-tinta:    #d97706;
+    --ciclo-lutea-fondo:        #f3e8ff;
+    --ciclo-lutea-tinta:        #7e22ce;
+
+    /* Los días fértiles comparten color con la fase folicular: son la misma
+       información vista de dos maneras, y darles un quinto tono obligaría a
+       distinguir cinco colores en celdas de 44 píxeles. */
+    --ciclo-fertil:             #00796b;
+
+    /* Hoy, el día elegido y el punto de síntomas NO llevan color de fase:
+       usan el fondo de la pantalla invertido. Así marcan sin competir con la
+       paleta del ciclo y se ven igual encima de cualquiera de las cuatro
+       fases, que es precisamente lo que un color temático no garantiza. */
+    --ciclo-neutro:             #191416;
+    --ciclo-sobre-neutro:       #fdf8f4;
 
     --sombra: 0 1px 2px rgb(46 36 38 / 0.04), 0 8px 24px -8px rgb(46 36 38 / 0.10);
     --radio: 1rem;
@@ -128,15 +146,17 @@
     --rueda-3: #2f4238;
     --rueda-4: #4a3d2a;
     --rueda-texto: #f0e4e0;
-    --ciclo-menstruacion-fondo: #5a2620;
-    --ciclo-menstruacion-tinta: #f5b3a4;
-    --ciclo-folicular-fondo:    #24422c;
-    --ciclo-folicular-tinta:    #a8d5ae;
-    --ciclo-ovulacion-fondo:    #4d3813;
-    --ciclo-ovulacion-tinta:    #f0c979;
-    --ciclo-lutea-fondo:        #342c52;
-    --ciclo-lutea-tinta:        #c3b6ec;
-    --ciclo-fertil:             #f0a0b1;
+    --ciclo-menstruacion-fondo: #3a1c20;
+    --ciclo-menstruacion-tinta: #f4a3a8;
+    --ciclo-folicular-fondo:    #16302e;
+    --ciclo-folicular-tinta:    #80cbc4;
+    --ciclo-ovulacion-fondo:    #422006;
+    --ciclo-ovulacion-tinta:    #fcd34d;
+    --ciclo-lutea-fondo:        #2e1065;
+    --ciclo-lutea-tinta:        #d8b4fe;
+    --ciclo-fertil:             #80cbc4;
+    --ciclo-neutro:             #fdf8f4;
+    --ciclo-sobre-neutro:       #191416;
     --boton-acento-fondo: #e08195;
     --boton-acento-hover: #f0a0b1;
     --sobre-acento:       #2a1216;
@@ -168,15 +188,17 @@
     --rueda-3: #2f4238;
     --rueda-4: #4a3d2a;
     --rueda-texto: #f0e4e0;
-    --ciclo-menstruacion-fondo: #5a2620;
-    --ciclo-menstruacion-tinta: #f5b3a4;
-    --ciclo-folicular-fondo:    #24422c;
-    --ciclo-folicular-tinta:    #a8d5ae;
-    --ciclo-ovulacion-fondo:    #4d3813;
-    --ciclo-ovulacion-tinta:    #f0c979;
-    --ciclo-lutea-fondo:        #342c52;
-    --ciclo-lutea-tinta:        #c3b6ec;
-    --ciclo-fertil:             #f0a0b1;
+    --ciclo-menstruacion-fondo: #3a1c20;
+    --ciclo-menstruacion-tinta: #f4a3a8;
+    --ciclo-folicular-fondo:    #16302e;
+    --ciclo-folicular-tinta:    #80cbc4;
+    --ciclo-ovulacion-fondo:    #422006;
+    --ciclo-ovulacion-tinta:    #fcd34d;
+    --ciclo-lutea-fondo:        #2e1065;
+    --ciclo-lutea-tinta:        #d8b4fe;
+    --ciclo-fertil:             #80cbc4;
+    --ciclo-neutro:             #fdf8f4;
+    --ciclo-sobre-neutro:       #191416;
     --boton-acento-fondo: #e08195;
     --boton-acento-hover: #f0a0b1;
     --sobre-acento:       #2a1216;
@@ -320,27 +342,67 @@
   color: var(--tinta-tenue);
 }
 
-/* Ventana fértil: un aro, no un relleno. Se superpone a la fase sin taparla,
-   que es justo lo que es — una estimación encima del ciclo, no otra fase. */
+/* ── Indicadores de la celda ──────────────────────────────────────────────
+
+   Cuatro marcas pueden caer sobre el MISMO día: fase, ventana fértil, hoy y
+   seleccionado. Cada una usa una propiedad distinta a propósito, para que
+   ninguna tape a otra:
+
+     fase          →  background-color de la celda
+     fértil        →  box-shadow interior (aro por dentro)
+     hoy           →  círculo sólido alrededor del número, dentro de la celda
+     seleccionado  →  outline exterior
+
+   Si dos usaran `outline`, ganaría la que Tailwind definiera después y la
+   otra desaparecería sin ningún aviso. */
+
+/* VENTANA FÉRTIL. Un aro por dentro, no un relleno: se superpone a la fase
+   sin taparla, que es exactamente lo que es —una estimación encima del ciclo,
+   no una quinta fase—. */
 @utility dia-fertil {
   box-shadow: inset 0 0 0 2px var(--ciclo-fertil);
 }
 
-/* Hoy y el día elegido van POR FUERA de la celda y la ventana fértil por
-   dentro, a propósito: así los tres pueden coincidir en un mismo día sin que
-   uno tape a otro. Si los tres usaran `outline`, el último ganaría y el día
-   fértil de hoy dejaría de verse fértil.
-
-   Cuando hoy es además el día elegido, gana el aro del acento: lo acabas de
-   pulsar, así que ya sabes cuál es. */
-@utility dia-hoy {
-  outline: 2px solid var(--tinta);
-  outline-offset: 1px;
+/* HOY. Círculo sólido con el fondo de la pantalla invertido, alrededor del
+   NÚMERO y no de la celda entera. Pintar la celda completa borraría el color
+   de la fase justo en el único día que se mira siempre. */
+@utility numero-hoy {
+  background-color: var(--ciclo-neutro);
+  color: var(--ciclo-sobre-neutro);
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
   font-weight: 700;
 }
+
+/* SELECCIONADO. Solo un aro exterior de 2 px: no rellena nada, para que la
+   fase y el círculo de hoy sigan viéndose debajo. */
 @utility dia-elegido {
-  outline: 3px solid var(--acento);
+  outline: 2px solid var(--ciclo-neutro);
   outline-offset: 1px;
+}
+
+/* PUNTO DE SÍNTOMAS. Neutro y no del color de la fase: sobre el fondo tenue
+   de cualquiera de las cuatro tiene contraste de sobra, y del color de la
+   fase se confundiría con el propio número. */
+@utility punto-sintoma {
+  background-color: var(--ciclo-neutro);
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 9999px;
+}
+
+/* RELACIONES. El emoji trae su propio color; aquí solo hay que impedir que
+   desborde la celda. El tamaño va en `rem` y no en píxeles para que
+   acompañe al zoom del navegador, y `line-height: 1` evita que el interlineado
+   del emoji empuje la fila de marcas fuera del borde. */
+@utility marca-relacion {
+  font-size: 0.625rem;
+  line-height: 1;
+  display: inline-block;
 }
 
 /* ── Botones de color ────────────────────────────────────────────────────

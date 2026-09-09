@@ -1,6 +1,7 @@
 ---
 import AppLayout from '../layouts/AppLayout.astro';
-import { DIAS_SEMANA, EXPLICACION_FASES } from '@shared/ciclo';
+import { DIAS_SEMANA } from '@shared/ciclo';
+import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
 ---
 
 <AppLayout
@@ -52,31 +53,53 @@ import { DIAS_SEMANA, EXPLICACION_FASES } from '@shared/ciclo';
   <div id="rejilla" class="grid grid-cols-7 gap-1"></div>
 
   {/* ── Leyenda ──────────────────────────────────────────────────────
-      Los cuadritos usan LAS MISMAS clases que las celdas del calendario
-      (fase-menstruacion, fase-lutea…), no un color copiado a mano. Así la
-      leyenda no puede quedarse desfasada de lo que se ve arriba. */}
-  <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-tinta-suave">
-    <span class="flex items-center gap-1.5">
-      <span class="fase-menstruacion size-4 rounded" aria-hidden="true"></span> Menstruación
-    </span>
-    <span class="flex items-center gap-1.5">
-      <span class="fase-folicular size-4 rounded" aria-hidden="true"></span> Folicular
-    </span>
-    <span class="flex items-center gap-1.5">
-      <span class="fase-ovulacion size-4 rounded" aria-hidden="true"></span> Ovulación
-    </span>
-    <span class="flex items-center gap-1.5">
-      <span class="fase-lutea size-4 rounded" aria-hidden="true"></span> Lútea
-    </span>
-    <span class="flex items-center gap-1.5">
-      <span class="dia-fertil size-4 rounded bg-superficie-alt" aria-hidden="true"></span> Días fértiles (estimado)
-    </span>
-    <span class="flex items-center gap-1.5">
-      <span class="dia-hoy size-4 rounded bg-superficie-alt" aria-hidden="true"></span> Hoy
-    </span>
-    <span>❤️ Relaciones</span>
-    <span>• Síntomas</span>
-  </div>
+      Cada muestra usa LAS MISMAS clases que la celda que representa
+      —fase-menstruacion, dia-fertil, numero-hoy, punto-sintoma— en vez de un
+      color copiado a mano. Así la leyenda no puede quedarse desfasada de lo
+      que se ve arriba, que es el fallo clásico de las leyendas.
+
+      Y cada muestra lleva el número de un día dentro: enseña a la vez el
+      fondo tenue y el color saturado del número, que es el par que de verdad
+      hay que reconocer. */}
+  <ul class="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-tinta-suave sm:grid-cols-3">
+    {
+      [
+        ['fase-menstruacion', 'Menstruación'],
+        ['fase-folicular', 'Folicular'],
+        ['fase-ovulacion', 'Ovulación'],
+        ['fase-lutea', 'Lútea'],
+      ].map(([clase, etiqueta]) => (
+        <li class="flex items-center gap-2">
+          <span class={`${clase} flex size-6 items-center justify-center rounded-md text-[11px] font-semibold`}
+            aria-hidden="true">8</span>
+          {etiqueta}
+        </li>
+      ))
+    }
+    <li class="flex items-center gap-2">
+      <span class="dia-fertil fase-folicular flex size-6 items-center justify-center rounded-md text-[11px] font-semibold"
+        aria-hidden="true">8</span>
+      Días fértiles
+    </li>
+    <li class="flex items-center gap-2">
+      <span class="flex size-6 items-center justify-center" aria-hidden="true">
+        <span class="numero-hoy text-[11px]">8</span>
+      </span>
+      Hoy
+    </li>
+    <li class="flex items-center gap-2">
+      <span class="flex size-6 items-center justify-center rounded-md bg-superficie-alt" aria-hidden="true">
+        <span class="marca-relacion">❤️</span>
+      </span>
+      Relaciones
+    </li>
+    <li class="flex items-center gap-2">
+      <span class="flex size-6 items-center justify-center rounded-md bg-superficie-alt" aria-hidden="true">
+        <span class="punto-sintoma"></span>
+      </span>
+      Síntomas
+    </li>
+  </ul>
 
   <p class="mt-3 rounded-xl border border-borde bg-superficie-alt px-4 py-3 text-[11px] leading-relaxed text-tinta-tenue">
     ⚠️ Las fases y los días fértiles son una <strong>estimación</strong> calculada
@@ -141,52 +164,7 @@ import { DIAS_SEMANA, EXPLICACION_FASES } from '@shared/ciclo';
     </div>
   </section>
 
-  {/* ── Sobre las fases ──────────────────────────────────────────────
-      Texto explicativo generado desde EXPLICACION_FASES, que vive en
-      shared/ciclo.ts. Se escribe una vez y lo usan la pantalla y los tests. */}
-  <details id="sobre-fases" class="tarjeta overflow-hidden">
-    <summary class="cursor-pointer list-none px-4 py-3.5 text-sm font-semibold text-tinta select-none">
-      📖 Sobre las fases
-      <span class="ml-1 font-normal text-tinta-tenue">· qué es cada una</span>
-    </summary>
-
-    <div class="flex flex-col gap-4 border-t border-borde px-4 py-4">
-      <p class="text-xs leading-relaxed text-tinta-suave">
-        Un ciclo va del primer día de una regla al primer día de la siguiente.
-        Se divide en cuatro tramos y en cada uno el cuerpo hace cosas distintas.
-        Lo de abajo es lo que <strong>suele</strong> pasar: hay quien no nota nada
-        y está igual de sana, y hay quien lo nota todo.
-      </p>
-
-      {EXPLICACION_FASES.map((f) => (
-        <article class={`rounded-xl px-3.5 py-3 fase-${f.fase}`}>
-          <h3 class="text-sm font-semibold">{f.emoji} {f.titulo}</h3>
-          <p class="mt-0.5 text-[11px] font-medium opacity-80">{f.cuando}</p>
-          <p class="mt-2 text-xs leading-relaxed">{f.queEs}</p>
-
-          <p class="mt-2.5 text-[11px] font-semibold tracking-wide uppercase opacity-70">
-            Puede notarse
-          </p>
-          <p class="text-xs">{f.sintomas.join(' · ')}</p>
-
-          <p class="mt-2 text-[11px] font-semibold tracking-wide uppercase opacity-70">
-            Ánimo habitual
-          </p>
-          <p class="text-xs">{f.animo.join(' · ')}</p>
-
-          <p class="mt-2.5 border-t border-current/20 pt-2 text-xs leading-relaxed italic">
-            {f.consejo}
-          </p>
-        </article>
-      ))}
-
-      <p class="text-[11px] leading-relaxed text-tinta-tenue">
-        Esto es información general, no un diagnóstico. Si algo se sale de lo
-        habitual —dolor que no deja hacer vida normal, sangrados muy largos o
-        ciclos que se descuadran de golpe— eso lo mira un profesional, no una app.
-      </p>
-    </div>
-  </details>
+  <FasesAcordeon />
 
   {/* ── Ajustes ────────────────────────────────────────────────────── */}
   <details>
@@ -284,39 +262,58 @@ import { DIAS_SEMANA, EXPLICACION_FASES } from '@shared/ciclo';
       const info = faseDe(celda.fecha, ini, p, marcadas);
       const reg = registro(celda.fecha);
 
+      const esHoy = celda.fecha === hoy;
+
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.dataset.fecha = celda.fecha;
+      // La celda solo lleva el color de la fase y, si toca, el aro de fértil
+      // y el de seleccionado. Hoy NO se pinta aquí: va en el número.
       btn.className =
-        'relative flex aspect-square flex-col items-center justify-center rounded-lg text-sm font-medium transition ' +
+        'relative flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg text-sm font-medium transition ' +
         CLASE_FASE[info.fase] +
         (info.fertil && info.fase !== 'ovulacion' ? ' dia-fertil' : '') +
-        (celda.fecha === hoy ? ' dia-hoy' : '') +
         (celda.fecha === seleccionado ? ' dia-elegido' : '');
 
+      // El número. Si es hoy, va dentro de un círculo sólido con el fondo de
+      // la pantalla invertido; el color de la fase se sigue viendo alrededor.
       const n = document.createElement('span');
+      n.className = esHoy ? 'numero-hoy' : '';
       n.textContent = String(celda.dia);
       btn.append(n);
 
-      // Marcas de lo anotado: corazón para relaciones, punto para síntomas.
+      // Marcas de lo anotado. Van en una fila propia debajo del número, no
+      // sobre él: encima de un círculo relleno el punto de síntomas quedaba
+      // invisible justo el día de hoy.
       const marcas = document.createElement('span');
-      marcas.className = 'absolute bottom-0.5 flex items-center gap-0.5 text-[8px] leading-none';
+      marcas.className = 'flex h-2 items-center justify-center gap-0.5';
       if (reg.r.length > 0) {
         const c = document.createElement('span');
+        c.className = 'marca-relacion';
         c.textContent = '❤️';
         c.setAttribute('aria-hidden', 'true');
         marcas.append(c);
       }
       if (reg.s.length > 0) {
         const d = document.createElement('span');
-        d.className = 'size-1 rounded-full bg-current opacity-60';
+        d.className = 'punto-sintoma';
+        d.setAttribute('aria-hidden', 'true');
         marcas.append(d);
       }
-      if (marcas.childElementCount > 0) btn.append(marcas);
+      // La fila se añade SIEMPRE, aunque esté vacía: así todas las celdas
+      // miden lo mismo y el número no salta de sitio al anotar algo.
+      btn.append(marcas);
 
-      const partes = [`${celda.dia} de ${NOMBRES_MES[mes - 1]}`, ETIQUETA_FASE[info.fase]];
+      const partes = [`${celda.dia} de ${NOMBRES_MES[mes - 1]}`];
+      if (esHoy) partes.push('hoy');
+      partes.push(ETIQUETA_FASE[info.fase]);
+      if (info.fertil) partes.push('día fértil estimado');
       if (reg.r.length > 0) partes.push(`${reg.r.length} relación(es)`);
       if (reg.s.length > 0) partes.push(`${reg.s.length} síntoma(s)`);
+      // aria-current es lo que un lector de pantalla anuncia como "actual".
+      // El círculo negro no le dice nada a quien no ve la pantalla.
+      if (esHoy) btn.setAttribute('aria-current', 'date');
+      if (celda.fecha === seleccionado) btn.setAttribute('aria-pressed', 'true');
       btn.setAttribute('aria-label', partes.join(', '));
 
       btn.addEventListener('click', () => abrirDia(celda.fecha));
