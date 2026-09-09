@@ -568,13 +568,27 @@ service cloud.firestore {
                 && request.resource.data.menstruaciones is list
                 && request.resource.data.menstruaciones.size() <= 2000)
             ||
-               // Configuración: de quién es el ciclo y cuánto dura su regla.
+               // Configuración: de quién es el ciclo, cuánto dura su regla y
+               // cuánto dura el ciclo.
+               //
+               // Los dos campos del ciclo son OPCIONALES a propósito. No es
+               // laxitud: un dispositivo con la página anterior en caché
+               // seguirá enviando solo los dos primeros campos durante los
+               // minutos que dure esa caché, y exigirlos convertiría eso en
+               // un "no se pudo guardar" sin explicación.
                (docId == 'config'
-                && request.resource.data.keys().hasOnly(['titular', 'duracionRegla'])
+                && request.resource.data.keys().hasOnly(
+                     ['titular', 'duracionRegla', 'duracionCiclo', 'modoCiclo'])
                 && esPersonaValida(request.resource.data.titular)
                 && request.resource.data.duracionRegla is int
                 && request.resource.data.duracionRegla >= 1
-                && request.resource.data.duracionRegla <= 15)
+                && request.resource.data.duracionRegla <= 15
+                && (!tiene('duracionCiclo') || (
+                      request.resource.data.duracionCiclo is int
+                      && request.resource.data.duracionCiclo >= 21
+                      && request.resource.data.duracionCiclo <= 45))
+                && (!tiene('modoCiclo')
+                    || request.resource.data.modoCiclo in ['auto', 'manual']))
           );
 
         // Borrar un mes entero es legítimo: "no quiero que quede registro".

@@ -13,6 +13,7 @@ import { signoDe, signoLegible, edadDe } from '@shared/zodiaco';
 import {
   faseDe, calcularPromedios, iniciosDesdeDias, proximaMenstruacion,
   rejillaMes, sumarDias, diasEntre, CICLO_POR_DEFECTO, EXPLICACION_FASES,
+  clasificarCiclo, normalizarCiclo, RANGOS_CICLO, CICLO_MINIMO, CICLO_MAXIMO,
   type Fase,
 } from '@shared/ciclo';
 import { CLASE_FASE, EMOJI_FASE } from '../src/domain/ciclo/estiloFase';
@@ -872,5 +873,136 @@ describe('Fases del ciclo · explicación y color', () => {
     const ovulacion = EXPLICACION_FASES.find((e) => e.fase === 'ovulacion')!;
     const texto = `${ovulacion.queEs} ${ovulacion.consejo}`.toLowerCase();
     expect(texto).toContain('anticonceptivo');
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ELEGIR LA DURACIÓN DEL CICLO
+
+   Antes la duración solo se calculaba: promedio de las reglas registradas, y
+   28 días mientras no hubiera ninguna. Eso deja fuera dos casos reales —quien
+   ya sabe cuánto dura su ciclo, y quien lo tiene irregular, donde un promedio
+   de dos meses no significa nada— así que ahora se puede declarar.
+
+   Lo que estos tests fijan es el ORDEN DE AUTORIDAD, que es la única decisión
+   de verdad aquí: manual > registros > declarado > 28.
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe('Duración del ciclo · quién manda', () => {
+  const dosCiclos = ['2026-06-01', '2026-07-01', '2026-08-01'];   // 30 y 31 días
+
+  it('sin nada, 28 días y lo admite', () => {
+    const p = calcularPromedios([]);
+    expect(p.ciclo).toBe(28);
+    expect(p.origen).toBe('defecto');
+    expect(p.promedioReal).toBeNull();
+  });
+
+  it('sin registros, manda lo que ella declaró', () => {
+    const p = calcularPromedios([], 5, { declarado: 33 });
+    expect(p.ciclo).toBe(33);
+    expect(p.origen).toBe('declarado');
+  });
+
+  it('con registros y en automático, mandan los registros', () => {
+    const p = calcularPromedios(dosCiclos, 5, { declarado: 33, modo: 'auto' });
+    expect(p.ciclo).toBe(31);          // media de 30 y 31, redondeada
+    expect(p.origen).toBe('promedio');
+  });
+
+  /**
+   * El caso que motiva todo esto: ciclos irregulares donde la media miente.
+   * Si ella pide mandar, manda — pero el promedio real sigue disponible para
+   * que la pantalla pueda señalar la diferencia en vez de esconderla.
+   */
+  it('en manual mandan sus números, y el promedio real no se pierde', () => {
+    const p = calcularPromedios(dosCiclos, 5, { declarado: 24, modo: 'manual' });
+    expect(p.ciclo).toBe(24);
+    expect(p.origen).toBe('manual');
+    expect(p.promedioReal).toBe(31);
+    expect(p.muestras).toBe(2);
+  });
+
+  it('en manual sin valor declarado, no se rompe: cae al promedio', () => {
+    const p = calcularPromedios(dosCiclos, 5, { modo: 'manual' });
+    expect(p.ciclo).toBe(31);
+    expect(p.origen).toBe('promedio');
+  });
+
+  it('la duración declarada se recorta a los límites, no se rechaza', () => {
+    expect(calcularPromedios([], 5, { declarado: 5 }).ciclo).toBe(CICLO_MINIMO);
+    expect(calcularPromedios([], 5, { declarado: 400 }).ciclo).toBe(CICLO_MAXIMO);
+  });
+
+  /**
+   * Este test encontró un fallo de verdad. `Number(null)` y `Number('')` valen
+   * 0, y 0 es finito, así que la primera versión recortaba un campo VACÍO a 21
+   * días —el mínimo— en vez de caer a 28. La app habría predicho la ovulación
+   * seis días antes de lo que toca sin que nada pareciera roto, que es la peor
+   * clase de fallo en una pantalla de la que se leen fechas fértiles.
+   */
+  it('un valor que no es número no arrastra la predicción', () => {
+    expect(normalizarCiclo('hola')).toBeNull();
+    expect(normalizarCiclo(null)).toBeNull();
+    expect(normalizarCiclo(undefined)).toBeNull();
+    expect(normalizarCiclo(''), 'el campo vacío del formulario').toBeNull();
+    expect(normalizarCiclo('   ')).toBeNull();
+    expect(normalizarCiclo(true)).toBeNull();
+    expect(normalizarCiclo(NaN)).toBeNull();
+    expect(normalizarCiclo('31')).toBe(31);
+    expect(normalizarCiclo(30.6)).toBe(31);
+  });
+
+  it('el campo vacío cae al valor por defecto, no al mínimo', () => {
+    // El camino real del formulario: input.value es '' cuando se borra.
+    expect(normalizarCiclo('') ?? CICLO_POR_DEFECTO).toBe(28);
+  });
+
+  /**
+   * La duración declarada tiene que MOVER LA OVULACIÓN, no solo el texto.
+   * Es el test que de verdad importa: si esto fallara, la pantalla diría
+   * "ciclo de 35 días" y seguiría prediciendo la ovulación el día 14.
+   */
+  it('declarar un ciclo largo retrasa la ovulación', () => {
+    const inicios = ['2026-09-01'];
+
+    const corto = calcularPromedios(inicios, 5, { declarado: 22, modo: 'manual' });
+    const largo = calcularPromedios(inicios, 5, { declarado: 35, modo: 'manual' });
+
+    // Ovulación = ciclo − 14. Con 22 días cae el 8; con 35, el 21.
+    expect(faseDe('2026-09-08', inicios, corto).fase).toBe('ovulacion');
+    expect(faseDe('2026-09-21', inicios, largo).fase).toBe('ovulacion');
+
+    // Y la próxima regla se mueve con ella.
+    expect(proximaMenstruacion(inicios, corto)).toBe('2026-09-23');
+    expect(proximaMenstruacion(inicios, largo)).toBe('2026-10-06');
+  });
+});
+
+describe('Tramos del ciclo · los tres rangos', () => {
+  it('los tramos son contiguos y no dejan huecos', () => {
+    // Un clasificador con huecos no puede responder "¿y mi ciclo de 30?",
+    // que es exactamente la pregunta que alguien va a hacer.
+    for (let d = CICLO_MINIMO; d <= 35; d++) {
+      expect(clasificarCiclo(d), `${d} días`).not.toBe('fuera_de_rango');
+    }
+  });
+
+  it('clasifica los tres casos de referencia', () => {
+    expect(clasificarCiclo(23)).toBe('corto');
+    expect(clasificarCiclo(28)).toBe('promedio');
+    expect(clasificarCiclo(33)).toBe('largo');
+  });
+
+  it('marca como poco habitual lo que sale del rango normal', () => {
+    expect(clasificarCiclo(20)).toBe('fuera_de_rango');
+    expect(clasificarCiclo(40)).toBe('fuera_de_rango');
+  });
+
+  it('cada tramo tiene un valor sugerido dentro de su propio rango', () => {
+    for (const r of RANGOS_CICLO) {
+      expect(r.sugerido, r.id).toBeGreaterThanOrEqual(r.desde);
+      expect(r.sugerido, r.id).toBeLessThanOrEqual(r.hasta);
+      expect(r.resumen.length, r.id).toBeGreaterThan(60);
+    }
   });
 });

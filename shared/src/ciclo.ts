@@ -69,6 +69,103 @@ export const ETIQUETA_FASE: Record<Fase, string> = {
 /** Valores por defecto hasta que haya suficientes registros propios. */
 export const CICLO_POR_DEFECTO = 28;
 export const REGLA_POR_DEFECTO = 5;
+
+/**
+ * Límites de la duración que se puede declarar a mano.
+ *
+ * 21 a 35 días es el rango que la literatura considera normal. Se admite
+ * hasta 45 porque los ciclos largos existen —son frecuentes en la
+ * adolescencia y con SOP— y una app que no deja registrar la realidad de
+ * alguien no le sirve a esa persona. Lo que sí hace es decirlo: por encima de
+ * 35 la pantalla avisa de que conviene consultarlo, en vez de callarse.
+ */
+export const CICLO_MINIMO = 21;
+export const CICLO_MAXIMO = 45;
+
+/**
+ * De dónde puede salir la duración del ciclo, en orden de autoridad.
+ *
+ *   'manual'    ella lo definió y pidió que manden sus números
+ *   'promedio'  se calculó de sus reglas registradas
+ *   'declarado' aún no hay registros, pero ella dijo cuánto dura
+ *   'defecto'   no hay nada: 28 días, el valor de manual
+ *
+ * Existe para que la pantalla pueda decir de dónde viene el número. "Ciclo de
+ * 31 días" sin más no distingue un dato medido de una suposición, y son cosas
+ * muy distintas cuando de ahí sale una predicción de fertilidad.
+ */
+export type OrigenCiclo = 'manual' | 'promedio' | 'declarado' | 'defecto';
+
+export type ModoCiclo = 'auto' | 'manual';
+
+/**
+ * Los tres tramos, tal como los describen las fuentes médicas habituales.
+ *
+ * Son contiguos a propósito: 21-24, 25-31 y 32-35. Las fuentes suelen citar
+ * "21 a 24", "28" y "32 a 35", lo que deja huecos en 25-27 y 29-31; un
+ * clasificador con huecos no puede responder "¿y mi ciclo de 30?", que es
+ * justo la pregunta que alguien va a hacer.
+ */
+export const RANGOS_CICLO = [
+  {
+    id: 'corto',
+    etiqueta: 'Corto',
+    desde: CICLO_MINIMO,
+    hasta: 24,
+    sugerido: 23,
+    resumen:
+      'El cuerpo completa todo el proceso hormonal y prepara el útero en menos '
+      + 'tiempo de lo habitual. Sigue siendo un rango normal.',
+  },
+  {
+    id: 'promedio',
+    etiqueta: 'Promedio',
+    desde: 25,
+    hasta: 31,
+    sugerido: CICLO_POR_DEFECTO,
+    resumen:
+      'El modelo de referencia más conocido es el de 28 días, con la ovulación '
+      + 'a la mitad, alrededor del día 14.',
+  },
+  {
+    id: 'largo',
+    etiqueta: 'Largo',
+    desde: 32,
+    hasta: 35,
+    sugerido: 33,
+    resumen:
+      'El tiempo entre un periodo y el siguiente es mayor, así que la ovulación '
+      + 'se retrasa. Tampoco representa un problema de salud.',
+  },
+] as const;
+
+export type IdRangoCiclo = (typeof RANGOS_CICLO)[number]['id'] | 'fuera_de_rango';
+
+/** En qué tramo cae una duración. */
+export function clasificarCiclo(dias: number): IdRangoCiclo {
+  for (const r of RANGOS_CICLO) {
+    if (dias >= r.desde && dias <= r.hasta) return r.id;
+  }
+  return 'fuera_de_rango';
+}
+
+/**
+ * Deja la duración dentro de los límites, o null si no es un número usable.
+ *
+ * Los descartes explícitos de arriba no son paranoia: `Number(null)` y
+ * `Number('')` valen 0, y 0 es finito. Sin ellos, un campo vacío o un
+ * documento con el valor a null acabarían recortados a 21 días —el mínimo—
+ * en vez de caer al valor por defecto, y la app predeciría la ovulación seis
+ * días antes de lo que toca sin que nada pareciera roto. Lo encontró un test.
+ */
+export function normalizarCiclo(dias: unknown): number | null {
+  if (typeof dias !== 'number' && typeof dias !== 'string') return null;
+  if (typeof dias === 'string' && dias.trim() === '') return null;
+
+  const n = Math.round(Number(dias));
+  if (!Number.isFinite(n)) return null;
+  return Math.min(CICLO_MAXIMO, Math.max(CICLO_MINIMO, n));
+}
 /** La fase lútea dura de forma bastante estable ~14 días; el ciclo varía antes. */
 export const DIAS_LUTEA = 14;
 
@@ -108,6 +205,24 @@ export interface Promedios {
   regla: number;
   /** Cuántos intervalos reales sostienen el promedio. 0 = todo es supuesto. */
   muestras: number;
+  /** De dónde salió `ciclo`. La pantalla lo dice en voz alta. */
+  origen: OrigenCiclo;
+  /**
+   * El promedio de sus registros, aunque no sea el que se está usando.
+   *
+   * En modo manual hace falta para poder señalar la discrepancia: "usas 31 y
+   * tus reglas dan 28" es información útil, y ocultarla sería decidir por ella
+   * que su propio dato no importa.
+   */
+  promedioReal: number | null;
+}
+
+/** Opciones sobre la duración del ciclo declarada en los ajustes. */
+export interface OpcionesCiclo {
+  /** Duración que ella escribió. */
+  declarado?: number | null;
+  /** 'manual' → manda lo declarado. 'auto' → manda el promedio real si existe. */
+  modo?: ModoCiclo;
 }
 
 /**
@@ -120,6 +235,7 @@ export interface Promedios {
 export function calcularPromedios(
   iniciosSinOrdenar: string[],
   reglaDeclarada = REGLA_POR_DEFECTO,
+  opciones: OpcionesCiclo = {},
 ): Promedios {
   const inicios = [...new Set(iniciosSinOrdenar)].sort();
   const intervalos: number[] = [];
@@ -131,12 +247,33 @@ export function calcularPromedios(
 
   // Solo los seis últimos: un ciclo de hace dos años no dice nada de hoy.
   const recientes = intervalos.slice(-6);
-  if (recientes.length === 0) {
-    return { ciclo: CICLO_POR_DEFECTO, regla: reglaDeclarada, muestras: 0 };
+  const promedioReal =
+    recientes.length === 0
+      ? null
+      : Math.round(recientes.reduce((s, x) => s + x, 0) / recientes.length);
+
+  const declarado = opciones.declarado == null ? null : normalizarCiclo(opciones.declarado);
+  const base = { regla: reglaDeclarada, muestras: recientes.length, promedioReal };
+
+  // 1 · Ella pidió mandar. Manda, aunque haya registros que digan otra cosa:
+  //     hay quien conoce su cuerpo mejor que un promedio de dos meses, y
+  //     quien tiene ciclos irregulares donde la media no significa nada.
+  if (opciones.modo === 'manual' && declarado !== null) {
+    return { ...base, ciclo: declarado, origen: 'manual' };
   }
 
-  const media = recientes.reduce((s, x) => s + x, 0) / recientes.length;
-  return { ciclo: Math.round(media), regla: reglaDeclarada, muestras: recientes.length };
+  // 2 · Sus propios registros, que es lo mejor que hay.
+  if (promedioReal !== null) {
+    return { ...base, ciclo: promedioReal, origen: 'promedio' };
+  }
+
+  // 3 · Todavía sin registros, pero ella dijo cuánto dura.
+  if (declarado !== null) {
+    return { ...base, ciclo: declarado, origen: 'declarado' };
+  }
+
+  // 4 · No sabemos nada. 28 días, y la pantalla lo admite.
+  return { ...base, ciclo: CICLO_POR_DEFECTO, origen: 'defecto' };
 }
 
 /** El comienzo de menstruación más reciente que no sea posterior a `fecha`. */

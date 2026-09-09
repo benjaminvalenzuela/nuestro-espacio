@@ -3,7 +3,10 @@ import {
 } from 'firebase/firestore';
 import { obtenerFirestore } from '../../infra/firebase/firestore';
 import { FS } from '@shared/rutas-datos';
-import { IDS_SINTOMAS, REGLA_POR_DEFECTO, iniciosDesdeDias } from '@shared/ciclo';
+import {
+  IDS_SINTOMAS, REGLA_POR_DEFECTO, CICLO_POR_DEFECTO, normalizarCiclo,
+  iniciosDesdeDias, type ModoCiclo,
+} from '@shared/ciclo';
 import type { Persona } from '@shared/enums';
 
 /**
@@ -38,11 +41,28 @@ export const DIA_VACIO: RegistroDia = { m: false, s: [], r: [] };
 export interface ConfigCiclo {
   titular: Persona;
   duracionRegla: number;
+  /**
+   * Duración del ciclo declarada en los ajustes, en días, o null si todavía
+   * nadie la ha puesto.
+   *
+   * El null importa: sin él, la pantalla no puede distinguir "se usan 28 días
+   * porque los pusiste" de "se usan 28 porque no sabemos nada", y son cosas
+   * distintas cuando de ese número sale una predicción de fertilidad.
+   */
+  duracionCiclo: number | null;
+  /**
+   * 'auto'   → la duración sale de las reglas registradas; `duracionCiclo`
+   *            solo se usa mientras no haya ninguna.
+   * 'manual' → manda `duracionCiclo` siempre.
+   */
+  modoCiclo: ModoCiclo;
 }
 
 export const CONFIG_POR_DEFECTO: ConfigCiclo = {
   titular: 'b',
   duracionRegla: REGLA_POR_DEFECTO,
+  duracionCiclo: null,
+  modoCiclo: 'auto',
 };
 
 export class ErrorCiclo extends Error {}
@@ -113,12 +133,16 @@ export function observarConfig(
     doc(obtenerFirestore(), FS.cicloConfig(parejaId)),
     (snap) => {
       const x = snap.data() ?? {};
+      // Los dos campos nuevos pueden faltar: los documentos escritos antes de
+      // que existieran siguen siendo válidos y no hay que migrarlos.
       alCambiar({
         titular: x.titular === 'a' ? 'a' : 'b',
         duracionRegla:
           typeof x.duracionRegla === 'number' && x.duracionRegla >= 1 && x.duracionRegla <= 15
             ? x.duracionRegla
             : REGLA_POR_DEFECTO,
+        duracionCiclo: normalizarCiclo(x.duracionCiclo),
+        modoCiclo: x.modoCiclo === 'manual' ? 'manual' : 'auto',
       });
     },
     () => alCambiar({ ...CONFIG_POR_DEFECTO }),
@@ -129,6 +153,11 @@ export async function guardarConfig(parejaId: string, c: ConfigCiclo): Promise<v
   await setDoc(doc(obtenerFirestore(), FS.cicloConfig(parejaId)), {
     titular: c.titular,
     duracionRegla: Math.min(15, Math.max(1, Math.round(c.duracionRegla))),
+    // Se recorta aquí y las reglas lo vuelven a exigir en el servidor. No es
+    // redundancia: este recorte da un valor usable en vez de un rechazo, y la
+    // regla es la que impide que un cliente manipulado escriba un 400.
+    duracionCiclo: normalizarCiclo(c.duracionCiclo) ?? CICLO_POR_DEFECTO,
+    modoCiclo: c.modoCiclo === 'manual' ? 'manual' : 'auto',
   });
 }
 
