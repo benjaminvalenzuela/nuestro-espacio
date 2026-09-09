@@ -109,6 +109,13 @@
     --ciclo-neutro:             #191416;
     --ciclo-sobre-neutro:       #fdf8f4;
 
+    /* Diámetro del círculo del día actual. Es un token porque lo usan DOS
+       utilidades: el propio círculo y la fila de marcas, que se coloca justo
+       debajo de él. Con el número repetido en los dos sitios, cambiar el
+       tamaño del círculo dejaría las marcas descolocadas y nadie ataría una
+       cosa con la otra. No depende del tema, así que se define una sola vez. */
+    --dia-circulo:              1.625rem;
+
     --sombra: 0 1px 2px rgb(46 36 38 / 0.04), 0 8px 24px -8px rgb(46 36 38 / 0.10);
     --radio: 1rem;
   }
@@ -372,11 +379,13 @@
    NÚMERO y no de la celda entera. Pintar la celda completa borraría el color
    de la fase justo en el único día que se mira siempre.
 
-   1,625rem = 26 px. La medida no es estética: la celda más pequeña de la
-   rejilla mide unos 44 px (un teléfono de 375 px, siete columnas), y hacen
-   falta 9 px abajo para la fila de marcas. 26 px centrados dejan el círculo
-   entre los píxeles 9 y 35, justo por encima de las marcas y sin tocarlas.
-   Con 28 px se solapaban.
+   1,625rem = 26 px, y la celda es 1:1,2 en vez de cuadrada. Las dos medidas
+   están atadas: en la celda más estrecha de la rejilla —44,5 px en un
+   teléfono de 375 px— un cuadrado deja solo 9,25 px bajo el círculo, y la
+   fila de marcas necesita 9 px más 4 de aire. Con 1:1,2 el hueco sube a
+   13,7 px y sobran 0,7. La alternativa era encoger el círculo a 22 px, que
+   se veía peor. Si alguien vuelve a poner la celda cuadrada, el corazón se
+   montará sobre el círculo en los teléfonos pequeños, y solo ahí.
 
    `line-height: 1` para que el renglón mida lo que el dígito y el centrado
    del flex sea exacto. Medido: el dígito queda a 0,01 px del centro
@@ -388,7 +397,7 @@
   /* El tamaño es una variable para que la leyenda pueda usar un círculo más
      pequeño SIN duplicar el resto. Si el círculo del calendario cambia de
      forma o de color, el de la leyenda cambia con él: es la misma clase. */
-  --numero-hoy-tamano: 1.625rem;
+  --numero-hoy-tamano: var(--dia-circulo);
   background-color: var(--ciclo-neutro);
   color: var(--ciclo-sobre-neutro);
   border-radius: 9999px;
@@ -413,15 +422,26 @@
    nada salte al anotar un síntoma. */
 @utility fila-marcas {
   position: absolute;
-  bottom: 0;
   left: 0;
   right: 0;
   height: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   pointer-events: none;
+
+  /*
+    Ancladas al NÚMERO, no al borde inferior de la celda: 3 px por debajo de
+    donde acaba el círculo del día actual, contando desde el centro.
+
+    Con `bottom: 0` estaban atadas al canto, y como la celda crece con la
+    pantalla, en un monitor de 1280 px la celda mide 88 px y el corazón se
+    quedaba a 27 px del número: dos cosas sueltas en vez de una anotación
+    sobre ese día. Así la distancia es la misma en un teléfono y en un
+    monitor, y además no pueden solaparse nunca con el círculo.
+  */
+  top: calc(50% + (var(--dia-circulo) / 2) + 3px);
 }
 
 /* SELECCIONADO. Solo un aro exterior de 2 px: no rellena nada, para que la

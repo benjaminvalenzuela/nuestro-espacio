@@ -45,12 +45,16 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
   </section>
 
   {/* ── Rejilla ────────────────────────────────────────────────────── */}
-  <div class="mb-1 grid grid-cols-7 gap-1">
+  {/* Las dos rejillas —cabecera y días— llevan el MISMO tope de ancho. Sin
+      él, en un monitor la celda llegaba a 88 px: un calendario de pared con
+      un número diminuto en medio. Con el tope, la celda se queda en unos
+      60 px, que es la medida a la que está pensado el resto. */}
+  <div class="mx-auto mb-1 grid max-w-md grid-cols-7 gap-1">
     {DIAS_SEMANA.map((d) => (
       <span class="py-1 text-center text-[11px] font-semibold text-tinta-tenue">{d}</span>
     ))}
   </div>
-  <div id="rejilla" class="grid grid-cols-7 gap-1"></div>
+  <div id="rejilla" class="mx-auto grid max-w-md grid-cols-7 gap-1"></div>
 
   {/* ── Leyenda ──────────────────────────────────────────────────────
       Las cuatro fases son SOLO color: nada dentro del cuadrado.
@@ -279,8 +283,12 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
       // `items-center justify-center` sin flex-col: el número es el único hijo
       // que ocupa sitio, así que queda centrado en la celda. Las marcas van
       // en absoluto (ver `fila-marcas`).
+      //
+      // La celda es 1:1,2 y no cuadrada. Es lo que da sitio para separar el
+      // corazón y el punto del borde inferior sin encoger el círculo de hoy;
+      // el cálculo está en el comentario de `numero-hoy` en global.css.
       btn.className =
-        'relative flex aspect-square items-center justify-center rounded-lg text-sm font-medium transition ' +
+        'relative flex aspect-[5/6] items-center justify-center rounded-lg text-sm font-medium transition ' +
         CLASE_FASE[info.fase] +
         (info.fertil && info.fase !== 'ovulacion' ? ' dia-fertil' : '') +
         (celda.fecha === seleccionado ? ' dia-elegido' : '');
