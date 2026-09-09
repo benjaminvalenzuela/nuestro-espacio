@@ -1,0 +1,1 @@
+import{t as e}from"./tema.BhmXaTXb.js";var t=document.getElementById(`btn-tema`);t&&e(t);

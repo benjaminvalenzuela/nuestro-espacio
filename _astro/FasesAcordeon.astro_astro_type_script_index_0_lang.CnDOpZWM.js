@@ -1,0 +1,1 @@
+if(!(`name`in HTMLDetailsElement.prototype)){let e=Array.from(document.querySelectorAll(`#fases-acordeon > details`));for(let t of e)t.addEventListener(`toggle`,()=>{if(t.open)for(let n of e)n!==t&&(n.open=!1)})}
