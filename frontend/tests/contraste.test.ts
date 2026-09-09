@@ -72,7 +72,14 @@ function contraste(a: string, b: string): number {
  * importa leer: la leyenda del calendario usa `tinta-suave`, que sí pasa.
  */
 
-/** Pares [nombre, texto, fondo] que DEBEN cumplir AA en los dos temas. */
+/**
+ * Pares [nombre, texto, fondo] que DEBEN cumplir AA en los dos temas.
+ *
+ * Las cuatro fases entran aquí desde que el rojo y el ámbar del tema claro
+ * bajaron un peldaño de luminosidad (#d93838 → #c62828, #d97706 → #92400e).
+ * Antes daban 3,99:1 y 2,89:1 y vivían en una lista aparte de excepciones
+ * toleradas; esa lista ya no existe, y no debería volver.
+ */
 const PARES: [string, string, string][] = [
   ['acento sobre tarjeta', 'acento', 'superficie'],
   ['acento sobre su tinte', 'acento', 'acento-suave'],
@@ -86,36 +93,11 @@ const PARES: [string, string, string][] = [
   ['botón principal', 'sobre-acento', 'boton-acento-fondo'],
   ['botón principal al pasar por encima', 'sobre-acento', 'boton-acento-hover'],
   ['botón de confirmar', 'sobre-ok', 'boton-ok-fondo'],
+  ['fase menstruación', 'ciclo-menstruacion-tinta', 'ciclo-menstruacion-fondo'],
   ['fase folicular', 'ciclo-folicular-tinta', 'ciclo-folicular-fondo'],
+  ['fase ovulación', 'ciclo-ovulacion-tinta', 'ciclo-ovulacion-fondo'],
   ['fase lútea', 'ciclo-lutea-tinta', 'ciclo-lutea-fondo'],
   ['círculo de hoy', 'ciclo-sobre-neutro', 'ciclo-neutro'],
-];
-
-/**
- * DOS PARES QUE HOY NO CUMPLEN AA, Y ESTÁN AQUÍ PARA QUE NO SE OLVIDE.
- *
- * En tema claro el número del día sobre su fondo tenue da:
- *
- *     menstruación   #d93838 sobre #fce8e8   3,99:1
- *     ovulación      #d97706 sobre #fef3c7   2,89:1
- *
- * Los dos están por debajo del 4,5:1 de WCAG AA, y el de ovulación por
- * debajo incluso del 3:1 que se admite para texto grande. Es una decisión de
- * diseño tomada a la vista de estos números, no un descuido.
- *
- * El test no los deja pasar en silencio: exige que en tema OSCURO cumplan AA
- * —allí van sobradísimos, 7,8:1 y 10,1:1— y que en claro no bajen del suelo
- * de abajo. Así, si alguien vuelve a tocar estos hex, se enterará de si
- * empeora.
- *
- * Arreglarlos cuesta dos hex, manteniendo el mismo tono:
- *     #c62828 → 4,80:1     y     #92400e → 6,37:1
- */
-const SUELO_PENDIENTES = 2.85;
-
-const PENDIENTES: [string, string, string][] = [
-  ['fase menstruación', 'ciclo-menstruacion-tinta', 'ciclo-menstruacion-fondo'],
-  ['fase ovulación', 'ciclo-ovulacion-tinta', 'ciclo-ovulacion-fondo'],
 ];
 
 /**
@@ -139,7 +121,7 @@ const FONDOS_DE_FASE = [
 describe.each([
   ['claro', CLARO],
   ['oscuro', OSCURO],
-])('Contraste en tema %s', (tema, paleta) => {
+])('Contraste en tema %s', (_tema, paleta) => {
   const dame = (nombre: string) => {
     const v = paleta[nombre];
     expect(v, `falta el token --${nombre}`).toBeTruthy();
@@ -148,11 +130,6 @@ describe.each([
 
   it.each(PARES)('%s alcanza AA', (_nombre, texto, fondo) => {
     expect(contraste(dame(texto), dame(fondo))).toBeGreaterThanOrEqual(MINIMO_AA);
-  });
-
-  it.each(PENDIENTES)('%s: AA en oscuro, y en claro sin empeorar', (_nombre, texto, fondo) => {
-    const r = contraste(dame(texto), dame(fondo));
-    expect(r).toBeGreaterThanOrEqual(tema === 'oscuro' ? MINIMO_AA : SUELO_PENDIENTES);
   });
 
   it.each(FONDOS_DE_FASE)('el punto de síntomas se ve sobre %s', (fondo) => {

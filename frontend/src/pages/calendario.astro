@@ -53,14 +53,16 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
   <div id="rejilla" class="grid grid-cols-7 gap-1"></div>
 
   {/* ── Leyenda ──────────────────────────────────────────────────────
-      Cada muestra usa LAS MISMAS clases que la celda que representa
-      —fase-menstruacion, dia-fertil, numero-hoy, punto-sintoma— en vez de un
-      color copiado a mano. Así la leyenda no puede quedarse desfasada de lo
-      que se ve arriba, que es el fallo clásico de las leyendas.
+      Solo colores, sin números.
 
-      Y cada muestra lleva el número de un día dentro: enseña a la vez el
-      fondo tenue y el color saturado del número, que es el par que de verdad
-      hay que reconocer. */}
+      Cada muestra sigue usando LAS MISMAS clases que la celda que representa
+      —fase-menstruacion, dia-fertil, numero-hoy, punto-sintoma— en vez de un
+      color copiado a mano. Es lo que impide que la leyenda se quede desfasada
+      del calendario, que es el fallo clásico de las leyendas.
+
+      Las cuatro fases enseñan el PAR completo: el cuadrado con el fondo tenue
+      y, dentro, un punto del color saturado. Con solo el fondo, la
+      menstruación y la lútea —dos tintes pálidos— se parecerían demasiado. */}
   <ul class="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-tinta-suave sm:grid-cols-3">
     {
       [
@@ -70,31 +72,32 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
         ['fase-lutea', 'Lútea'],
       ].map(([clase, etiqueta]) => (
         <li class="flex items-center gap-2">
-          <span class={`${clase} flex size-6 items-center justify-center rounded-md text-[11px] font-semibold`}
-            aria-hidden="true">8</span>
+          <span class={`${clase} flex size-5 items-center justify-center rounded-md`} aria-hidden="true">
+            {/* bg-current toma el color saturado de la clase de fase. */}
+            <span class="size-1.5 rounded-full bg-current"></span>
+          </span>
           {etiqueta}
         </li>
       ))
     }
     <li class="flex items-center gap-2">
-      <span class="dia-fertil fase-folicular flex size-6 items-center justify-center rounded-md text-[11px] font-semibold"
-        aria-hidden="true">8</span>
+      <span class="dia-fertil fase-folicular size-5 rounded-md" aria-hidden="true"></span>
       Días fértiles
     </li>
     <li class="flex items-center gap-2">
-      <span class="flex size-6 items-center justify-center" aria-hidden="true">
-        <span class="numero-hoy text-[11px]">8</span>
+      <span class="flex size-5 items-center justify-center" aria-hidden="true">
+        <span class="size-4 rounded-full" style="background: var(--ciclo-neutro)"></span>
       </span>
       Hoy
     </li>
     <li class="flex items-center gap-2">
-      <span class="flex size-6 items-center justify-center rounded-md bg-superficie-alt" aria-hidden="true">
+      <span class="flex size-5 items-center justify-center rounded-md bg-superficie-alt" aria-hidden="true">
         <span class="marca-relacion">❤️</span>
       </span>
       Relaciones
     </li>
     <li class="flex items-center gap-2">
-      <span class="flex size-6 items-center justify-center rounded-md bg-superficie-alt" aria-hidden="true">
+      <span class="flex size-5 items-center justify-center rounded-md bg-superficie-alt" aria-hidden="true">
         <span class="punto-sintoma"></span>
       </span>
       Síntomas
@@ -269,8 +272,11 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
       btn.dataset.fecha = celda.fecha;
       // La celda solo lleva el color de la fase y, si toca, el aro de fértil
       // y el de seleccionado. Hoy NO se pinta aquí: va en el número.
+      // `items-center justify-center` sin flex-col: el número es el único hijo
+      // que ocupa sitio, así que queda centrado en la celda. Las marcas van
+      // en absoluto (ver `fila-marcas`).
       btn.className =
-        'relative flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg text-sm font-medium transition ' +
+        'relative flex aspect-square items-center justify-center rounded-lg text-sm font-medium transition ' +
         CLASE_FASE[info.fase] +
         (info.fertil && info.fase !== 'ovulacion' ? ' dia-fertil' : '') +
         (celda.fecha === seleccionado ? ' dia-elegido' : '');
@@ -282,11 +288,11 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
       n.textContent = String(celda.dia);
       btn.append(n);
 
-      // Marcas de lo anotado. Van en una fila propia debajo del número, no
-      // sobre él: encima de un círculo relleno el punto de síntomas quedaba
-      // invisible justo el día de hoy.
+      // Marcas de lo anotado, en una fila pegada al borde inferior de la
+      // celda. Debajo del número y no encima: sobre el círculo relleno de
+      // hoy, el punto de síntomas quedaba invisible justo ese día.
       const marcas = document.createElement('span');
-      marcas.className = 'flex h-2 items-center justify-center gap-0.5';
+      marcas.className = 'fila-marcas';
       if (reg.r.length > 0) {
         const c = document.createElement('span');
         c.className = 'marca-relacion';
@@ -300,8 +306,6 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
         d.setAttribute('aria-hidden', 'true');
         marcas.append(d);
       }
-      // La fila se añade SIEMPRE, aunque esté vacía: así todas las celdas
-      // miden lo mismo y el número no salta de sitio al anotar algo.
       btn.append(marcas);
 
       const partes = [`${celda.dia} de ${NOMBRES_MES[mes - 1]}`];

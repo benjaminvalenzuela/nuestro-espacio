@@ -72,23 +72,28 @@
        indicador. Cada fase es un PAR: nunca se pinta el fondo de una con el
        texto de otra, porque el par es lo que está medido.
 
-       Contraste de cada par en este tema:
-         menstruación  3,99:1   ← por debajo de AA (4,5:1)
+       Contraste de cada par en este tema, los cuatro por encima del 4,5:1 que
+       pide WCAG AA:
+
+         menstruación  4,80:1
          folicular     4,63:1
-         ovulación     2,89:1   ← por debajo de AA, y de largo
+         ovulación     6,37:1
          lútea         5,92:1
 
-       Los dos marcados están así por decisión de diseño, no por descuido.
-       Oscurecer el texto a #c62828 y #92400e los llevaría a 4,80:1 y 6,37:1
-       manteniendo el mismo tono; queda anotado en contraste.test.ts, que los
-       vigila para que al menos no empeoren. En tema oscuro los cuatro pares
-       van de 7,5:1 a 10,1:1. */
+       El rojo y el ámbar están un paso más oscuros que el resto de la escala
+       (#d93838 y #d97706 daban 3,99:1 y 2,89:1). El de ovulación era el grave:
+       a 2,89:1 no llegaba ni al mínimo de texto grande, y un número ámbar
+       sobre crema se pierde en un teléfono al sol. Mismo tono, un peldaño
+       menos de luminosidad.
+
+       En tema oscuro no hizo falta tocar nada: allí los cuatro pares van de
+       7,5:1 a 10,1:1. contraste.test.ts los mide en los dos temas. */
     --ciclo-menstruacion-fondo: #fce8e8;
-    --ciclo-menstruacion-tinta: #d93838;
+    --ciclo-menstruacion-tinta: #c62828;
     --ciclo-folicular-fondo:    #e0f2f1;
     --ciclo-folicular-tinta:    #00796b;
     --ciclo-ovulacion-fondo:    #fef3c7;
-    --ciclo-ovulacion-tinta:    #d97706;
+    --ciclo-ovulacion-tinta:    #92400e;
     --ciclo-lutea-fondo:        #f3e8ff;
     --ciclo-lutea-tinta:        #7e22ce;
 
@@ -365,17 +370,54 @@
 
 /* HOY. Círculo sólido con el fondo de la pantalla invertido, alrededor del
    NÚMERO y no de la celda entera. Pintar la celda completa borraría el color
-   de la fase justo en el único día que se mira siempre. */
+   de la fase justo en el único día que se mira siempre.
+
+   1,625rem = 26 px. La medida no es estética: la celda más pequeña de la
+   rejilla mide unos 44 px (un teléfono de 375 px, siete columnas), y hacen
+   falta 9 px abajo para la fila de marcas. 26 px centrados dejan el círculo
+   entre los píxeles 9 y 35, justo por encima de las marcas y sin tocarlas.
+   Con 28 px se solapaban.
+
+   `line-height: 1` para que el renglón mida lo que el dígito y el centrado
+   del flex sea exacto. Medido: el dígito queda a 0,01 px del centro
+   horizontal y a 0,5 px por debajo del vertical —ese medio píxel es la
+   asimetría entre el ascendente de la fuente y la altura de las mayúsculas,
+   y no hay forma de corregirlo en CSS sin clavar métricas de una fuente
+   concreta, que fallarían en el iPhone, donde se usa otra. */
 @utility numero-hoy {
   background-color: var(--ciclo-neutro);
   color: var(--ciclo-sobre-neutro);
   border-radius: 9999px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.75rem;
-  min-height: 1.75rem;
+  width: 1.625rem;
+  height: 1.625rem;
+  line-height: 1;
   font-weight: 700;
+  /* Los números de dos cifras no deben deformar el círculo. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* FILA DE MARCAS. Va posicionada en absoluto, y esa es la corrección:
+   estando en el flujo, sus 9 px empujaban el número —y con él el círculo de
+   hoy— unos 5 px hacia arriba dentro de la celda. Se notaba justo en el día
+   actual, que es el único con un borde visible con el que comparar.
+
+   En absoluto no ocupa espacio, así que el número queda centrado de verdad
+   en la celda, y la fila sigue existiendo siempre —vacía o no— para que
+   nada salte al anotar un síntoma. */
+@utility fila-marcas {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  pointer-events: none;
 }
 
 /* SELECCIONADO. Solo un aro exterior de 2 px: no rellena nada, para que la
@@ -400,7 +442,7 @@
    acompañe al zoom del navegador, y `line-height: 1` evita que el interlineado
    del emoji empuje la fila de marcas fuera del borde. */
 @utility marca-relacion {
-  font-size: 0.625rem;
+  font-size: 0.5625rem;   /* 9 px: la altura exacta de la fila de marcas */
   line-height: 1;
   display: inline-block;
 }
