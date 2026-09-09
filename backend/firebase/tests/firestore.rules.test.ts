@@ -221,6 +221,72 @@ describe('Historial y auditoría · append-only', () => {
   });
 });
 
+describe('Confirmar un panorama · "Evento realizado"', () => {
+  /**
+   * El camino de escritura que estrena el botón ✅ del banner. Antes lo
+   * recorría el sorteo con los mismos campos MENOS `confirmado`, así que esa
+   * bandera es exactamente lo que estas pruebas cubren: si un día alguien
+   * recorta el `soloCampos` de historialPanoramas, la app dejaría de poder
+   * cerrar eventos y el fallo aparecería en producción, no aquí.
+   */
+  it('archiva la salida con la bandera de confirmado', async () => {
+    await assertSucceeds(
+      setDoc(doc(como(UID_A1), `parejas/${PAREJA}/historialPanoramas/conf1`), {
+        panoramaId: 'pan1', nombreSnapshot: 'Ir al cerro', giroId: 'g1',
+        organizador: 'b', confirmado: true, ocurridoEn: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('suma uno al contador del panorama', async () => {
+    await assertSucceeds(
+      setDoc(doc(como(UID_A1), `parejas/${PAREJA}/panoramas/pan-conf`), {
+        nombre: 'Picnic', nombreNormalizado: 'picnic', creadoPor: 'a',
+        creadoEn: serverTimestamp(), activo: true, vecesRealizado: 0,
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(como(UID_B1), `parejas/${PAREJA}/panoramas/pan-conf`), {
+        vecesRealizado: increment(1), ultimaVezEn: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('RECHAZA sumar más de uno de golpe', async () => {
+    await assertSucceeds(
+      setDoc(doc(como(UID_A1), `parejas/${PAREJA}/panoramas/pan-trampa`), {
+        nombre: 'Cine', nombreNormalizado: 'cine', creadoPor: 'a',
+        creadoEn: serverTimestamp(), activo: true, vecesRealizado: 0,
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(como(UID_A1), `parejas/${PAREJA}/panoramas/pan-trampa`), {
+        vecesRealizado: increment(7), ultimaVezEn: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('el historial sigue siendo inmutable después de confirmar', async () => {
+    await setDoc(doc(como(UID_A1), `parejas/${PAREJA}/historialPanoramas/conf2`), {
+      panoramaId: 'pan1', nombreSnapshot: 'Ir al cerro', giroId: 'g1',
+      confirmado: true, ocurridoEn: serverTimestamp(),
+    });
+    await assertFails(
+      updateDoc(doc(como(UID_A1), `parejas/${PAREJA}/historialPanoramas/conf2`), {
+        confirmado: false,
+      }),
+    );
+  });
+
+  it('cancelar el evento lo borra, y eso sí está permitido', async () => {
+    await setDoc(doc(como(UID_A1), `parejas/${PAREJA}/eventos/actual`), {
+      panoramaId: 'pan1', nombre: 'Ir al cerro', organizador: 'b', fecha: null,
+      giroId: 'g1', creadoEn: serverTimestamp(), actualizadoEn: serverTimestamp(),
+    });
+    await assertSucceeds(deleteDoc(doc(como(UID_B1), `parejas/${PAREJA}/eventos/actual`)));
+  });
+});
+
 describe('Evento en curso · desde el banner solo se toca la fecha', () => {
   const crear = (uid: string) =>
     setDoc(doc(como(uid), `parejas/${PAREJA}/eventos/actual`), {
@@ -411,5 +477,92 @@ describe('Perfil ampliado · secciones nuevas y campos heredados', () => {
         ...base, hobbies: ['Suplantar'],
       }),
     );
+  });
+});
+
+describe('Perfil conjunto · las fechas se ponen de una en una', () => {
+  const ruta = `parejas/${PAREJA}/perfilConjunto/singleton`;
+  const base = { hitos: [], actualizadoPor: 'a', actualizadoEn: serverTimestamp() };
+
+  /**
+   * EL CASO QUE FALLABA DE VERDAD.
+   *
+   * Nadie rellena las dos fechas a la vez: se pone primero la de cuándo
+   * empezaron a salir y la del noviazgo llega meses después. El cliente manda
+   * el documento completo, así que la fecha que falta viaja como `null`.
+   *
+   * La regla comprobaba `!tiene(campo) || fechaISO(campo)`, y un campo
+   * presente con valor null cumple `tiene()` pero no es un string: la
+   * escritura entera se rechazaba y en pantalla salía "no se pudo guardar la
+   * fecha", sin decir cuál ni por qué.
+   */
+  it('guarda la fecha de inicio dejando la del noviazgo vacía', async () => {
+    await assertSucceeds(
+      setDoc(doc(como(UID_A1), ruta), {
+        ...base, fechaInicioSalidas: '2024-03-15', fechaNoviazgo: null,
+      }),
+    );
+  });
+
+  it('guarda la del noviazgo dejando la de inicio vacía', async () => {
+    await assertSucceeds(
+      setDoc(doc(como(UID_B1), ruta), {
+        ...base, actualizadoPor: 'b', fechaInicioSalidas: null, fechaNoviazgo: '2024-09-01',
+      }),
+    );
+  });
+
+  it('acepta las dos a la vez', async () => {
+    await assertSucceeds(
+      setDoc(doc(como(UID_A1), ruta), {
+        ...base, fechaInicioSalidas: '2024-03-15', fechaNoviazgo: '2024-09-01',
+      }),
+    );
+  });
+
+  it('acepta las dos vacías: borrar una fecha es legítimo', async () => {
+    await assertSucceeds(
+      setDoc(doc(como(UID_A1), ruta), {
+        ...base, fechaInicioSalidas: null, fechaNoviazgo: null,
+      }),
+    );
+  });
+
+  it('sigue RECHAZANDO una fecha con formato inventado', async () => {
+    await assertFails(
+      setDoc(doc(como(UID_A1), ruta), {
+        ...base, fechaInicioSalidas: 'el año pasado', fechaNoviazgo: null,
+      }),
+    );
+  });
+
+  it('sigue RECHAZANDO un número donde va una fecha', async () => {
+    await assertFails(
+      setDoc(doc(como(UID_A1), ruta), {
+        ...base, fechaInicioSalidas: 20240315, fechaNoviazgo: null,
+      }),
+    );
+  });
+
+  it('un intruso no escribe el perfil conjunto', async () => {
+    await assertFails(
+      setDoc(doc(como(UID_INTRUSO), ruta), { ...base, fechaInicioSalidas: '2024-03-15' }),
+    );
+  });
+});
+
+describe('Perfil · la fecha de nacimiento se puede borrar', () => {
+  const perfilA = () => doc(como(UID_A1), `parejas/${PAREJA}/perfiles/a`);
+  const base = { nombre: 'Ana', actualizadoEn: serverTimestamp() };
+
+  it('acepta null para vaciarla', async () => {
+    // Enviar null es la única forma de borrarla: con merge, omitir el campo
+    // deja el valor anterior intacto y la fecha se vuelve ineliminable.
+    await setDoc(perfilA(), { ...base, fechaNacimiento: '1996-07-10' });
+    await assertSucceeds(setDoc(perfilA(), { ...base, fechaNacimiento: null }));
+  });
+
+  it('sigue rechazando una fecha inventada', async () => {
+    await assertFails(setDoc(perfilA(), { ...base, fechaNacimiento: '10-07-1996' }));
   });
 });

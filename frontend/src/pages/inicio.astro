@@ -3,6 +3,17 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import TarjetaPresencia from '../components/presencia/TarjetaPresencia.astro';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+const ATAJOS = [
+  { e: '🎡', n: 'Ruleta', d: 'Panorama y quién organiza', h: '/ruleta' },
+  { e: '🏆', n: 'Marcador', d: 'Quién ha organizado más', h: '/marcador' },
+  { e: '💬', n: 'Preguntas', d: 'Para conocernos', h: '/preguntas' },
+  { e: '⚖️', n: 'Qué prefieres', d: 'Voto a ciegas', h: '/que-prefieres' },
+  { e: '🔤', n: 'Bachillerato', d: 'A ver quién es más rápido', h: '/bachillerato' },
+  { e: '🗓️', n: 'Calendario', d: 'Ciclo y días importantes', h: '/calendario' },
+  { e: '💛', n: 'Perfiles', d: 'Quiénes somos', h: '/perfiles' },
+  { e: '⚙️', n: 'Administración', d: 'Contenido y datos', h: '/admin' },
+];
 ---
 
 <BaseLayout titulo="Inicio · Nuestro Espacio">
@@ -10,67 +21,164 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     <span class="h-6 w-6 animate-spin rounded-full border-2 border-borde border-t-acento"></span>
   </div>
 
-  <main id="app" class="mx-auto hidden max-w-md px-5 pt-8 pb-16">
-    <header class="mb-8 flex items-center justify-between gap-4">
+  {/*
+    En teléfono, una columna estrecha: el formato que ya funcionaba.
+    A partir de `sm` la página deja de ser una tira de 28rem centrada en medio
+    de un monitor vacío y usa el ancho que hay. Ninguna medida de móvil cambia.
+  */}
+  <main id="app" class="mx-auto hidden max-w-md px-5 pt-8 pb-16 sm:max-w-3xl sm:px-8 lg:max-w-6xl">
+    <header class="mb-6 flex items-center justify-between gap-3">
       <div class="min-w-0">
         <p class="text-xs font-medium tracking-wide text-tinta-tenue uppercase">Hola</p>
-        <h1 id="saludo" class="truncate text-2xl font-semibold text-tinta">…</h1>
+        <h1 id="saludo" class="truncate text-2xl font-semibold text-tinta sm:text-3xl">…</h1>
       </div>
-      <span
-        id="etiqueta-dispositivo"
-        class="shrink-0 rounded-lg border border-borde px-2.5 py-1.5 text-[11px] font-medium text-tinta-tenue"
-      >este dispositivo</span>
+
+      <div class="flex shrink-0 items-center gap-2">
+        <span
+          id="etiqueta-dispositivo"
+          class="hidden rounded-lg border border-borde px-2.5 py-1.5 text-[11px] font-medium text-tinta-tenue sm:inline"
+        >este dispositivo</span>
+        {/* El mismo botón de tema que el resto de pantallas. Antes solo estaba
+            en las páginas internas, así que desde el inicio —que es donde más
+            se entra— no había forma de cambiarlo. */}
+        <button
+          id="btn-tema"
+          type="button"
+          class="rounded-xl border border-borde px-3 py-2 text-lg leading-none transition hover:bg-superficie-alt"
+        >🌗</button>
+      </div>
     </header>
 
-    {/* BANNER DEL EVENTO · fijo mientras haya un panorama pendiente */}
-    <section
-      id="banner-evento"
-      aria-labelledby="banner-titulo"
-      class="tarjeta mb-6 hidden overflow-hidden border-acento/40"
-    >
-      <div class="bg-acento-suave px-4 py-2.5">
-        <p id="banner-titulo" class="text-[11px] font-semibold tracking-wide text-acento uppercase">
-          Próximo panorama
+    {/* ── Fila superior ─────────────────────────────────────────────────
+        Las dos cosas que se miran de un vistazo: cuánto llevamos y qué toca.
+        En móvil van una debajo de otra; en monitor, lado a lado. */}
+    <div class="grid gap-4 lg:grid-cols-3">
+
+      {/* CUÁNTO LLEVAMOS · permanente */}
+      <section
+        id="banner-juntos"
+        aria-labelledby="juntos-titulo"
+        class="tarjeta flex flex-col justify-center overflow-hidden px-5 py-5 text-center lg:col-span-1"
+      >
+        <p id="juntos-titulo" class="text-[11px] font-semibold tracking-wide text-acento uppercase">
+          Llevamos juntos
         </p>
-      </div>
-
-      <div class="px-4 py-4">
-        <p id="evento-nombre" class="text-lg leading-snug font-semibold text-balance text-tinta"></p>
-        <p class="mt-1 text-sm text-tinta-suave">
-          Organiza <span id="evento-organiza" class="font-medium text-tinta"></span>
+        <p id="juntos-texto" class="mt-2 text-xl leading-tight font-semibold text-balance text-tinta">
+          —
         </p>
+        <p id="juntos-detalle" class="mt-1.5 text-xs text-tinta-suave"></p>
+        <p
+          id="juntos-aniversario"
+          class="mt-3 hidden rounded-lg bg-acento-suave px-3 py-2 text-xs font-medium text-acento"
+        ></p>
+        {/* Solo aparece si todavía no hay fecha puesta: es la única acción
+            posible en ese estado, y sin ella el recuadro no explicaría nada. */}
+        <a
+          id="juntos-configurar"
+          href={`${base}/perfiles`}
+          class="mt-3 hidden text-xs font-medium text-acento underline-offset-2 hover:underline"
+        >Poner la fecha en que empezamos →</a>
+      </section>
 
-        <p id="evento-cuando" class="mt-3 text-sm font-medium text-salvia"></p>
-
-        <div class="mt-3 flex items-center gap-2">
-          <label for="evento-fecha" class="sr-only">Fecha del panorama</label>
-          <input
-            id="evento-fecha"
-            type="date"
-            class="min-w-0 flex-1 rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta focus:border-acento focus:outline-none"
-          />
-          <button
-            id="btn-quitar-fecha"
-            type="button"
-            class="hidden shrink-0 rounded-lg border border-borde px-3 py-2.5 text-xs font-medium text-tinta-suave transition hover:border-peligro hover:text-peligro"
-          >Quitar</button>
+      {/* EVENTO · permanente, con o sin panorama pendiente */}
+      <section
+        id="banner-evento"
+        aria-labelledby="banner-titulo"
+        class="tarjeta overflow-hidden lg:col-span-2"
+      >
+        <div id="evento-cabecera" class="bg-acento-suave px-4 py-2.5">
+          <p id="banner-titulo" class="text-[11px] font-semibold tracking-wide text-acento uppercase">
+            Próximo panorama
+          </p>
         </div>
 
-        <button
-          id="btn-cerrar-evento"
-          type="button"
-          class="mt-3 w-full rounded-lg border border-borde px-3 py-2.5 text-xs font-medium text-tinta-suave transition hover:border-salvia hover:text-salvia"
-        >Ya lo hicimos · cerrar</button>
+        <div class="px-4 py-4">
+          <p id="evento-nombre" class="text-lg leading-snug font-semibold text-balance text-tinta"></p>
+          <p class="mt-1 text-sm text-tinta-suave">
+            <span id="evento-organiza-etiqueta">Organiza</span>{' '}
+            <span id="evento-organiza" class="font-medium text-tinta"></span>
+          </p>
 
-        <p id="evento-error" role="alert" class="mt-2 hidden text-xs text-peligro"></p>
+          <p id="evento-cuando" class="mt-3 text-sm font-medium text-salvia"></p>
+
+          {/* ── Con evento en curso ─────────────────────────────────── */}
+          <div id="evento-controles" class="hidden">
+            <div class="mt-3 flex items-center gap-2">
+              <label for="evento-fecha" class="sr-only">Fecha del panorama</label>
+              <input
+                id="evento-fecha"
+                type="date"
+                class="min-w-0 flex-1 rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta focus:border-acento focus:outline-none"
+              />
+              <button
+                id="btn-quitar-fecha"
+                type="button"
+                class="hidden shrink-0 rounded-lg border border-borde px-3 py-2.5 text-xs font-medium text-tinta-suave transition hover:border-peligro hover:text-peligro"
+              >Quitar</button>
+            </div>
+
+            <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                id="btn-evento-realizado"
+                type="button"
+                class="rounded-lg boton-ok px-3 py-2.5 text-sm font-medium transition active:scale-[0.98]"
+              >✅ Evento realizado</button>
+              <button
+                id="btn-evento-cancelar"
+                type="button"
+                class="rounded-lg border border-borde px-3 py-2.5 text-sm font-medium text-tinta-suave transition hover:border-peligro hover:text-peligro"
+              >✖️ Cancelar evento</button>
+            </div>
+          </div>
+
+          {/* ── Sin evento ──────────────────────────────────────────────
+              El `hidden` va en un DIV envolvente y no en el propio enlace, a
+              propósito. Un <a> es inline: con `hidden` y `block` en la misma
+              lista de clases gana el que Tailwind haya definido después, no el
+              último escrito, y al mostrarlo volvía a inline —donde `mt-3` y
+              `w-full` no hacen nada— y se montaba encima del texto de arriba.
+              Con el envoltorio no hay conflicto posible. */}
+          <div id="evento-girar" class="mt-3 hidden">
+            <a
+              href={`${base}/ruleta`}
+              class="block w-full rounded-lg border border-acento px-3 py-2.5 text-center text-sm font-medium text-acento transition hover:bg-acento-suave"
+            >🎡 Girar la ruleta</a>
+          </div>
+
+          <p id="evento-error" role="alert" class="mt-2 hidden text-xs text-peligro"></p>
+        </div>
+      </section>
+    </div>
+
+    {/* ── Fase del ciclo · recuadro pequeño pero legible ───────────────── */}
+    <section
+      id="caja-ciclo"
+      aria-labelledby="ciclo-titulo"
+      class="tarjeta mt-4 flex items-center gap-3 px-4 py-3"
+    >
+      <span
+        id="ciclo-chip"
+        class="fase-desconocida shrink-0 rounded-lg px-2.5 py-2 text-lg leading-none"
+        aria-hidden="true"
+      >❔</span>
+      <div class="min-w-0 flex-1">
+        <p id="ciclo-titulo" class="text-[11px] font-semibold tracking-wide text-tinta-tenue uppercase">
+          Ciclo
+        </p>
+        <p id="ciclo-fase" class="truncate text-sm font-medium text-tinta">…</p>
+        <p id="ciclo-detalle" class="truncate text-xs text-tinta-suave"></p>
       </div>
+      <a
+        href={`${base}/calendario`}
+        class="shrink-0 rounded-lg border border-borde px-3 py-2 text-xs font-medium text-tinta-suave transition hover:border-acento hover:text-acento"
+      >Ver</a>
     </section>
 
-    <section aria-labelledby="titulo-presencia" class="aparecer">
+    <section aria-labelledby="titulo-presencia" class="aparecer mt-8">
       <h2 id="titulo-presencia" class="mb-3 text-sm font-semibold text-tinta-suave">
         Quién está aquí
       </h2>
-      <div class="flex flex-col gap-3">
+      <div class="grid gap-3 sm:grid-cols-2">
         <TarjetaPresencia id="yo" etiqueta="Tú" />
         <TarjetaPresencia id="pareja" etiqueta="Tu pareja" />
       </div>
@@ -78,18 +186,9 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
     <section class="mt-10">
       <h2 class="mb-3 text-sm font-semibold text-tinta-suave">Qué hacemos hoy</h2>
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {
-          [
-            { e: '🎡', n: 'Ruleta', d: 'Panorama y quién organiza', h: '/ruleta' },
-            { e: '🏆', n: 'Marcador', d: 'Quién ha organizado más', h: '/marcador' },
-            { e: '💬', n: 'Preguntas', d: 'Para conocernos', h: '/preguntas' },
-            { e: '⚖️', n: 'Qué prefieres', d: 'Voto a ciegas', h: '/que-prefieres' },
-            { e: '🔤', n: 'Bachillerato', d: 'A ver quién es más rápido', h: '/bachillerato' },
-            { e: '🗓️', n: 'Calendario', d: 'Ciclo y días importantes', h: '/calendario' },
-            { e: '💛', n: 'Perfiles', d: 'Quiénes somos', h: '/perfiles' },
-            { e: '⚙️', n: 'Administración', d: 'Contenido y datos', h: '/admin' },
-          ].map((t) => (
+          ATAJOS.map((t) => (
             <a
               href={`${base}${t.h}`}
               class="tarjeta group flex min-h-28 flex-col justify-between p-4 transition hover:border-acento hover:shadow-md active:scale-[0.98]"
@@ -117,11 +216,27 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   } from '../domain/presencia/presenciaService';
   import { formatearUltimaConexion, formatearCompleto, aISO } from '../domain/presencia/formatoFecha';
   import type { VistaPresencia } from '@shared/schemas/presencia.schema';
-  import { observarEvento, fijarFecha, cerrarEvento, type Evento } from '../domain/eventos/eventosService';
+  import {
+    observarEvento, fijarFecha, cancelarEvento, confirmarEvento, type Evento,
+  } from '../domain/eventos/eventosService';
+  import { observarPerfilConjunto } from '../domain/perfiles/perfilesService';
+  import { calcularTiempoJuntos, fechaLarga } from '../domain/perfiles/tiempoJuntos';
+  import { observarResumen, observarConfig, CONFIG_POR_DEFECTO, type ConfigCiclo } from '../domain/ciclo/cicloService';
+  import {
+    faseDe, calcularPromedios, iniciosDesdeDias, proximaMenstruacion, ETIQUETA_FASE,
+  } from '@shared/ciclo';
+  import { CLASE_FASE, EMOJI_FASE } from '../domain/ciclo/estiloFase';
+  import { montarBotonTema } from '../domain/tema/tema';
   import { otraPersona, ZONA_HORARIA, LOCALE, type Persona } from '@shared/enums';
   import { ruta, ENV } from '../config/env';
 
   const $ = (id: string) => document.getElementById(id)!;
+
+  // El botón del tema se monta ANTES del guardia de identidad: cambiar el tema
+  // no tiene nada que ver con estar vinculado, y dejarlo dentro del guardia lo
+  // haría inútil justo en la pantalla de espera.
+  const botonTema = document.getElementById('btn-tema');
+  if (botonTema) montarBotonTema(botonTema);
 
   /** Estado local de cada tarjeta, para poder repintar al cambiar nombre o presencia. */
   const tarjetas: Record<string, { nombre: string; vista: VistaPresencia }> = {
@@ -171,6 +286,11 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     timeZone: ZONA_HORARIA, weekday: 'long', day: 'numeric', month: 'long',
   });
 
+  /** "5 oct". El recuadro del ciclo es estrecho y la fecha larga se cortaba. */
+  const fmtCorta = new Intl.DateTimeFormat(LOCALE, {
+    timeZone: ZONA_HORARIA, day: 'numeric', month: 'short',
+  });
+
   /** Días que faltan, contando por día civil en Santiago (no por horas). */
   function diasHasta(iso: string): number {
     const hoy = new Intl.DateTimeFormat('en-CA', {
@@ -180,12 +300,38 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     return Math.round((ms(iso) - ms(hoy)) / 86_400_000);
   }
 
+  // ── Banner del evento ───────────────────────────────────────────────────
+
+  /**
+   * El banner ya no se esconde cuando no hay panorama: se queda con el hueco
+   * puesto. Un recuadro que aparece y desaparece hace que la página se mueva
+   * sola y que no quede claro si "no hay plan" o si algo no cargó.
+   */
   function pintarEvento() {
-    const banner = $('banner-evento');
-    banner.classList.toggle('hidden', !evento);
-    if (!evento) return;
+    const conEvento = evento !== null;
+
+    $('evento-controles').classList.toggle('hidden', !conEvento);
+    $('evento-girar').classList.toggle('hidden', conEvento);
+    $('evento-cabecera').className = conEvento
+      ? 'bg-acento-suave px-4 py-2.5'
+      : 'bg-superficie-alt px-4 py-2.5';
+    $('banner-titulo').className = conEvento
+      ? 'text-[11px] font-semibold tracking-wide text-acento uppercase'
+      : 'text-[11px] font-semibold tracking-wide text-tinta-tenue uppercase';
+
+    if (!evento) {
+      $('evento-nombre').textContent = 'A la espera de nuevo panorama';
+      $('evento-nombre').className = 'text-lg leading-snug font-semibold text-balance text-tinta-suave';
+      $('evento-organiza-etiqueta').textContent = 'Organizador:';
+      $('evento-organiza').textContent = 'por definir';
+      $('evento-cuando').textContent = 'Fecha: pendiente';
+      $('evento-cuando').className = 'mt-3 text-sm font-medium text-tinta-tenue';
+      return;
+    }
 
     $('evento-nombre').textContent = evento.nombre;
+    $('evento-nombre').className = 'text-lg leading-snug font-semibold text-balance text-tinta';
+    $('evento-organiza-etiqueta').textContent = 'Organiza';
     $('evento-organiza').textContent = nombres[evento.organizador];
 
     const input = $('evento-fecha') as HTMLInputElement;
@@ -193,7 +339,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     $('btn-quitar-fecha').classList.toggle('hidden', !evento.fecha);
 
     if (!evento.fecha) {
-      $('evento-cuando').textContent = 'Todavía sin fecha. Elige una abajo.';
+      $('evento-cuando').textContent = 'Fecha: pendiente. Elige una abajo.';
       $('evento-cuando').className = 'mt-3 text-sm font-medium text-tinta-tenue';
       return;
     }
@@ -217,6 +363,77 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     el.textContent = texto ?? '';
     el.classList.toggle('hidden', !texto);
   }
+
+  // ── Contador de tiempo juntos ───────────────────────────────────────────
+
+  let desdeCuando: string | null = null;
+
+  /**
+   * Permanente en el inicio, como pidieron. Mientras no haya fecha puesta
+   * enseña el enlace para ponerla en vez de un recuadro vacío que no dice
+   * ni qué falta ni dónde se arregla.
+   */
+  function pintarJuntos() {
+    const t = desdeCuando ? calcularTiempoJuntos(desdeCuando) : null;
+
+    $('juntos-configurar').classList.toggle('hidden', t !== null);
+    $('juntos-aniversario').classList.toggle('hidden', t === null);
+
+    if (!t || !desdeCuando) {
+      $('juntos-texto').textContent = 'Todavía sin fecha';
+      $('juntos-detalle').textContent = '';
+      return;
+    }
+
+    $('juntos-texto').textContent = t.texto;
+    $('juntos-detalle').textContent =
+      `${t.totalDias.toLocaleString('es-CL')} días desde el ${fechaLarga(desdeCuando)}`;
+    $('juntos-aniversario').textContent =
+      t.paraAniversario === 0 ? '🎉 ¡Hoy es el aniversario!'
+      : t.paraAniversario === 1 ? 'Mañana es el aniversario'
+      : `Faltan ${t.paraAniversario} días para el aniversario`;
+  }
+
+  // ── Fase del ciclo ──────────────────────────────────────────────────────
+
+  let menstruaciones: string[] = [];
+  let configCiclo: ConfigCiclo = { ...CONFIG_POR_DEFECTO };
+
+  /**
+   * El mismo cálculo que el calendario, con los mismos datos: el inicio no
+   * guarda ni deduce nada por su cuenta. Si algún día cambiara la fórmula,
+   * cambia en `shared/ciclo.ts` y las dos pantallas se enteran a la vez.
+   */
+  function pintarCiclo() {
+    const hoy = new Intl.DateTimeFormat('en-CA', {
+      timeZone: ZONA_HORARIA, year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(Date.now());
+
+    const inicios = iniciosDesdeDias(menstruaciones);
+    const p = calcularPromedios(inicios, configCiclo.duracionRegla);
+    const info = faseDe(hoy, inicios, p, new Set(menstruaciones));
+
+    const chip = $('ciclo-chip');
+    chip.className = `${CLASE_FASE[info.fase]} shrink-0 rounded-lg px-2.5 py-2 text-lg leading-none`;
+    chip.textContent = EMOJI_FASE[info.fase];
+
+    if (info.fase === 'desconocida') {
+      $('ciclo-fase').textContent = 'Sin datos todavía';
+      $('ciclo-detalle').textContent = 'Marca los días de regla en el calendario.';
+      return;
+    }
+
+    $('ciclo-fase').textContent =
+      ETIQUETA_FASE[info.fase] + (info.diaDelCiclo ? ` · día ${info.diaDelCiclo}` : '');
+
+    const proxima = proximaMenstruacion(inicios, p);
+    const trozos: string[] = [];
+    if (info.fertil) trozos.push('día fértil estimado');
+    if (proxima) trozos.push(`próxima regla ~${fmtCorta.format(Date.parse(`${proxima}T12:00:00Z`))}`);
+    $('ciclo-detalle').textContent = trozos.join(' · ');
+  }
+
+  // ── Arranque ────────────────────────────────────────────────────────────
 
   iniciarIdentidad();
 
@@ -243,6 +460,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
     tarjetas.yo!.nombre = s.nombre;
 
+    pintarEvento();
+    pintarJuntos();
+    pintarCiclo();
+
     // 1 · Anunciarse presente y programar la despedida EN EL SERVIDOR.
     //     No hace falta guardar el control: el propio servicio se da de baja
     //     en 'pagehide', y onDisconnect cubre el resto.
@@ -264,8 +485,19 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       pintarEvento();
     });
 
-    // 4 · El evento en curso: banner fijo mientras haya un panorama pendiente.
+    // 4 · El evento en curso. El banner se queda puesto aunque no haya ninguno.
     observarEvento(parejaId, (e) => { evento = e; pintarEvento(); });
+
+    // 5 · Fechas memorables → contador permanente.
+    observarPerfilConjunto(parejaId, (c) => {
+      desdeCuando = c.fechaInicioSalidas ?? c.fechaNoviazgo;
+      pintarJuntos();
+    });
+
+    // 6 · Ciclo. Dos documentos, una lectura cada uno: el resumen con los días
+    //     marcados y la configuración. Lo demás se calcula aquí mismo.
+    observarResumen(parejaId, (m) => { menstruaciones = m; pintarCiclo(); });
+    observarConfig(parejaId, (c) => { configCiclo = c; pintarCiclo(); });
 
     ($('evento-fecha') as HTMLInputElement).addEventListener('change', async (ev) => {
       errorEvento(null);
@@ -282,9 +514,51 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       await fijarFecha(parejaId, null).catch(() => errorEvento('No se pudo quitar la fecha.'));
     });
 
-    $('btn-cerrar-evento').addEventListener('click', async () => {
+    $('btn-evento-realizado').addEventListener('click', async () => {
+      const b = $('btn-evento-realizado') as HTMLButtonElement;
+      if (!evento) return;
       errorEvento(null);
-      await cerrarEvento(parejaId).catch(() => errorEvento('No se pudo cerrar el evento.'));
+      b.disabled = true;
+      try {
+        await confirmarEvento(parejaId, evento);
+      } catch {
+        errorEvento('No se pudo cerrar el evento. Revisa tu conexión.');
+      } finally {
+        b.disabled = false;
+      }
+    });
+
+    /**
+     * Cancelar pide confirmación; "realizado" no.
+     *
+     * No es simetría por gusto: confirmar AÑADE una línea al historial y se
+     * puede rehacer, mientras que cancelar borra el panorama sorteado sin
+     * dejar rastro, y recuperarlo obliga a volver a girar la ruleta.
+     */
+    $('btn-evento-cancelar').addEventListener('click', async () => {
+      const b = $('btn-evento-cancelar') as HTMLButtonElement;
+      if (!evento) return;
+      errorEvento(null);
+
+      if (b.dataset.armado !== 'si') {
+        b.dataset.armado = 'si';
+        b.textContent = '¿Seguro? Pulsa otra vez';
+        setTimeout(() => {
+          b.dataset.armado = '';
+          b.textContent = '✖️ Cancelar evento';
+        }, 4000);
+        return;
+      }
+      b.dataset.armado = '';
+      b.textContent = '✖️ Cancelar evento';
+      b.disabled = true;
+      try {
+        await cancelarEvento(parejaId);
+      } catch {
+        errorEvento('No se pudo cancelar. Revisa tu conexión.');
+      } finally {
+        b.disabled = false;
+      }
     });
   });
 

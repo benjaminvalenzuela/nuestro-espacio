@@ -21,11 +21,23 @@
     --tinta-suave:    #7a6a66;
     --tinta-tenue:    #a89791;
 
-    --acento:         #c4586b;   /* rosa terracota — acción principal */
-    --acento-fuerte:  #a63f52;
+    /*
+       Los dos colores de estado se usan casi siempre como TEXTO —"En línea",
+       "Ya la hicieron", las etiquetas del banner— sobre blanco o sobre su
+       propio tinte claro. Con los tonos originales eso daba entre 3,1:1 y
+       3,7:1, por debajo del 4,5:1 que pide WCAG AA para texto normal: legible
+       con buena luz, y borroso con el teléfono al sol.
+
+       Están oscurecidos lo justo para pasar de 4,6:1 en el peor par
+       (texto sobre su tinte) sin cambiar el color que uno reconoce. En tema
+       oscuro no hacía falta tocar nada: ahí ya son tintes claros sobre fondo
+       oscuro y rondan 5,3:1 y 6:1.
+    */
+    --acento:         #b0475c;   /* rosa terracota — acción principal */
+    --acento-fuerte:  #92364a;
     --acento-suave:   #fbe9ec;
 
-    --salvia:         #6f8f74;   /* verde salvia — estado positivo/conectado */
+    --salvia:         #4f7256;   /* verde salvia — estado positivo/conectado */
     --salvia-suave:   #e6f0e7;
 
     --ambar:          #c98a2e;   /* avisos */
@@ -38,6 +50,71 @@
     --rueda-3: #dee7dc;
     --rueda-4: #f2e6cf;
     --rueda-texto: #4a3a3c;
+
+
+    /* ── Botones de color ────────────────────────────────────────────────
+       Blanco sobre el rosa del acento da 4,3:1, por debajo del 4,5:1 que pide
+       WCAG AA, y en modo oscuro —donde el acento se aclara para verse sobre el
+       fondo— cae a 2,7:1: texto blanco sobre rosa claro, ilegible. Y eso
+       afectaba a TODOS los botones principales de la app, no a un rincón.
+
+       De ahí este par: el relleno se oscurece en tema claro y el texto se
+       oscurece en tema oscuro. Los dos casos superan 5:1. */
+    --boton-acento-fondo: #b4485c;
+    --boton-acento-hover: #98354a;
+    --sobre-acento:       #ffffff;
+    --boton-ok-fondo:     #5c7a61;
+    --boton-ok-hover:     #4b6650;
+    --sobre-ok:           #ffffff;
+
+    /* ── Fases del ciclo ──────────────────────────────────────────────────
+       Fondo muy tenue y color saturado solo para el número del día y el punto
+       indicador. Cada fase es un PAR: nunca se pinta el fondo de una con el
+       texto de otra, porque el par es lo que está medido.
+
+       Contraste de cada par en este tema, los cuatro por encima del 4,5:1 que
+       pide WCAG AA:
+
+         menstruación  4,80:1
+         folicular     4,63:1
+         ovulación     6,37:1
+         lútea         5,92:1
+
+       El rojo y el ámbar están un paso más oscuros que el resto de la escala
+       (#d93838 y #d97706 daban 3,99:1 y 2,89:1). El de ovulación era el grave:
+       a 2,89:1 no llegaba ni al mínimo de texto grande, y un número ámbar
+       sobre crema se pierde en un teléfono al sol. Mismo tono, un peldaño
+       menos de luminosidad.
+
+       En tema oscuro no hizo falta tocar nada: allí los cuatro pares van de
+       7,5:1 a 10,1:1. contraste.test.ts los mide en los dos temas. */
+    --ciclo-menstruacion-fondo: #fce8e8;
+    --ciclo-menstruacion-tinta: #c62828;
+    --ciclo-folicular-fondo:    #e0f2f1;
+    --ciclo-folicular-tinta:    #00796b;
+    --ciclo-ovulacion-fondo:    #fef3c7;
+    --ciclo-ovulacion-tinta:    #92400e;
+    --ciclo-lutea-fondo:        #f3e8ff;
+    --ciclo-lutea-tinta:        #7e22ce;
+
+    /* Los días fértiles comparten color con la fase folicular: son la misma
+       información vista de dos maneras, y darles un quinto tono obligaría a
+       distinguir cinco colores en celdas de 44 píxeles. */
+    --ciclo-fertil:             #00796b;
+
+    /* Hoy, el día elegido y el punto de síntomas NO llevan color de fase:
+       usan el fondo de la pantalla invertido. Así marcan sin competir con la
+       paleta del ciclo y se ven igual encima de cualquiera de las cuatro
+       fases, que es precisamente lo que un color temático no garantiza. */
+    --ciclo-neutro:             #191416;
+    --ciclo-sobre-neutro:       #fdf8f4;
+
+    /* Diámetro del círculo del día actual. Es un token porque lo usan DOS
+       utilidades: el propio círculo y la fila de marcas, que se coloca justo
+       debajo de él. Con el número repetido en los dos sitios, cambiar el
+       tamaño del círculo dejaría las marcas descolocadas y nadie ataría una
+       cosa con la otra. No depende del tema, así que se define una sola vez. */
+    --dia-circulo:              1.625rem;
 
     --sombra: 0 1px 2px rgb(46 36 38 / 0.04), 0 8px 24px -8px rgb(46 36 38 / 0.10);
     --radio: 1rem;
@@ -81,6 +158,23 @@
     --rueda-3: #2f4238;
     --rueda-4: #4a3d2a;
     --rueda-texto: #f0e4e0;
+    --ciclo-menstruacion-fondo: #3a1c20;
+    --ciclo-menstruacion-tinta: #f4a3a8;
+    --ciclo-folicular-fondo:    #16302e;
+    --ciclo-folicular-tinta:    #80cbc4;
+    --ciclo-ovulacion-fondo:    #422006;
+    --ciclo-ovulacion-tinta:    #fcd34d;
+    --ciclo-lutea-fondo:        #2e1065;
+    --ciclo-lutea-tinta:        #d8b4fe;
+    --ciclo-fertil:             #80cbc4;
+    --ciclo-neutro:             #fdf8f4;
+    --ciclo-sobre-neutro:       #191416;
+    --boton-acento-fondo: #e08195;
+    --boton-acento-hover: #f0a0b1;
+    --sobre-acento:       #2a1216;
+    --boton-ok-fondo:     #8fb695;
+    --boton-ok-hover:     #a6c9ab;
+    --sobre-ok:           #16251a;
     --sombra: 0 1px 2px rgb(0 0 0 / 0.30), 0 8px 24px -8px rgb(0 0 0 / 0.50);
   }
 
@@ -106,6 +200,23 @@
     --rueda-3: #2f4238;
     --rueda-4: #4a3d2a;
     --rueda-texto: #f0e4e0;
+    --ciclo-menstruacion-fondo: #3a1c20;
+    --ciclo-menstruacion-tinta: #f4a3a8;
+    --ciclo-folicular-fondo:    #16302e;
+    --ciclo-folicular-tinta:    #80cbc4;
+    --ciclo-ovulacion-fondo:    #422006;
+    --ciclo-ovulacion-tinta:    #fcd34d;
+    --ciclo-lutea-fondo:        #2e1065;
+    --ciclo-lutea-tinta:        #d8b4fe;
+    --ciclo-fertil:             #80cbc4;
+    --ciclo-neutro:             #fdf8f4;
+    --ciclo-sobre-neutro:       #191416;
+    --boton-acento-fondo: #e08195;
+    --boton-acento-hover: #f0a0b1;
+    --sobre-acento:       #2a1216;
+    --boton-ok-fondo:     #8fb695;
+    --boton-ok-hover:     #a6c9ab;
+    --sobre-ok:           #16251a;
     --sombra: 0 1px 2px rgb(0 0 0 / 0.30), 0 8px 24px -8px rgb(0 0 0 / 0.50);
     }
   }
@@ -213,4 +324,168 @@
 }
 @utility destello {
   animation: destello 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+/* ── Fases del ciclo ─────────────────────────────────────────────────────
+
+   Utilidades y no clases sueltas por página: la LEYENDA y las CELDAS del
+   calendario usan exactamente las mismas, así que es imposible que el cuadrito
+   de la leyenda y el día que representa acaben de distinto color. Ese desajuste
+   es el fallo clásico de las leyendas, y aquí no puede ocurrir. */
+
+@utility fase-menstruacion {
+  background-color: var(--ciclo-menstruacion-fondo);
+  color: var(--ciclo-menstruacion-tinta);
+}
+@utility fase-folicular {
+  background-color: var(--ciclo-folicular-fondo);
+  color: var(--ciclo-folicular-tinta);
+}
+@utility fase-ovulacion {
+  background-color: var(--ciclo-ovulacion-fondo);
+  color: var(--ciclo-ovulacion-tinta);
+}
+@utility fase-lutea {
+  background-color: var(--ciclo-lutea-fondo);
+  color: var(--ciclo-lutea-tinta);
+}
+@utility fase-desconocida {
+  background-color: var(--superficie-alt);
+  color: var(--tinta-tenue);
+}
+
+/* ── Indicadores de la celda ──────────────────────────────────────────────
+
+   Cuatro marcas pueden caer sobre el MISMO día: fase, ventana fértil, hoy y
+   seleccionado. Cada una usa una propiedad distinta a propósito, para que
+   ninguna tape a otra:
+
+     fase          →  background-color de la celda
+     fértil        →  box-shadow interior (aro por dentro)
+     hoy           →  círculo sólido alrededor del número, dentro de la celda
+     seleccionado  →  outline exterior
+
+   Si dos usaran `outline`, ganaría la que Tailwind definiera después y la
+   otra desaparecería sin ningún aviso. */
+
+/* VENTANA FÉRTIL. Un aro por dentro, no un relleno: se superpone a la fase
+   sin taparla, que es exactamente lo que es —una estimación encima del ciclo,
+   no una quinta fase—. */
+@utility dia-fertil {
+  box-shadow: inset 0 0 0 2px var(--ciclo-fertil);
+}
+
+/* HOY. Círculo sólido con el fondo de la pantalla invertido, alrededor del
+   NÚMERO y no de la celda entera. Pintar la celda completa borraría el color
+   de la fase justo en el único día que se mira siempre.
+
+   1,625rem = 26 px, y la celda es 1:1,2 en vez de cuadrada. Las dos medidas
+   están atadas: en la celda más estrecha de la rejilla —44,5 px en un
+   teléfono de 375 px— un cuadrado deja solo 9,25 px bajo el círculo, y la
+   fila de marcas necesita 9 px más 4 de aire. Con 1:1,2 el hueco sube a
+   13,7 px y sobran 0,7. La alternativa era encoger el círculo a 22 px, que
+   se veía peor. Si alguien vuelve a poner la celda cuadrada, el corazón se
+   montará sobre el círculo en los teléfonos pequeños, y solo ahí.
+
+   `line-height: 1` para que el renglón mida lo que el dígito y el centrado
+   del flex sea exacto. Medido: el dígito queda a 0,01 px del centro
+   horizontal y a 0,5 px por debajo del vertical —ese medio píxel es la
+   asimetría entre el ascendente de la fuente y la altura de las mayúsculas,
+   y no hay forma de corregirlo en CSS sin clavar métricas de una fuente
+   concreta, que fallarían en el iPhone, donde se usa otra. */
+@utility numero-hoy {
+  /* El tamaño es una variable para que la leyenda pueda usar un círculo más
+     pequeño SIN duplicar el resto. Si el círculo del calendario cambia de
+     forma o de color, el de la leyenda cambia con él: es la misma clase. */
+  --numero-hoy-tamano: var(--dia-circulo);
+  background-color: var(--ciclo-neutro);
+  color: var(--ciclo-sobre-neutro);
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--numero-hoy-tamano);
+  height: var(--numero-hoy-tamano);
+  line-height: 1;
+  font-weight: 700;
+  /* Los números de dos cifras no deben deformar el círculo. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* FILA DE MARCAS. Va posicionada en absoluto, y esa es la corrección:
+   estando en el flujo, sus 9 px empujaban el número —y con él el círculo de
+   hoy— unos 5 px hacia arriba dentro de la celda. Se notaba justo en el día
+   actual, que es el único con un borde visible con el que comparar.
+
+   En absoluto no ocupa espacio, así que el número queda centrado de verdad
+   en la celda, y la fila sigue existiendo siempre —vacía o no— para que
+   nada salte al anotar un síntoma. */
+@utility fila-marcas {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  pointer-events: none;
+
+  /*
+    Ancladas al NÚMERO, no al borde inferior de la celda: 3 px por debajo de
+    donde acaba el círculo del día actual, contando desde el centro.
+
+    Con `bottom: 0` estaban atadas al canto, y como la celda crece con la
+    pantalla, en un monitor de 1280 px la celda mide 88 px y el corazón se
+    quedaba a 27 px del número: dos cosas sueltas en vez de una anotación
+    sobre ese día. Así la distancia es la misma en un teléfono y en un
+    monitor, y además no pueden solaparse nunca con el círculo.
+  */
+  top: calc(50% + (var(--dia-circulo) / 2) + 3px);
+}
+
+/* SELECCIONADO. Solo un aro exterior de 2 px: no rellena nada, para que la
+   fase y el círculo de hoy sigan viéndose debajo. */
+@utility dia-elegido {
+  outline: 2px solid var(--ciclo-neutro);
+  outline-offset: 1px;
+}
+
+/* PUNTO DE SÍNTOMAS. Neutro y no del color de la fase: sobre el fondo tenue
+   de cualquiera de las cuatro tiene contraste de sobra, y del color de la
+   fase se confundiría con el propio número. */
+@utility punto-sintoma {
+  background-color: var(--ciclo-neutro);
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 9999px;
+}
+
+/* RELACIONES. El emoji trae su propio color; aquí solo hay que impedir que
+   desborde la celda. El tamaño va en `rem` y no en píxeles para que
+   acompañe al zoom del navegador, y `line-height: 1` evita que el interlineado
+   del emoji empuje la fila de marcas fuera del borde. */
+@utility marca-relacion {
+  font-size: 0.5625rem;   /* 9 px: la altura exacta de la fila de marcas */
+  line-height: 1;
+  display: inline-block;
+}
+
+/* ── Botones de color ────────────────────────────────────────────────────
+
+   Utilidades y no clases sueltas por página, porque el fallo que arreglan era
+   exactamente ese: nueve botones repartidos por la app escribían a mano
+   `bg-acento text-white`, y arreglar el contraste de uno no arreglaba los
+   otros ocho. Ahora el color del texto va atado al del relleno. */
+
+@utility boton-principal {
+  background-color: var(--boton-acento-fondo);
+  color: var(--sobre-acento);
+  &:hover { background-color: var(--boton-acento-hover); }
+}
+
+@utility boton-ok {
+  background-color: var(--boton-ok-fondo);
+  color: var(--sobre-ok);
+  &:hover { background-color: var(--boton-ok-hover); }
 }

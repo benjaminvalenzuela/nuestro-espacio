@@ -154,6 +154,23 @@ service cloud.firestore {
       return v is string && v.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}');
     }
 
+    /**
+     * Fecha que puede estar vacía.
+     *
+     * Existe por un fallo real: las dos fechas del perfil conjunto —cuándo
+     * empezaron a salir y cuándo se pusieron de novios— no se rellenan a la
+     * vez. Se pone una y la otra llega meses después.
+     *
+     * El cliente manda el documento completo, así que la que falta viaja como
+     * `null`. Con `!tiene(campo) || fechaISO(campo)` eso se rechazaba: el
+     * campo SÍ está presente, luego `tiene()` da verdadero, pero `null` no es
+     * un string y la comprobación fallaba. La escritura entera se caía y en
+     * pantalla salía "no se pudo guardar la fecha", sin decir cuál ni por qué.
+     */
+    function fechaISOoVacia(v) {
+      return v == null || fechaISO(v);
+    }
+
     // El timestamp lo pone el SERVIDOR: un reloj de cliente manipulado no puede
     // falsear la "última vez" ni alterar el orden del historial.
     function tsServidor(campo) {
@@ -302,7 +319,7 @@ service cloud.firestore {
                          'gustos', 'alimentosPreferidos'])
           && exigeCampos(['nombre', 'actualizadoEn'])
           && texto(request.resource.data.nombre, 1, 40)
-          && (!tiene('fechaNacimiento') || fechaISO(request.resource.data.fechaNacimiento))
+          && (!tiene('fechaNacimiento') || fechaISOoVacia(request.resource.data.fechaNacimiento))
           && listasDePerfilValidas()
           && tsServidor('actualizadoEn');
 
@@ -317,8 +334,8 @@ service cloud.firestore {
           && docId == 'singleton'
           && soloCampos(['fechaInicioSalidas', 'fechaNoviazgo', 'hitos',
                          'interesesComunes', 'actualizadoEn', 'actualizadoPor'])
-          && (!tiene('fechaInicioSalidas') || fechaISO(request.resource.data.fechaInicioSalidas))
-          && (!tiene('fechaNoviazgo') || fechaISO(request.resource.data.fechaNoviazgo))
+          && (!tiene('fechaInicioSalidas') || fechaISOoVacia(request.resource.data.fechaInicioSalidas))
+          && (!tiene('fechaNoviazgo') || fechaISOoVacia(request.resource.data.fechaNoviazgo))
           && (!tiene('hitos') || lista(request.resource.data.hitos, 100))
           && tsServidor('actualizadoEn')
           && request.resource.data.actualizadoPor == miPersona(parejaId);
@@ -436,8 +453,7 @@ service cloud.firestore {
           && exigeCampos(['panoramaId', 'nombre', 'organizador', 'creadoEn', 'actualizadoEn'])
           && texto(request.resource.data.nombre, 1, 80)
           && esPersonaValida(request.resource.data.organizador)
-          && (request.resource.data.fecha == null
-              || fechaISO(request.resource.data.fecha))
+          && fechaISOoVacia(request.resource.data.fecha)
           && tsServidor('creadoEn')
           && tsServidor('actualizadoEn');
 
@@ -447,8 +463,7 @@ service cloud.firestore {
              //     organizador se pueden reescribir a mano — para cambiarlos
              //     hay que volver a girar, que es lo que hace justo el sorteo.
              (cambios().hasOnly(['fecha', 'actualizadoEn'])
-              && (request.resource.data.fecha == null
-                  || fechaISO(request.resource.data.fecha))
+              && fechaISOoVacia(request.resource.data.fecha)
               && tsServidor('actualizadoEn'))
           ||
              // (b) UN GIRO NUEVO reemplaza el evento entero. Se exige que sea

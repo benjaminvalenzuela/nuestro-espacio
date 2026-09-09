@@ -64,7 +64,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
     <p id="error-agregar" role="alert" class="mb-3 hidden rounded-xl border border-peligro/30 bg-peligro/5 px-4 py-2.5 text-sm text-peligro"></p>
 
-    <ul id="lista" class="flex flex-col gap-2"></ul>
+    <ul id="lista" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"></ul>
 
     <p id="lista-vacia" class="hidden rounded-xl border border-dashed border-borde px-4 py-8 text-center text-sm text-tinta-tenue">
       Todavía no hay planes.<br />Agrega el primero arriba.
@@ -79,7 +79,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   import { anguloFinal } from '../domain/ruleta/animacionGiro';
   import { reclamarGiro, observarGiro, cerrarGiro, ganadorDe } from '../domain/ruleta/ruletaService';
   import {
-    observarPanoramas, agregarPanorama, archivarPanorama, registrarRealizado,
+    observarPanoramas, agregarPanorama, archivarPanorama,
     ErrorPanorama, type Panorama,
   } from '../domain/panoramas/panoramasService';
   import { observarNombre } from '../domain/presencia/presenciaService';
@@ -221,10 +221,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     const meToca = await cerrarGiro(parejaId, 'panoramas', giro.id).catch(() => false);
     if (!meToca) return;
 
-    if (ganadorPanorama) {
-      void registrarRealizado(parejaId, ganadorPanorama, giro.id, null)
-        .catch((e) => console.warn('[ruleta] no se pudo registrar el panorama:', e?.message));
-    }
+    // AQUÍ NO SE ANOTA NADA. Que la ruleta pare en un panorama no significa
+    // que lo hayan hecho: significa que les tocó. Lo que cuenta como realizado
+    // lo confirman en el banner del inicio con "Ya lo hicimos", y hasta
+    // entonces el contador de la lista no se mueve.
 
     // Pausa breve para que se lea el resultado antes de que arranque la segunda.
     await new Promise((r) => setTimeout(r, 900));

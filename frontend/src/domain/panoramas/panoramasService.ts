@@ -124,12 +124,21 @@ export async function archivarPanorama(parejaId: string, panoramaId: string): Pr
 }
 
 /**
- * Registra que un panorama salió sorteado.
+ * Registra que un panorama SE HIZO. Lo llama la confirmación del banner, no la
+ * ruleta: que el sorteo pare en un plan no significa que hayan salido de casa.
+ *
+ * El orden importa. Primero el historial, después el contador: si se corta la
+ * conexión en medio, queda constancia de la salida aunque el número no suba.
+ * Al revés se perdería el registro, que es lo único irrecuperable.
  *
  * increment(1) es una operación ATÓMICA del servidor, no un leer-modificar-
  * escribir: aunque llegaran dos escrituras a la vez, ninguna pisa a la otra.
  * Y las reglas solo aceptan exactamente +1, así que el marcador no se puede
  * inflar ni desde un cliente manipulado.
+ *
+ * El contador tolera fallar. Si el panorama se archivó desde el panel, su
+ * documento ya no acepta la escritura, y eso no puede impedir que se cierre un
+ * evento que ocurrió de verdad.
  */
 export async function registrarRealizado(
   parejaId: string,
@@ -139,16 +148,17 @@ export async function registrarRealizado(
 ): Promise<void> {
   const db = obtenerFirestore();
 
-  await updateDoc(doc(db, FS.panorama(parejaId, panorama.id)), {
-    vecesRealizado: increment(1),
-    ultimaVezEn: serverTimestamp(),
-  });
-
   await addDoc(collection(db, FS.historialPanoramas(parejaId)), {
     panoramaId: panorama.id,
     nombreSnapshot: panorama.nombre,
     giroId,
+    confirmado: true,
     ocurridoEn: serverTimestamp(),
     ...(organizador ? { organizador } : {}),
   });
+
+  await updateDoc(doc(db, FS.panorama(parejaId, panorama.id)), {
+    vecesRealizado: increment(1),
+    ultimaVezEn: serverTimestamp(),
+  }).catch((e) => console.warn('[panoramas] contador no actualizado:', e?.message));
 }

@@ -268,3 +268,95 @@ export function iniciosDesdeDias(diasMarcados: string[]): string[] {
   }
   return inicios;
 }
+
+// ── Explicación de las fases, en lenguaje llano ─────────────────────────────
+
+/**
+ * Qué es cada fase, contado como se lo contarías a alguien, no como lo cuenta
+ * un prospecto.
+ *
+ * Vive aquí y no dentro del HTML del calendario por dos razones. La primera es
+ * que un texto sobre salud debe poder revisarse en un solo sitio: si mañana hay
+ * que matizar algo, se matiza una vez. La segunda es que los tests pueden
+ * comprobar que ninguna fase se quedó sin explicar el día que se añada una.
+ *
+ * `sintomas` y `animo` son lo que SUELE pasar, no lo que tiene que pasar. Hay
+ * quien no nota ninguna de estas cosas y está perfectamente sana, y hay quien
+ * las nota todas. Por eso la pantalla lo dice con todas las letras en vez de
+ * dejarlo implícito.
+ */
+export interface ExplicacionFase {
+  fase: Exclude<Fase, 'desconocida'>;
+  emoji: string;
+  titulo: string;
+  cuando: string;
+  queEs: string;
+  sintomas: string[];
+  animo: string[];
+  consejo: string;
+}
+
+export const EXPLICACION_FASES: ExplicacionFase[] = [
+  {
+    fase: 'menstruacion',
+    emoji: '🩸',
+    titulo: 'Menstruación',
+    cuando: 'Del día 1 al 5 aproximadamente. El día 1 es el primer día de sangrado.',
+    queEs:
+      'El útero suelta el revestimiento que había preparado por si había embarazo. ' +
+      'Como no lo hubo, lo desecha y empieza un ciclo nuevo. Las hormonas están en su ' +
+      'punto más bajo de todo el mes, y eso se nota en el cuerpo y en el ánimo.',
+    sintomas: ['Cólicos', 'Dolor de espalda o de cabeza', 'Cansancio', 'Hinchazón', 'Antojos'],
+    animo: ['Con menos energía', 'Más sensible', 'Con ganas de que la dejen tranquila'],
+    consejo:
+      'Calor en la barriga, dormir lo que pida el cuerpo y cero culpa por bajar el ritmo. ' +
+      'Si el dolor impide hacer vida normal, eso no es "normal": se consulta.',
+  },
+  {
+    fase: 'folicular',
+    emoji: '🌱',
+    titulo: 'Fase folicular',
+    cuando: 'Desde que termina la regla hasta la ovulación. Suele ser la mitad más larga.',
+    queEs:
+      'El cuerpo prepara el óvulo del mes y el estrógeno va subiendo poco a poco. ' +
+      'Para mucha gente es la mejor parte del ciclo: la energía vuelve, la cabeza está ' +
+      'despejada y el cuerpo responde mejor.',
+    sintomas: ['Casi nada', 'Más energía física', 'Piel mejor'],
+    animo: ['Optimista', 'Con ganas de hacer cosas', 'Sociable'],
+    consejo:
+      'Buen momento para lo que exija cabeza o cuerpo: entrenar fuerte, planes grandes, ' +
+      'esa conversación que llevaba tiempo pendiente.',
+  },
+  {
+    fase: 'ovulacion',
+    emoji: '🥚',
+    titulo: 'Ovulación',
+    cuando: 'Unos 14 días ANTES de la próxima regla, no 14 días después de la última.',
+    queEs:
+      'El ovario suelta el óvulo. Dura muy poco —el óvulo vive alrededor de un día— pero ' +
+      'la ventana fértil es más ancha, porque los espermatozoides aguantan hasta cinco ' +
+      'días esperando. Por eso el calendario marca varios días y no uno.',
+    sintomas: ['Flujo más elástico y transparente', 'Pinchazo leve en un costado', 'Pechos sensibles'],
+    animo: ['Con más ganas', 'Más segura', 'Más habladora'],
+    consejo:
+      'Es el momento de mayor probabilidad de embarazo del ciclo. Si no lo buscan, ' +
+      'protección; y recuerden que la fecha exacta se mueve, así que el calendario ' +
+      'no sirve como anticonceptivo.',
+  },
+  {
+    fase: 'lutea',
+    emoji: '🌘',
+    titulo: 'Fase lútea',
+    cuando: 'Desde la ovulación hasta que llega la regla. Dura unos 14 días, bastante fijos.',
+    queEs:
+      'Sube la progesterona y el cuerpo prepara el terreno por si hubo embarazo. Si no lo ' +
+      'hubo, en los últimos días cae en picado, y esa caída es la que provoca lo que ' +
+      'todo el mundo llama síndrome premenstrual.',
+    sintomas: ['Hinchazón', 'Pechos sensibles', 'Antojos de dulce o sal', 'Acné', 'Sueño raro'],
+    animo: ['Más irritable', 'Ansiosa o triste sin motivo claro', 'Menos paciencia'],
+    consejo:
+      'Lo de "no es nada, son las hormonas" no ayuda: sí es algo, y es real. ' +
+      'Sirve más bajar las exigencias de la semana y no dejar las discusiones ' +
+      'importantes justo para estos días.',
+  },
+];

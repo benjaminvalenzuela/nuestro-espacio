@@ -36,10 +36,13 @@ import AppLayout from '../layouts/AppLayout.astro';
       </div>
     </div>
 
-    <div id="yo-listas" class="flex flex-col gap-4"></div>
+    {/* Una columna en teléfono, dos o tres en monitor. Son bloques cortos e
+        independientes entre sí: apilarlos en una tira de 28rem obliga a
+        recorrer media pantalla para ver seis cosas que caben de un vistazo. */}
+    <div id="yo-listas" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
 
     <button id="yo-guardar" type="button"
-      class="rounded-xl bg-acento px-4 py-3.5 font-medium text-white transition hover:bg-acento-fuerte active:scale-[0.98] disabled:opacity-50">
+      class="rounded-xl boton-principal px-4 py-3.5 font-medium transition active:scale-[0.98] disabled:opacity-50">
       <span id="yo-guardar-texto">Guardar mi perfil</span>
     </button>
     <p id="yo-error" role="alert" class="hidden rounded-xl border border-peligro/30 bg-peligro/5 px-4 py-2.5 text-sm text-peligro"></p>
@@ -51,14 +54,14 @@ import AppLayout from '../layouts/AppLayout.astro';
       <p id="pareja-nombre" class="text-xl font-semibold text-tinta">…</p>
       <p id="pareja-nacimiento" class="mt-1 text-sm text-tinta-suave"></p>
     </div>
-    <div id="pareja-listas" class="flex flex-col gap-4"></div>
+    <div id="pareja-listas" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
     <p class="text-center text-xs text-tinta-tenue">
       Solo tu pareja puede editar esto. Las reglas del servidor lo impiden, no la app.
     </p>
   </section>
 
   {/* ── NOSOTROS ─────────────────────────────────────────────────────── */}
-  <section id="panel-nosotros" role="tabpanel" class="hidden flex-col gap-4">
+  <section id="panel-nosotros" role="tabpanel" class="hidden flex-col gap-4 sm:mx-auto sm:max-w-2xl">
     <div id="contador" class="tarjeta hidden px-5 py-6 text-center">
       <p class="text-[11px] font-medium tracking-wide text-acento uppercase">Llevamos juntos</p>
       <p id="contador-texto" class="mt-2 text-2xl leading-tight font-semibold text-balance text-tinta"></p>
@@ -107,7 +110,7 @@ import AppLayout from '../layouts/AppLayout.astro';
     </div>
 
     <button id="nosotros-guardar" type="button"
-      class="rounded-xl bg-acento px-4 py-3.5 font-medium text-white transition hover:bg-acento-fuerte active:scale-[0.98] disabled:opacity-50">
+      class="rounded-xl boton-principal px-4 py-3.5 font-medium transition active:scale-[0.98] disabled:opacity-50">
       <span id="nosotros-guardar-texto">Guardar</span>
     </button>
     <p id="nosotros-error" role="alert" class="hidden rounded-xl border border-peligro/30 bg-peligro/5 px-4 py-2.5 text-sm text-peligro"></p>
@@ -197,8 +200,12 @@ import AppLayout from '../layouts/AppLayout.astro';
 
   function encabezado(emoji: string, titulo: string): HTMLElement {
     const h = document.createElement('h3');
+    // `col-span-full` es lo que hace que el título de sección ocupe la fila
+    // entera en vez de comerse una de las columnas del monitor. Sin él, las
+    // tarjetas se colocan alrededor del título y los grupos dejan de leerse
+    // como grupos.
     h.className =
-      'mt-5 mb-1 flex items-center gap-2 text-xs font-semibold tracking-wide text-tinta-tenue uppercase first:mt-0';
+      'col-span-full mt-5 mb-1 flex items-center gap-2 text-xs font-semibold tracking-wide text-tinta-tenue uppercase first:mt-0';
     const e = document.createElement('span');
     e.setAttribute('aria-hidden', 'true');
     e.textContent = emoji;

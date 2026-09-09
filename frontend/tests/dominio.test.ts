@@ -12,8 +12,10 @@ import { normalizarNombre } from '@shared/panoramas';
 import { signoDe, signoLegible, edadDe } from '@shared/zodiaco';
 import {
   faseDe, calcularPromedios, iniciosDesdeDias, proximaMenstruacion,
-  rejillaMes, sumarDias, diasEntre, CICLO_POR_DEFECTO,
+  rejillaMes, sumarDias, diasEntre, CICLO_POR_DEFECTO, EXPLICACION_FASES,
+  type Fase,
 } from '@shared/ciclo';
+import { CLASE_FASE, EMOJI_FASE } from '../src/domain/ciclo/estiloFase';
 import {
   puntuarRonda, ganadorDe, empiezaPorLetra, letraDeSemilla,
   categoriaValida, LETRAS,
@@ -802,5 +804,73 @@ describe('El botón de limpieza solo alcanza los historiales', () => {
         expect(generada.split('/'), `${nombre} → ${generada}`).not.toContain(prohibido);
       }
     }
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EXPLICACIÓN DE LAS FASES Y SU COLOR
+
+   Dos cosas que se rompen sin hacer ruido:
+
+   · Añadir una fase nueva a `Fase` y olvidar explicarla o darle color. La
+     pantalla no falla: pinta un `undefined` como clase CSS y el día se queda
+     transparente, o el panel "Sobre las fases" simplemente no la menciona.
+
+   · Que la leyenda del calendario y las celdas usen colores distintos. Por eso
+     las dos leen de CLASE_FASE y el test comprueba que la tabla está completa.
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe('Fases del ciclo · explicación y color', () => {
+  const TODAS: Fase[] = ['menstruacion', 'folicular', 'ovulacion', 'lutea', 'desconocida'];
+
+  it('cada fase tiene clase de color y emoji', () => {
+    for (const f of TODAS) {
+      expect(CLASE_FASE[f], `falta el color de ${f}`).toBeTruthy();
+      expect(EMOJI_FASE[f], `falta el emoji de ${f}`).toBeTruthy();
+    }
+  });
+
+  it('las clases de color son distintas entre sí', () => {
+    const clases = TODAS.map((f) => CLASE_FASE[f]);
+    expect(new Set(clases).size).toBe(TODAS.length);
+  });
+
+  it('las cuatro fases reales están explicadas, y "desconocida" no', () => {
+    const explicadas = EXPLICACION_FASES.map((e) => e.fase).sort();
+    expect(explicadas).toEqual(['folicular', 'lutea', 'menstruacion', 'ovulacion']);
+  });
+
+  it('ninguna explicación se queda a medias', () => {
+    for (const e of EXPLICACION_FASES) {
+      expect(e.titulo.length, e.fase).toBeGreaterThan(3);
+      expect(e.cuando.length, e.fase).toBeGreaterThan(20);
+      expect(e.queEs.length, e.fase).toBeGreaterThan(80);
+      expect(e.sintomas.length, e.fase).toBeGreaterThanOrEqual(3);
+      expect(e.animo.length, e.fase).toBeGreaterThanOrEqual(2);
+      expect(e.consejo.length, e.fase).toBeGreaterThan(40);
+      expect(e.emoji, e.fase).toBeTruthy();
+    }
+  });
+
+  /**
+   * El texto se inyecta en la página con las llaves de Astro, que escapan. Aun
+   * así se comprueba: el día que alguien lo mueva a un innerHTML "para poner
+   * una negrita", este test lo para antes de que sea un hueco de XSS.
+   */
+  it('ninguna explicación contiene marcado', () => {
+    for (const e of EXPLICACION_FASES) {
+      const todo = [e.titulo, e.cuando, e.queEs, e.consejo, ...e.sintomas, ...e.animo].join(' ');
+      expect(todo, e.fase).not.toMatch(/[<>]/);
+    }
+  });
+
+  /**
+   * El calendario NO es un anticonceptivo, y la app tiene que decirlo donde se
+   * lee, no solo en un comentario del código. Si alguien reescribe la fase de
+   * ovulación en plan "estos son tus días seguros", este test se pone rojo.
+   */
+  it('la ovulación advierte de que la fecha se mueve', () => {
+    const ovulacion = EXPLICACION_FASES.find((e) => e.fase === 'ovulacion')!;
+    const texto = `${ovulacion.queEs} ${ovulacion.consejo}`.toLowerCase();
+    expect(texto).toContain('anticonceptivo');
   });
 });

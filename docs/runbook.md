@@ -270,7 +270,68 @@ app deje de funcionar.
 
 ---
 
-## 12 · Reglas que no se rompen nunca
+## 12 · Qué cuenta como panorama «realizado»
+
+El contador `vecesRealizado` de cada panorama, y la línea que se ve en la
+ruleta como «Realizado 3 veces», ya **no** los mueve el sorteo. Los mueve el
+botón **✅ Evento realizado** del banner del inicio.
+
+Antes se anotaba en el momento de girar, y por eso el número mentía: tres
+giros un viernes indeciso sumaban tres «realizados» sin que nadie hubiera
+salido de casa. Los dos botones del banner separan las dos cosas:
+
+| Botón | Historial | Contador | Evento |
+|---|---|---|---|
+| ✅ Evento realizado | añade una entrada con `confirmado: true` | +1 | se cierra |
+| ✖️ Cancelar evento | no toca nada | igual | se cierra |
+
+Cancelar pide confirmación y realizar no, a propósito: confirmar añade una
+línea que se puede volver a añadir, mientras que cancelar borra el panorama
+sorteado y recuperarlo obliga a girar otra vez.
+
+Consecuencia al leer datos antiguos: las entradas de `historialPanoramas`
+creadas antes de este cambio **no** llevan `confirmado`, y corresponden a
+sorteos, no necesariamente a salidas.
+
+## 13 · Contenido nuevo en el banco
+
+Los archivos viven en `backend/data/banco/`, uno por bloque temático, y la
+categoría y el nivel salen del **nombre del archivo** (ver `MAPA` en
+`seed-contenido.ts`). Para añadir contenido:
+
+1. Crear o ampliar un archivo con un prefijo que ya esté en el `MAPA`
+   —`dilemas-tono-4.json` entra como `subidas_de_tono` sin tocar el script—.
+2. `npm --workspace frontend run test` valida ids repetidos, longitudes,
+   niveles y textos duplicados **antes** de tocar Firebase.
+3. `npm --workspace backend run seed -- --entorno=qa`, comprobar, y luego
+   `--entorno=prod`.
+
+El seed es idempotente y no borra nada, así que reejecutarlo es seguro. Sube
+`versionBanco`, que es lo que invalida la caché de los dos teléfonos: sin ese
+salto, el contenido nuevo no aparecería hasta que alguien limpiara el
+almacenamiento del navegador.
+
+## 14 · Correr los tests de Security Rules en Windows
+
+Los emuladores de Firestore y Realtime Database son procesos Java. Sin Java en
+el PATH, `firebase emulators:exec` falla con un mensaje que no menciona Java
+para nada —`"C:\Program" no se reconoce como un comando`— y es fácil concluir
+que el problema es el espacio en la ruta del proyecto. No lo es.
+
+En esta máquina el JDK ya está instalado, solo fuera del PATH. Desde
+PowerShell, y sin tocar nada del sistema:
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-21.0.12.101-hotspot"
+$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+npx firebase emulators:exec --project demo-nuestro-espacio --only auth,firestore,database "npm run test:reglas"
+```
+
+El `--project demo-nuestro-espacio` no es decorativo: el prefijo `demo-` es lo
+que fuerza el modo emulador. Sin él, el SDK intentaría hablar con un proyecto
+real.
+
+## 15 · Reglas que no se rompen nunca
 
 | Regla | Motivo |
 |---|---|

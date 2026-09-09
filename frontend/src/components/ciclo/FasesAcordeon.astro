@@ -1,0 +1,199 @@
+---
+import { EXPLICACION_FASES } from '@shared/ciclo';
+import { CLASE_FASE } from '../../domain/ciclo/estiloFase';
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  SOBRE LAS FASES · acordeón
+ *
+ *  Cuatro secciones desplegables, todas cerradas al entrar. Abrir una cierra
+ *  las demás.
+ *
+ *  POR QUÉ <details> Y NO UN ACORDEÓN A MANO
+ *
+ *  `<details>` trae gratis lo que un div con onclick obliga a reimplementar y
+ *  casi nadie termina: el foco con teclado, Enter y Espacio, el estado
+ *  expandido/colapsado anunciado por los lectores de pantalla, y —esto es lo
+ *  que casi siempre se olvida— que Ctrl+F del navegador ENCUENTRE el texto
+ *  cerrado y abra la sección. Un acordeón de divs con `display:none` esconde
+ *  su contenido incluso del buscador de la propia página.
+ *
+ *  La exclusividad la da el atributo `name`, nativo desde 2024. Donde no
+ *  exista, el script de abajo hace lo mismo con seis líneas. Nunca al revés:
+ *  el JavaScript es el respaldo, no el mecanismo.
+ *
+ *  POR QUÉ EL COLOR DE FASE VA SOLO EN LA CABECERA
+ *
+ *  El tinte de la fase pinta el `<summary>`, no el cuerpo. Los cuatro tintes
+ *  son claros a propósito —así se ven bien en las celdas del calendario— y un
+ *  párrafo largo encima de uno de ellos se lee peor que sobre la tarjeta
+ *  normal. La cabecera es corta y en negrita: ahí el tinte identifica la fase
+ *  de un vistazo sin castigar la lectura.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+interface Props {
+  /** Clases extra para el contenedor, por si la pantalla necesita márgenes. */
+  class?: string;
+}
+
+const { class: clase = '' } = Astro.props;
+---
+
+<section class={`tarjeta overflow-hidden ${clase}`} aria-labelledby="fases-titulo">
+  <div class="border-b border-borde px-4 py-3.5">
+    <h2 id="fases-titulo" class="text-sm font-semibold text-tinta">📖 Sobre las fases</h2>
+    <p class="mt-1 text-xs leading-relaxed text-tinta-suave">
+      Un ciclo va del primer día de una regla al primer día de la siguiente, y
+      se divide en cuatro tramos. Lo de abajo es lo que <strong>suele</strong>{' '}
+      pasar: hay quien no nota nada y está igual de sana, y hay quien lo nota
+      todo.
+    </p>
+  </div>
+
+  <div id="fases-acordeon" class="divide-y divide-borde">
+    {
+      EXPLICACION_FASES.map((f) => (
+        <details name="fases-del-ciclo" class="grupo-fase">
+          {/*
+            `list-style: none` y el ::marker apagado están en el CSS de abajo:
+            sin eso, Safari dibuja su propio triángulo además del nuestro.
+          */}
+          <summary
+            class={`${CLASE_FASE[f.fase]} flex cursor-pointer items-center gap-3 px-4 py-3.5 select-none`}
+          >
+            <span class="text-lg leading-none" aria-hidden="true">{f.emoji}</span>
+
+            <span class="min-w-0 flex-1">
+              <span class="block text-sm font-semibold text-tinta">{f.titulo}</span>
+              <span class="mt-0.5 block text-[11px] leading-snug text-tinta-suave">
+                {f.cuando}
+              </span>
+            </span>
+
+            {/* El chevron hereda `color` de la clase de fase con `stroke-current`,
+                así que nunca puede discrepar del color del calendario. */}
+            <span class="chevron shrink-0" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </span>
+          </summary>
+
+          <div class="cuerpo-fase px-4 pt-3 pb-4">
+            <p class="text-xs leading-relaxed text-tinta">{f.queEs}</p>
+
+            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <p class="text-[11px] font-semibold tracking-wide text-tinta-tenue uppercase">
+                  Puede notarse
+                </p>
+                <ul class="mt-1 flex flex-wrap gap-1.5">
+                  {f.sintomas.map((x) => (
+                    <li class="rounded-full bg-superficie-alt px-2 py-1 text-[11px] text-tinta-suave">
+                      {x}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <p class="text-[11px] font-semibold tracking-wide text-tinta-tenue uppercase">
+                  Ánimo habitual
+                </p>
+                <ul class="mt-1 flex flex-wrap gap-1.5">
+                  {f.animo.map((x) => (
+                    <li class="rounded-full bg-superficie-alt px-2 py-1 text-[11px] text-tinta-suave">
+                      {x}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <p class={`${CLASE_FASE[f.fase]} mt-3 rounded-lg px-3 py-2.5 text-xs leading-relaxed text-tinta`}>
+              💡 {f.consejo}
+            </p>
+          </div>
+        </details>
+      ))
+    }
+  </div>
+
+  <p class="border-t border-borde px-4 py-3 text-[11px] leading-relaxed text-tinta-suave">
+    Esto es información general, no un diagnóstico. Si algo se sale de lo
+    habitual —dolor que no deja hacer vida normal, sangrados muy largos o
+    ciclos que se descuadran de golpe— eso lo mira un profesional, no una app.
+  </p>
+</section>
+
+<style>
+  /* Fuera el triángulo del navegador: el chevron lo dibujamos nosotros.
+     Hacen falta las dos reglas — Safari usa ::-webkit-details-marker y el
+     resto ::marker— o aparecen dos flechas. */
+  .grupo-fase > summary {
+    list-style: none;
+  }
+  .grupo-fase > summary::-webkit-details-marker {
+    display: none;
+  }
+  .grupo-fase > summary::marker {
+    content: '';
+  }
+
+  .grupo-fase > summary .chevron {
+    transition: transform 0.2s ease;
+  }
+  .grupo-fase[open] > summary .chevron {
+    transform: rotate(180deg);
+  }
+
+  /* El contenido entra con un deslizamiento corto. Se anima el CONTENIDO y no
+     la altura del <details>: animar `height` desde `auto` no funciona sin
+     medir en JavaScript, y la media query global de movimiento reducido ya
+     desactiva esto para quien lo pida. */
+  @keyframes desplegar-fase {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .grupo-fase[open] > .cuerpo-fase {
+    animation: desplegar-fase 0.18s ease-out both;
+  }
+</style>
+
+<script>
+  /**
+   * RESPALDO de la exclusividad para navegadores sin `name` en <details>.
+   *
+   * Chrome 120, Safari 17.2 y Firefox 130 lo traen de fábrica. Donde no está,
+   * el atributo se ignora sin error y el acordeón sigue funcionando, solo que
+   * permitiendo varias secciones abiertas a la vez. Es un defecto menor, pero
+   * arreglarlo cuesta seis líneas.
+   *
+   * La detección mira la propiedad del prototipo, no la versión del navegador:
+   * comprobar `userAgent` envejece mal y miente.
+   */
+  const soportaExclusivo = 'name' in HTMLDetailsElement.prototype;
+
+  if (!soportaExclusivo) {
+    const grupos = Array.from(
+      document.querySelectorAll<HTMLDetailsElement>('#fases-acordeon > details'),
+    );
+
+    for (const grupo of grupos) {
+      grupo.addEventListener('toggle', () => {
+        if (!grupo.open) return;
+        for (const otro of grupos) {
+          if (otro !== grupo) otro.open = false;
+        }
+      });
+    }
+  }
+</script>

@@ -6,6 +6,7 @@ import AppLayout from '../layouts/AppLayout.astro';
   titulo="Qué prefieres · Nuestro Espacio"
   encabezado="¿Qué prefieres?"
   bajada="Votan a ciegas. Se revela solo cuando los dos han elegido."
+  ancho="lectura"
 >
   <section class="flex flex-col gap-3">
     <button
@@ -47,7 +48,7 @@ import AppLayout from '../layouts/AppLayout.astro';
   <button
     id="btn-nuevo"
     type="button"
-    class="mt-5 w-full rounded-xl bg-acento px-4 py-3.5 font-medium text-white transition hover:bg-acento-fuerte active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+    class="mt-5 w-full rounded-xl boton-principal px-4 py-3.5 font-medium transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
   >
     <span id="btn-nuevo-texto">Nuevo dilema</span>
   </button>
@@ -60,7 +61,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       type="button"
       aria-expanded="false"
       aria-controls="panel-respondidas"
-      class="flex w-full items-center justify-between rounded-xl border border-borde px-4 py-3 text-sm font-medium text-tinta-suave transition hover:bg-superficie-alta"
+      class="flex w-full items-center justify-between rounded-xl border border-borde px-4 py-3 text-sm font-medium text-tinta-suave transition hover:bg-superficie-alt"
     >
       <span><span aria-hidden="true">📜</span> Ya respondidas</span>
       <span id="respondidas-total" class="text-xs text-tinta-tenue"></span>

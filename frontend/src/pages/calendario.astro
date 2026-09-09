@@ -1,6 +1,7 @@
 ---
 import AppLayout from '../layouts/AppLayout.astro';
 import { DIAS_SEMANA } from '@shared/ciclo';
+import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
 ---
 
 <AppLayout
@@ -8,10 +9,18 @@ import { DIAS_SEMANA } from '@shared/ciclo';
   encabezado="Calendario"
   bajada="El ciclo, los síntomas y lo que pasa entre medio."
 >
+  {/*
+    En teléfono todo va en una columna, como estaba. A partir de `lg` el
+    calendario se queda a la izquierda y el detalle del día a la derecha, para
+    no obligar a bajar la página cada vez que se pulsa un día en un monitor
+    donde sobra ancho por todas partes.
+  */}
+  <div class="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:items-start lg:gap-8">
+  <div>
   {/* ── Navegación del mes ─────────────────────────────────────────── */}
   <div class="mb-4 flex items-center justify-between gap-2">
     <button id="mes-anterior" type="button" aria-label="Mes anterior"
-      class="rounded-lg border border-borde px-3 py-2 text-tinta-suave transition hover:bg-superficie-alta">
+      class="rounded-lg border border-borde px-3 py-2 text-tinta-suave transition hover:bg-superficie-alt">
       ←
     </button>
     <div class="text-center">
@@ -20,42 +29,88 @@ import { DIAS_SEMANA } from '@shared/ciclo';
         class="text-xs text-acento underline-offset-2 hover:underline">Ir a hoy</button>
     </div>
     <button id="mes-siguiente" type="button" aria-label="Mes siguiente"
-      class="rounded-lg border border-borde px-3 py-2 text-tinta-suave transition hover:bg-superficie-alta">
+      class="rounded-lg border border-borde px-3 py-2 text-tinta-suave transition hover:bg-superficie-alt">
       →
     </button>
   </div>
 
   {/* ── Resumen ────────────────────────────────────────────────────── */}
-  <section id="resumen" class="tarjeta mb-4 px-4 py-3.5">
-    <p id="resumen-fase" class="text-sm font-medium text-tinta"></p>
-    <p id="resumen-prediccion" class="mt-0.5 text-xs text-tinta-tenue"></p>
+  <section id="resumen" class="tarjeta mb-4 flex items-start gap-3 px-4 py-3.5">
+    <span id="resumen-chip" class="fase-desconocida shrink-0 rounded-lg px-2.5 py-2 text-lg leading-none"
+      aria-hidden="true">❔</span>
+    <div class="min-w-0">
+      <p id="resumen-fase" class="text-sm font-medium text-tinta"></p>
+      <p id="resumen-prediccion" class="mt-0.5 text-xs text-tinta-tenue"></p>
+    </div>
   </section>
 
   {/* ── Rejilla ────────────────────────────────────────────────────── */}
-  <div class="mb-1 grid grid-cols-7 gap-1">
+  {/* Las dos rejillas —cabecera y días— llevan el MISMO tope de ancho. Sin
+      él, en un monitor la celda llegaba a 88 px: un calendario de pared con
+      un número diminuto en medio. Con el tope, la celda se queda en unos
+      60 px, que es la medida a la que está pensado el resto. */}
+  <div class="mx-auto mb-1 grid max-w-md grid-cols-7 gap-1">
     {DIAS_SEMANA.map((d) => (
       <span class="py-1 text-center text-[11px] font-semibold text-tinta-tenue">{d}</span>
     ))}
   </div>
-  <div id="rejilla" class="grid grid-cols-7 gap-1"></div>
+  <div id="rejilla" class="mx-auto grid max-w-md grid-cols-7 gap-1"></div>
 
-  {/* ── Leyenda ────────────────────────────────────────────────────── */}
-  <div class="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-tinta-tenue">
-    <span class="flex items-center gap-1.5">
-      <span class="size-2.5 rounded-full" style="background:var(--color-peligro)"></span> Menstruación
-    </span>
-    <span class="flex items-center gap-1.5">
-      <span class="size-2.5 rounded-full" style="background:var(--color-acento)"></span> Ovulación
-    </span>
-    <span class="flex items-center gap-1.5">
-      <span class="size-2.5 rounded-full border border-acento"></span> Días fértiles (estimado)
-    </span>
-    <span class="flex items-center gap-1.5">
-      <span class="size-2.5 rounded-full" style="background:var(--color-salvia)"></span> Fase lútea
-    </span>
-    <span>❤️ Relaciones</span>
-    <span>• Síntomas</span>
-  </div>
+  {/* ── Leyenda ──────────────────────────────────────────────────────
+      Las cuatro fases son SOLO color: nada dentro del cuadrado.
+
+      Llevan un borde neutro de 1 px, y no es decoración. Los cuatro tintes
+      son pálidos a propósito —para eso están, para no saturar la rejilla— y
+      #fce8e8 sobre el blanco de la tarjeta da 1,06:1: sin borde, el cuadrado
+      no se distingue del papel y la muestra no existe. El borde solo dibuja
+      el canto; el color de dentro sigue siendo el único color.
+
+      Las muestras siguen usando LAS MISMAS clases que las celdas del
+      calendario, que es lo que impide que la leyenda se desfase de lo que
+      describe. */}
+  <ul class="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-tinta-suave sm:grid-cols-3">
+    {
+      [
+        ['fase-menstruacion', 'Menstruación'],
+        ['fase-folicular', 'Folicular'],
+        ['fase-ovulacion', 'Ovulación'],
+        ['fase-lutea', 'Lútea'],
+      ].map(([clase, etiqueta]) => (
+        <li class="flex items-center gap-2">
+          <span class={`${clase} size-5 rounded-md border border-borde`} aria-hidden="true"></span>
+          {etiqueta}
+        </li>
+      ))
+    }
+    <li class="flex items-center gap-2">
+      <span class="dia-fertil fase-folicular size-5 rounded-md" aria-hidden="true"></span>
+      Días fértiles
+    </li>
+    <li class="flex items-center gap-2">
+      {/*
+        El círculo de hoy, con el día de hoy dentro. Usa la misma clase que la
+        celda —solo cambia el tamaño por la variable— así que no puede
+        parecerse "casi": es idéntico. El número lo rellena el script, porque
+        la página se compila una vez y el día cambia cada noche.
+      */}
+      <span class="flex size-5 items-center justify-center" aria-hidden="true">
+        <span id="leyenda-hoy" class="numero-hoy text-[10px]" style="--numero-hoy-tamano: 1.25rem"></span>
+      </span>
+      Hoy
+    </li>
+    <li class="flex items-center gap-2">
+      <span class="flex size-5 items-center justify-center rounded-md bg-superficie-alt" aria-hidden="true">
+        <span class="marca-relacion">❤️</span>
+      </span>
+      Relaciones
+    </li>
+    <li class="flex items-center gap-2">
+      <span class="flex size-5 items-center justify-center rounded-md bg-superficie-alt" aria-hidden="true">
+        <span class="punto-sintoma"></span>
+      </span>
+      Síntomas
+    </li>
+  </ul>
 
   <p class="mt-3 rounded-xl border border-borde bg-superficie-alt px-4 py-3 text-[11px] leading-relaxed text-tinta-tenue">
     ⚠️ Las fases y los días fértiles son una <strong>estimación</strong> calculada
@@ -63,15 +118,18 @@ import { DIAS_SEMANA } from '@shared/ciclo';
     anticonceptivo ni sustituyen a un profesional de la salud.
   </p>
 
+  </div>
+
+  <div class="mt-6 flex flex-col gap-5 lg:mt-0">
   {/* ── Detalle del día ────────────────────────────────────────────── */}
-  <section id="detalle-dia" hidden class="mt-5 flex flex-col gap-4">
+  <section id="detalle-dia" hidden class="flex flex-col gap-4">
     <div class="flex items-center justify-between gap-2">
       <div>
         <p id="dia-titulo" class="text-base font-semibold text-tinta"></p>
         <p id="dia-fase" class="text-xs text-tinta-tenue"></p>
       </div>
       <button id="dia-cerrar" type="button"
-        class="rounded-lg border border-borde px-2.5 py-1.5 text-xs text-tinta-suave transition hover:bg-superficie-alta">
+        class="rounded-lg border border-borde px-2.5 py-1.5 text-xs text-tinta-suave transition hover:bg-superficie-alt">
         Cerrar
       </button>
     </div>
@@ -117,8 +175,10 @@ import { DIAS_SEMANA } from '@shared/ciclo';
     </div>
   </section>
 
+  <FasesAcordeon />
+
   {/* ── Ajustes ────────────────────────────────────────────────────── */}
-  <details class="mt-6">
+  <details>
     <summary class="cursor-pointer text-sm font-medium text-tinta-suave">⚙️ Ajustes del ciclo</summary>
     <div class="tarjeta mt-3 flex flex-col gap-3 px-4 py-4">
       <div class="flex flex-col gap-1.5">
@@ -142,6 +202,9 @@ import { DIAS_SEMANA } from '@shared/ciclo';
     </div>
   </details>
 
+  </div>
+  </div>
+
   <p id="ciclo-aviso" role="status" class="mt-4 text-center text-xs text-acento"></p>
 </AppLayout>
 
@@ -156,8 +219,8 @@ import { DIAS_SEMANA } from '@shared/ciclo';
   import {
     SINTOMAS, GRUPOS_SINTOMA, NOMBRES_MES, ETIQUETA_FASE,
     rejillaMes, faseDe, calcularPromedios, proximaMenstruacion, iniciosDesdeDias,
-    type Fase,
   } from '@shared/ciclo';
+  import { CLASE_FASE, EMOJI_FASE } from '../domain/ciclo/estiloFase';
   import { hoyEnSantiago, fechaLarga } from '../domain/perfiles/tiempoJuntos';
   import { observarNombre } from '../domain/presencia/presenciaService';
   import { ENV } from '../config/env';
@@ -189,13 +252,6 @@ import { DIAS_SEMANA } from '@shared/ciclo';
   const inicios = () => iniciosDesdeDias(menstruaciones);
   const promedios = () => calcularPromedios(inicios(), config.duracionRegla);
 
-  const COLOR_FASE: Record<Fase, string> = {
-    menstruacion: 'bg-peligro/15 text-peligro',
-    ovulacion: 'bg-acento/20 text-acento',
-    folicular: 'bg-superficie-alt text-tinta-suave',
-    lutea: 'bg-salvia/15 text-salvia',
-    desconocida: 'bg-superficie-alt text-tinta-tenue',
-  };
 
   // ── Rejilla ───────────────────────────────────────────────────────────
 
@@ -217,39 +273,63 @@ import { DIAS_SEMANA } from '@shared/ciclo';
       const info = faseDe(celda.fecha, ini, p, marcadas);
       const reg = registro(celda.fecha);
 
+      const esHoy = celda.fecha === hoy;
+
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.dataset.fecha = celda.fecha;
+      // La celda solo lleva el color de la fase y, si toca, el aro de fértil
+      // y el de seleccionado. Hoy NO se pinta aquí: va en el número.
+      // `items-center justify-center` sin flex-col: el número es el único hijo
+      // que ocupa sitio, así que queda centrado en la celda. Las marcas van
+      // en absoluto (ver `fila-marcas`).
+      //
+      // La celda es 1:1,2 y no cuadrada. Es lo que da sitio para separar el
+      // corazón y el punto del borde inferior sin encoger el círculo de hoy;
+      // el cálculo está en el comentario de `numero-hoy` en global.css.
       btn.className =
-        'relative flex aspect-square flex-col items-center justify-center rounded-lg text-sm transition ' +
-        COLOR_FASE[info.fase] +
-        (info.fertil && info.fase !== 'ovulacion' ? ' ring-1 ring-acento/40' : '') +
-        (celda.fecha === hoy ? ' font-bold ring-2 ring-tinta' : '') +
-        (celda.fecha === seleccionado ? ' outline-2 outline-offset-1 outline-acento' : '');
+        'relative flex aspect-[5/6] items-center justify-center rounded-lg text-sm font-medium transition ' +
+        CLASE_FASE[info.fase] +
+        (info.fertil && info.fase !== 'ovulacion' ? ' dia-fertil' : '') +
+        (celda.fecha === seleccionado ? ' dia-elegido' : '');
 
+      // El número. Si es hoy, va dentro de un círculo sólido con el fondo de
+      // la pantalla invertido; el color de la fase se sigue viendo alrededor.
       const n = document.createElement('span');
+      n.className = esHoy ? 'numero-hoy' : '';
       n.textContent = String(celda.dia);
       btn.append(n);
 
-      // Marcas de lo anotado: corazón para relaciones, punto para síntomas.
+      // Marcas de lo anotado, en una fila pegada al borde inferior de la
+      // celda. Debajo del número y no encima: sobre el círculo relleno de
+      // hoy, el punto de síntomas quedaba invisible justo ese día.
       const marcas = document.createElement('span');
-      marcas.className = 'absolute bottom-0.5 flex items-center gap-0.5 text-[8px] leading-none';
+      marcas.className = 'fila-marcas';
       if (reg.r.length > 0) {
         const c = document.createElement('span');
+        c.className = 'marca-relacion';
         c.textContent = '❤️';
         c.setAttribute('aria-hidden', 'true');
         marcas.append(c);
       }
       if (reg.s.length > 0) {
         const d = document.createElement('span');
-        d.className = 'size-1 rounded-full bg-current opacity-60';
+        d.className = 'punto-sintoma';
+        d.setAttribute('aria-hidden', 'true');
         marcas.append(d);
       }
-      if (marcas.childElementCount > 0) btn.append(marcas);
+      btn.append(marcas);
 
-      const partes = [`${celda.dia} de ${NOMBRES_MES[mes - 1]}`, ETIQUETA_FASE[info.fase]];
+      const partes = [`${celda.dia} de ${NOMBRES_MES[mes - 1]}`];
+      if (esHoy) partes.push('hoy');
+      partes.push(ETIQUETA_FASE[info.fase]);
+      if (info.fertil) partes.push('día fértil estimado');
       if (reg.r.length > 0) partes.push(`${reg.r.length} relación(es)`);
       if (reg.s.length > 0) partes.push(`${reg.s.length} síntoma(s)`);
+      // aria-current es lo que un lector de pantalla anuncia como "actual".
+      // El círculo negro no le dice nada a quien no ve la pantalla.
+      if (esHoy) btn.setAttribute('aria-current', 'date');
+      if (celda.fecha === seleccionado) btn.setAttribute('aria-pressed', 'true');
       btn.setAttribute('aria-label', partes.join(', '));
 
       btn.addEventListener('click', () => abrirDia(celda.fecha));
@@ -263,6 +343,10 @@ import { DIAS_SEMANA } from '@shared/ciclo';
     const p = promedios();
     const ini = inicios();
     const info = faseDe(hoy, ini, p, new Set(menstruaciones));
+
+    const chip = $('resumen-chip');
+    chip.className = `${CLASE_FASE[info.fase]} shrink-0 rounded-lg px-2.5 py-2 text-lg leading-none`;
+    chip.textContent = EMOJI_FASE[info.fase];
 
     if (info.fase === 'desconocida') {
       $('resumen-fase').textContent = 'Todavía sin datos suficientes.';
@@ -427,6 +511,11 @@ import { DIAS_SEMANA } from '@shared/ciclo';
   protegerPagina(() => {
     $('guardia').classList.add('hidden');
     $('app').classList.remove('hidden');
+
+    // El día de la muestra "Hoy" sale de la MISMA constante que la rejilla, no
+    // de un new Date() aparte: si a medianoche discreparan, la leyenda diría
+    // un día y el círculo del calendario estaría en otro.
+    $('leyenda-hoy').textContent = String(Number(hoy.slice(8, 10)));
 
     for (const p of ['a', 'b'] as const) {
       observarNombre(parejaId, p, (n) => {

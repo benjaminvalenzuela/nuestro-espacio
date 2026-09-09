@@ -45,7 +45,7 @@ import AppLayout from '../layouts/AppLayout.astro';
   {/* ── Acciones ───────────────────────────────────────────────────── */}
   <div class="mb-5 grid grid-cols-2 gap-2.5">
     <button id="btn-girar" type="button"
-      class="rounded-xl bg-acento px-4 py-3.5 font-medium text-white transition hover:bg-acento-fuerte active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40">
+      class="rounded-xl boton-principal px-4 py-3.5 font-medium transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40">
       🎡 <span id="btn-girar-texto">Sacar letra</span>
     </button>
     <button id="btn-stop" type="button" disabled
@@ -55,7 +55,10 @@ import AppLayout from '../layouts/AppLayout.astro';
   </div>
 
   {/* ── Tablero ────────────────────────────────────────────────────── */}
-  <div id="tablero" class="flex flex-col gap-2.5"></div>
+  {/* En teléfono una columna, para poder ir bajando con el pulgar. En
+      monitor, dos o tres: con seis categorías y un cronómetro mental de
+      por medio, tener que desplazar la página es perder la ronda. */}
+  <div id="tablero" class="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3"></div>
 
   <button id="btn-reiniciar" type="button"
     class="mt-6 w-full rounded-xl border border-peligro/40 px-4 py-3 text-sm font-medium text-peligro transition hover:bg-peligro/5">

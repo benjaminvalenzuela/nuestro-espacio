@@ -5,10 +5,29 @@ interface Props {
   titulo: string;
   encabezado: string;
   bajada?: string;
+  /**
+   * Cuánto ancho puede ocupar la pantalla en un monitor.
+   *
+   *   'ancho'   → hasta 72rem. Para lo que se organiza en rejilla: el
+   *               calendario, los perfiles, el panel de administración.
+   *   'lectura' → hasta 42rem. Para lo que es UNA columna de texto —una
+   *               pregunta, un dilema—. Estirar eso a todo el monitor da
+   *               líneas de treinta palabras que nadie lee de un tirón: el
+   *               ojo pierde el renglón al volver a la izquierda.
+   *
+   * En teléfono los dos valen lo mismo. El ancho extra solo aparece a partir
+   * de `sm`, así que el formato de móvil se queda exactamente como estaba.
+   */
+  ancho?: 'ancho' | 'lectura';
 }
 
-const { titulo, encabezado, bajada } = Astro.props;
+const { titulo, encabezado, bajada, ancho = 'ancho' } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+const ANCHOS = {
+  ancho: 'max-w-md sm:max-w-3xl lg:max-w-6xl',
+  lectura: 'max-w-md sm:max-w-2xl',
+} as const;
 ---
 
 <BaseLayout titulo={titulo}>
@@ -19,7 +38,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     <span class="sr-only">Cargando</span>
   </div>
 
-  <div id="app" class="mx-auto hidden max-w-md px-5 pt-6 pb-20">
+  <div id="app" class={`mx-auto hidden px-5 pt-6 pb-20 sm:px-8 ${ANCHOS[ancho]}`}>
     <header class="mb-6">
       <a
         href={`${base}/inicio`}
@@ -38,7 +57,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         <button
           id="btn-tema"
           type="button"
-          class="shrink-0 rounded-xl border border-borde px-3 py-2 text-lg leading-none transition hover:bg-superficie-alta"
+          class="shrink-0 rounded-xl border border-borde px-3 py-2 text-lg leading-none transition hover:bg-superficie-alt"
         >🌗</button>
       </div>
     </header>
