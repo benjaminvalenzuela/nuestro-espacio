@@ -53,16 +53,17 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
   <div id="rejilla" class="grid grid-cols-7 gap-1"></div>
 
   {/* ── Leyenda ──────────────────────────────────────────────────────
-      Solo colores, sin números.
+      Las cuatro fases son SOLO color: nada dentro del cuadrado.
 
-      Cada muestra sigue usando LAS MISMAS clases que la celda que representa
-      —fase-menstruacion, dia-fertil, numero-hoy, punto-sintoma— en vez de un
-      color copiado a mano. Es lo que impide que la leyenda se quede desfasada
-      del calendario, que es el fallo clásico de las leyendas.
+      Llevan un borde neutro de 1 px, y no es decoración. Los cuatro tintes
+      son pálidos a propósito —para eso están, para no saturar la rejilla— y
+      #fce8e8 sobre el blanco de la tarjeta da 1,06:1: sin borde, el cuadrado
+      no se distingue del papel y la muestra no existe. El borde solo dibuja
+      el canto; el color de dentro sigue siendo el único color.
 
-      Las cuatro fases enseñan el PAR completo: el cuadrado con el fondo tenue
-      y, dentro, un punto del color saturado. Con solo el fondo, la
-      menstruación y la lútea —dos tintes pálidos— se parecerían demasiado. */}
+      Las muestras siguen usando LAS MISMAS clases que las celdas del
+      calendario, que es lo que impide que la leyenda se desfase de lo que
+      describe. */}
   <ul class="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-tinta-suave sm:grid-cols-3">
     {
       [
@@ -72,10 +73,7 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
         ['fase-lutea', 'Lútea'],
       ].map(([clase, etiqueta]) => (
         <li class="flex items-center gap-2">
-          <span class={`${clase} flex size-5 items-center justify-center rounded-md`} aria-hidden="true">
-            {/* bg-current toma el color saturado de la clase de fase. */}
-            <span class="size-1.5 rounded-full bg-current"></span>
-          </span>
+          <span class={`${clase} size-5 rounded-md border border-borde`} aria-hidden="true"></span>
           {etiqueta}
         </li>
       ))
@@ -85,8 +83,14 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
       Días fértiles
     </li>
     <li class="flex items-center gap-2">
+      {/*
+        El círculo de hoy, con el día de hoy dentro. Usa la misma clase que la
+        celda —solo cambia el tamaño por la variable— así que no puede
+        parecerse "casi": es idéntico. El número lo rellena el script, porque
+        la página se compila una vez y el día cambia cada noche.
+      */}
       <span class="flex size-5 items-center justify-center" aria-hidden="true">
-        <span class="size-4 rounded-full" style="background: var(--ciclo-neutro)"></span>
+        <span id="leyenda-hoy" class="numero-hoy text-[10px]" style="--numero-hoy-tamano: 1.25rem"></span>
       </span>
       Hoy
     </li>
@@ -499,6 +503,11 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
   protegerPagina(() => {
     $('guardia').classList.add('hidden');
     $('app').classList.remove('hidden');
+
+    // El día de la muestra "Hoy" sale de la MISMA constante que la rejilla, no
+    // de un new Date() aparte: si a medianoche discreparan, la leyenda diría
+    // un día y el círculo del calendario estaría en otro.
+    $('leyenda-hoy').textContent = String(Number(hoy.slice(8, 10)));
 
     for (const p of ['a', 'b'] as const) {
       observarNombre(parejaId, p, (n) => {

@@ -385,14 +385,18 @@
    y no hay forma de corregirlo en CSS sin clavar métricas de una fuente
    concreta, que fallarían en el iPhone, donde se usa otra. */
 @utility numero-hoy {
+  /* El tamaño es una variable para que la leyenda pueda usar un círculo más
+     pequeño SIN duplicar el resto. Si el círculo del calendario cambia de
+     forma o de color, el de la leyenda cambia con él: es la misma clase. */
+  --numero-hoy-tamano: 1.625rem;
   background-color: var(--ciclo-neutro);
   color: var(--ciclo-sobre-neutro);
   border-radius: 9999px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.625rem;
-  height: 1.625rem;
+  width: var(--numero-hoy-tamano);
+  height: var(--numero-hoy-tamano);
   line-height: 1;
   font-weight: 700;
   /* Los números de dos cifras no deben deformar el círculo. */
