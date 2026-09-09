@@ -410,7 +410,12 @@ const ATAJOS = [
     }).format(Date.now());
 
     const inicios = iniciosDesdeDias(menstruaciones);
-    const p = calcularPromedios(inicios, configCiclo.duracionRegla);
+    // Mismos ajustes que el calendario: si ella fijó la duración a mano, el
+    // recuadro del inicio tiene que decir lo mismo que el calendario.
+    const p = calcularPromedios(inicios, configCiclo.duracionRegla, {
+      declarado: configCiclo.duracionCiclo,
+      modo: configCiclo.modoCiclo,
+    });
     const info = faseDe(hoy, inicios, p, new Set(menstruaciones));
 
     const chip = $('ciclo-chip');

@@ -1,6 +1,6 @@
 ---
 import AppLayout from '../layouts/AppLayout.astro';
-import { DIAS_SEMANA } from '@shared/ciclo';
+import { DIAS_SEMANA, RANGOS_CICLO, CICLO_MINIMO, CICLO_MAXIMO } from '@shared/ciclo';
 import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
 ---
 
@@ -194,6 +194,58 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
         <input id="cfg-regla" type="number" min="1" max="15"
           class="w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta focus:border-acento focus:outline-none" />
       </div>
+
+      {/* ── Duración del ciclo ───────────────────────────────────────────
+          Hasta ahora no se podía elegir: la app promediaba las reglas
+          registradas y usaba 28 mientras no hubiera ninguna. Eso deja fuera a
+          quien ya sabe cuánto dura su ciclo —y a quien lo tiene irregular,
+          donde un promedio de dos meses no significa nada—. */}
+      <div class="flex flex-col gap-2 border-t border-borde pt-3">
+        <div class="flex flex-col gap-1.5">
+          <label for="cfg-modo" class="text-xs text-tinta-tenue">Duración del ciclo</label>
+          <select id="cfg-modo"
+            class="w-full rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta focus:border-acento focus:outline-none">
+            <option value="auto">Calcularla desde mis reglas registradas</option>
+            <option value="manual">La defino yo</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input id="cfg-ciclo" type="number" min={CICLO_MINIMO} max={CICLO_MAXIMO}
+            aria-label="Duración del ciclo en días"
+            class="w-20 rounded-lg border border-borde bg-superficie-alt px-3 py-2.5 text-sm text-tinta focus:border-acento focus:outline-none" />
+          <span class="text-xs text-tinta-suave">días</span>
+          <span id="cfg-ciclo-clase" class="ml-auto text-[11px] font-medium"></span>
+        </div>
+
+        {/* Los tres tramos, con un botón para rellenar el campo de un toque.
+            El texto viene de RANGOS_CICLO, en shared/ciclo.ts. */}
+        <div class="flex flex-wrap gap-1.5">
+          {RANGOS_CICLO.map((r) => (
+            <button type="button" data-ciclo={r.sugerido}
+              class="rango-ciclo rounded-full border border-borde px-2.5 py-1 text-[11px] text-tinta-suave transition hover:border-acento hover:text-acento">
+              {r.etiqueta} · {r.desde}–{r.hasta}
+            </button>
+          ))}
+        </div>
+
+        <details class="text-[11px] text-tinta-suave">
+          <summary class="cursor-pointer">¿Cuál es el mío?</summary>
+          <ul class="mt-1.5 flex flex-col gap-1.5">
+            {RANGOS_CICLO.map((r) => (
+              <li>
+                <strong>{r.etiqueta} ({r.desde} a {r.hasta} días).</strong>{' '}
+                {r.resumen}
+              </li>
+            ))}
+          </ul>
+          <p class="mt-1.5">
+            Se cuenta desde el <strong>primer día de sangrado</strong> hasta el
+            día anterior a la siguiente regla, no de mes a mes.
+          </p>
+        </details>
+      </div>
+
       <button id="cfg-guardar" type="button"
         class="rounded-lg border border-acento px-3 py-2.5 text-sm font-medium text-acento transition hover:bg-acento-suave">
         Guardar ajustes
@@ -219,6 +271,7 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
   import {
     SINTOMAS, GRUPOS_SINTOMA, NOMBRES_MES, ETIQUETA_FASE,
     rejillaMes, faseDe, calcularPromedios, proximaMenstruacion, iniciosDesdeDias,
+    clasificarCiclo, normalizarCiclo, RANGOS_CICLO, CICLO_POR_DEFECTO,
   } from '@shared/ciclo';
   import { CLASE_FASE, EMOJI_FASE } from '../domain/ciclo/estiloFase';
   import { hoyEnSantiago, fechaLarga } from '../domain/perfiles/tiempoJuntos';
@@ -250,7 +303,11 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
 
   /** Los inicios de ciclo se derivan de los días marcados, no se guardan aparte. */
   const inicios = () => iniciosDesdeDias(menstruaciones);
-  const promedios = () => calcularPromedios(inicios(), config.duracionRegla);
+  const promedios = () =>
+    calcularPromedios(inicios(), config.duracionRegla, {
+      declarado: config.duracionCiclo,
+      modo: config.modoCiclo,
+    });
 
 
   // ── Rejilla ───────────────────────────────────────────────────────────
@@ -363,11 +420,15 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
     const proxima = proximaMenstruacion(ini, p);
     const trozos: string[] = [];
     if (proxima) trozos.push(`Próxima regla estimada: ${fechaLarga(proxima)}`);
-    trozos.push(
-      p.muestras === 0
-        ? `ciclo de ${p.ciclo} días (valor por defecto)`
-        : `ciclo de ${p.ciclo} días (promedio de ${p.muestras})`,
-    );
+    // De dónde sale el número, con todas las letras. "Ciclo de 31 días" sin
+    // más no distingue un dato medido de una suposición, y de ahí sale una
+    // predicción de fertilidad.
+    const procedencia =
+      p.origen === 'manual' ? 'lo definiste tú'
+      : p.origen === 'promedio' ? `promedio de ${p.muestras}`
+      : p.origen === 'declarado' ? 'lo definiste tú, aún sin registros'
+      : 'valor por defecto';
+    trozos.push(`ciclo de ${p.ciclo} días (${procedencia})`);
     if (info.fertil) trozos.push('día fértil estimado');
     $('resumen-prediccion').textContent = `${titular} · ${trozos.join(' · ')}`;
   }
@@ -528,11 +589,13 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
       config = c;
       ($('cfg-titular') as HTMLSelectElement).value = c.titular;
       ($('cfg-regla') as HTMLInputElement).value = String(c.duracionRegla);
-      const p = promedios();
-      $('cfg-info').textContent =
-        p.muestras === 0
-          ? 'Aún no hay ciclos completos registrados: se usa 28 días por defecto.'
-          : `Promedio calculado con ${p.muestras} ciclo(s): ${p.ciclo} días.`;
+      ($('cfg-modo') as HTMLSelectElement).value = c.modoCiclo;
+      // El campo arranca con 28 como punto de partida aunque nadie lo haya
+      // declarado; lo que NO se hace es tratar ese 28 como si ella lo hubiera
+      // elegido, que es de lo que se encarga el null de `duracionCiclo`.
+      ($('cfg-ciclo') as HTMLInputElement).value = String(c.duracionCiclo ?? CICLO_POR_DEFECTO);
+      pintarClaseCiclo();
+      pintarInfoCiclo();
       todo();
     });
 
@@ -618,12 +681,81 @@ import FasesAcordeon from '../components/ciclo/FasesAcordeon.astro';
         await guardarConfig(parejaId, {
           titular: ($('cfg-titular') as HTMLSelectElement).value === 'a' ? 'a' : 'b',
           duracionRegla: Number(($('cfg-regla') as HTMLInputElement).value) || 5,
+          duracionCiclo:
+            normalizarCiclo(($('cfg-ciclo') as HTMLInputElement).value) ?? CICLO_POR_DEFECTO,
+          modoCiclo: ($('cfg-modo') as HTMLSelectElement).value === 'manual' ? 'manual' : 'auto',
         });
         avisar('Ajustes guardados.');
       } catch {
         avisar('No se pudieron guardar.');
       }
     });
+
+    /** Etiqueta el valor escrito: corto, promedio, largo o fuera de lo habitual. */
+    function pintarClaseCiclo() {
+      const valor = normalizarCiclo(($('cfg-ciclo') as HTMLInputElement).value);
+      const el = $('cfg-ciclo-clase');
+      if (valor === null) { el.textContent = ''; return; }
+
+      const clase = clasificarCiclo(valor);
+      const rango = RANGOS_CICLO.find((r) => r.id === clase);
+      if (rango) {
+        el.textContent = rango.etiqueta;
+        el.className = 'ml-auto text-[11px] font-medium text-salvia';
+        return;
+      }
+      // Por encima de 35 no se bloquea, pero tampoco se calla: registrar la
+      // realidad de alguien es el trabajo de la app; opinar por ella, no.
+      el.textContent = 'Poco habitual · coméntalo con un profesional';
+      el.className = 'ml-auto text-[11px] font-medium text-ambar';
+    }
+
+    /**
+     * Explica qué número se está usando de verdad y por qué.
+     *
+     * En modo manual señala la discrepancia con sus propios registros si la
+     * hay. Ocultarla sería decidir por ella que su dato no importa.
+     */
+    function pintarInfoCiclo() {
+      const p = promedios();
+      const real = p.promedioReal;
+
+      if (p.origen === 'manual') {
+        $('cfg-info').textContent =
+          `Se usan ${p.ciclo} días porque los definiste tú.` +
+          (real !== null && real !== p.ciclo
+            ? ` Tus ${p.muestras} ciclo(s) registrados dan un promedio de ${real}.`
+            : real !== null ? ' Coincide con tus registros.' : '');
+        return;
+      }
+      if (p.origen === 'promedio') {
+        $('cfg-info').textContent =
+          `Se usan ${p.ciclo} días, el promedio de ${p.muestras} ciclo(s) registrados. ` +
+          'Cambia a "La defino yo" si prefieres fijarlo.';
+        return;
+      }
+      if (p.origen === 'declarado') {
+        $('cfg-info').textContent =
+          `Se usan ${p.ciclo} días, los que pusiste. Cuando haya dos reglas ` +
+          'registradas, se calculará solo.';
+        return;
+      }
+      $('cfg-info').textContent =
+        'Aún no hay ciclos completos registrados: se usan 28 días por defecto. ' +
+        'Marca dos reglas seguidas y se calculará solo, o defínelo tú.';
+    }
+
+    // El campo y el modo se repintan al vuelo, sin esperar a Guardar: si hay
+    // que decir "poco habitual", más vale decirlo mientras se escribe.
+    ($('cfg-ciclo') as HTMLInputElement).addEventListener('input', pintarClaseCiclo);
+    ($('cfg-modo') as HTMLSelectElement).addEventListener('change', pintarClaseCiclo);
+
+    for (const b of document.querySelectorAll<HTMLButtonElement>('.rango-ciclo')) {
+      b.addEventListener('click', () => {
+        ($('cfg-ciclo') as HTMLInputElement).value = b.dataset.ciclo ?? '';
+        pintarClaseCiclo();
+      });
+    }
 
     function actualizarSelectores() {
       const sel = $('cfg-titular') as HTMLSelectElement;

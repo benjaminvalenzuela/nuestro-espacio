@@ -221,6 +221,122 @@ describe('Historial y auditoría · append-only', () => {
   });
 });
 
+describe('Ciclo menstrual · el dato más sensible de la app', () => {
+  /**
+   * No había ni una prueba de estas reglas, y el ciclo es información de
+   * salud. Este bloque cubre las tres formas de documento que admite
+   * /ciclo —mes, resumen y config— y, sobre todo, que nadie de fuera lo lea.
+   */
+  const config = (extra: Record<string, unknown> = {}) => ({
+    titular: 'b', duracionRegla: 5, ...extra,
+  });
+
+  it('un miembro guarda la configuración básica', async () => {
+    await assertSucceeds(
+      setDoc(doc(como(UID_A1), `parejas/${PAREJA}/ciclo/config`), config()),
+    );
+  });
+
+  it('guarda la duración del ciclo y el modo', async () => {
+    await assertSucceeds(
+      setDoc(doc(como(UID_B1), `parejas/${PAREJA}/ciclo/config`),
+        config({ duracionCiclo: 33, modoCiclo: 'manual' })),
+    );
+  });
+
+  /**
+   * Los dos campos nuevos son OPCIONALES a propósito: un dispositivo con la
+   * página anterior en caché sigue enviando solo los dos primeros durante los
+   * minutos que dure esa caché. Si las reglas los exigieran, ahí aparecería un
+   * "no se pudo guardar" sin explicación posible.
+   */
+  it('sigue aceptando la forma antigua, sin los campos del ciclo', async () => {
+    await assertSucceeds(
+      setDoc(doc(como(UID_A1), `parejas/${PAREJA}/ciclo/config`), config()),
+    );
+  });
+
+  it('RECHAZA una duración de ciclo fuera de los límites', async () => {
+    await assertFails(
+      setDoc(doc(como(UID_A1), `parejas/${PAREJA}/ciclo/config`),
+        config({ duracionCiclo: 3 })),
+    );
+    await assertFails(
+      setDoc(doc(como(UID_A1), `parejas/${PAREJA}/ciclo/config`),
+        config({ duracionCiclo: 400 })),
+    );
+  });
+
+  it('RECHAZA una duración que no es un entero', async () => {
+    await assertFails(
+      setDoc(doc(como(UID_A1), `parejas/${PAREJA}/ciclo/config`),
+        config({ duracionCiclo: '28' })),
+    );
+  });
+
+  it('RECHAZA un modo inventado', async () => {
+    await assertFails(
+      setDoc(doc(como(UID_A1), `parejas/${PAREJA}/ciclo/config`),
+        config({ modoCiclo: 'lo_que_sea' })),
+    );
+  });
+
+  it('RECHAZA campos que no están en la lista', async () => {
+    await assertFails(
+      setDoc(doc(como(UID_A1), `parejas/${PAREJA}/ciclo/config`),
+        config({ notaSecreta: 'x' })),
+    );
+  });
+
+  it('RECHAZA una regla de más de 15 días', async () => {
+    await assertFails(
+      setDoc(doc(como(UID_A1), `parejas/${PAREJA}/ciclo/config`),
+        config({ duracionRegla: 40 })),
+    );
+  });
+
+  it('un mes se guarda como mapa de días', async () => {
+    await assertSucceeds(
+      setDoc(doc(como(UID_B1), `parejas/${PAREJA}/ciclo/mes-2026-09`), {
+        dias: { '2026-09-03': { m: true, s: ['colicos'], r: [] } },
+      }),
+    );
+  });
+
+  it('RECHAZA un id de mes con otra forma', async () => {
+    await assertFails(
+      setDoc(doc(como(UID_A1), `parejas/${PAREJA}/ciclo/mes-septiembre`), { dias: {} }),
+    );
+  });
+
+  it('el resumen no puede crecer sin límite', async () => {
+    const muchos = Array.from({ length: 2100 }, (_, i) => `2026-01-${i}`);
+    await assertFails(
+      setDoc(doc(como(UID_A1), `parejas/${PAREJA}/ciclo/resumen`), { menstruaciones: muchos }),
+    );
+  });
+
+  /**
+   * La prueba que de verdad importa. Todo lo anterior es forma; esto es
+   * privacidad: un dispositivo autenticado pero SIN vínculo con la pareja no
+   * puede leer ni un día del ciclo.
+   */
+  it('alguien de fuera NO puede leer el ciclo', async () => {
+    await setDoc(doc(como(UID_A1), `parejas/${PAREJA}/ciclo/mes-2026-09`), {
+      dias: { '2026-09-03': { m: true, s: [], r: [] } },
+    });
+    await assertFails(getDoc(doc(como(UID_INTRUSO), `parejas/${PAREJA}/ciclo/mes-2026-09`)));
+    await assertFails(getDoc(doc(como(UID_INTRUSO), `parejas/${PAREJA}/ciclo/config`)));
+    await assertFails(getDoc(doc(como(UID_INTRUSO), `parejas/${PAREJA}/ciclo/resumen`)));
+  });
+
+  it('alguien de fuera NO puede escribir en el ciclo', async () => {
+    await assertFails(
+      setDoc(doc(como(UID_INTRUSO), `parejas/${PAREJA}/ciclo/config`), config()),
+    );
+  });
+});
+
 describe('Confirmar un panorama · "Evento realizado"', () => {
   /**
    * El camino de escritura que estrena el botón ✅ del banner. Antes lo

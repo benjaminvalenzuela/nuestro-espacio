@@ -331,7 +331,36 @@ El `--project demo-nuestro-espacio` no es decorativo: el prefijo `demo-` es lo
 que fuerza el modo emulador. Sin él, el SDK intentaría hablar con un proyecto
 real.
 
-## 15 · Reglas que no se rompen nunca
+## 15 · Duración del ciclo: de dónde sale el número
+
+La app usa una duración de ciclo para predecir la ovulación, la ventana fértil
+y la próxima regla. Sale de cuatro sitios, en este orden de autoridad:
+
+| Origen | Cuándo manda | Lo que dice la pantalla |
+|---|---|---|
+| `manual` | el modo está en «La defino yo» | «porque los definiste tú» |
+| `promedio` | hay al menos dos reglas registradas | «promedio de N ciclos» |
+| `declarado` | sin registros, pero ella puso un valor | «los que pusiste, aún sin registros» |
+| `defecto` | no hay nada | «28 días por defecto» |
+
+Los cuatro casos se dicen en voz alta en la pantalla a propósito: «ciclo de 31
+días» sin más no distingue un dato medido de una suposición, y de ese número
+sale una predicción de fertilidad.
+
+En modo manual se sigue calculando el promedio real y se muestra si difiere.
+Ocultarlo sería decidir por ella que su propio dato no importa.
+
+Límites: 21 a 45 días. 21-35 es el rango que la literatura considera normal;
+se admite hasta 45 porque los ciclos largos existen —adolescencia, SOP— y una
+app que no deja registrar la realidad de alguien no le sirve a esa persona.
+Por encima de 35 la pantalla avisa de que conviene consultarlo.
+
+⚠️ Las reglas de `/ciclo/config` aceptan el documento **sin** `duracionCiclo`
+ni `modoCiclo`. Es deliberado: un dispositivo con la página anterior en caché
+sigue enviando solo los dos campos viejos durante los minutos que dure esa
+caché, y exigirlos convertiría eso en un «no se pudo guardar» sin explicación.
+
+## 16 · Reglas que no se rompen nunca
 
 | Regla | Motivo |
 |---|---|
