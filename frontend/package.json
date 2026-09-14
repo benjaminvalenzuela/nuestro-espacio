@@ -15,7 +15,7 @@
     "cookie": "^2.0.1",
     "firebase": "^12.18.0",
     "nanostores": "^1.5.3",
-    "zod": "^4.5.4"
+    "zod": "^4.6.2"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
