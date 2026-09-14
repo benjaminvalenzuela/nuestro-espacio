@@ -14,12 +14,12 @@
   },
   "dependencies": {
     "dotenv": "^17.2.3",
-    "firebase-admin": "^14.3.0",
+    "firebase-admin": "^14.4.0",
     "zod": "^4.5.4"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",
-    "firebase": "^12.18.0",
+    "firebase": "^12.19.0",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0"
