@@ -27,6 +27,6 @@
     "test": "npm run typecheck && npm run test:dominio && npm run test:reglas"
   },
   "devDependencies": {
-    "firebase-tools": "^15.29.0"
+    "firebase-tools": "^15.33.0"
   }
 }
